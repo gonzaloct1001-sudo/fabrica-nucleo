@@ -1,0 +1,22 @@
+# Este archivo es del núcleo. Una instancia sí guarda en Git sus clientes/, instancia/ y .fabrica/config.json:
+# por eso no se ignoran aquí. El núcleo se mantiene limpio con la verificación (verificar.py --nucleo).
+
+# Respaldos locales que deja una actualización del núcleo (el historial de Git ya guarda todo)
+.fabrica/respaldo-nucleo/
+
+# Repositorios de proyectos clonados dentro de la instancia: cada uno tiene su propio Git
+proyectos/
+
+# Secretos y entorno
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,21 @@
+# origen: https://github.com/gonzaloct1001-sudo/fabrica-nucleo
+#
+# Rutas del núcleo de la fábrica: una por línea, y las que terminan en / son carpetas completas.
+# .fabrica/scripts/actualizar_nucleo.py reemplaza estas rutas con la versión nueva del núcleo.
+#
+# Todo lo demás pertenece a la instancia y una actualización nunca lo toca: clientes/, instancia/, proyectos/,
+# .fabrica/config.json y los archivos propios que la instancia agregue dentro de estas carpetas (por ejemplo, una
+# skill o un flujo de trabajo propio). En una instancia no se editan archivos del núcleo: lo propio va en instancia/.
+AGENTS.md
+CLAUDE.md
+README.md
+CHANGELOG.md
+LICENSE
+NUCLEO.txt
+.gitignore
+.gitattributes
+nucleo/
+pruebas/
+.fabrica/scripts/
+.fabrica/config.ejemplo.json
+.github/

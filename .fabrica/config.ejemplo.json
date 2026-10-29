@@ -1,0 +1,40 @@
+{
+  "_que_es": "Configuración de una instancia de la fábrica. Copia este archivo como config.json y completa los valores. config.json no se sube al núcleo.",
+  "nombre_fabrica": "Mi Fábrica",
+  "rol_humano": "Dirección",
+  "idioma": "es",
+  "zona_horaria": "UTC",
+  "nucleo_version": "0.1.0",
+
+  "pausa": false,
+  "nivel_autonomia": 1,
+
+  "modelos": {
+    "_nota": "Qué modelo concreto corresponde a cada nivel de nucleo/modelos.md. Se actualiza cuando salen modelos nuevos.",
+    "alto": "opus",
+    "medio": "sonnet",
+    "bajo": "haiku"
+  },
+
+  "topes": {
+    "rondas_correccion": 5,
+    "lineas_utiles_por_pr": 400,
+    "historias_en_curso_por_proyecto": 1
+  },
+
+  "umbrales_autonomia": {
+    "_nota": "Evidencia que exige el examen de la fábrica para subir de nivel (nucleo/autonomia.md).",
+    "nivel_2": { "semanas_sin_defectos_criticos": 4, "historias_sin_intervencion_pct": 70 },
+    "nivel_3": { "semanas_en_nivel_2_sin_revertir": 8 }
+  },
+
+  "resumen_diario": {
+    "hora": "08:00",
+    "dias": ["lun", "mar", "mie", "jue", "vie"]
+  },
+
+  "github": {
+    "_nota": "Cuenta u organización donde viven los repositorios de proyectos. Todos privados.",
+    "propietario": ""
+  }
+}

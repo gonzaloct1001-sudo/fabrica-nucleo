@@ -1,0 +1,29 @@
+{
+  "_que_es": "Estado de un proyecto para el panel de seguimiento. Es lo único que el panel lee de cada proyecto: sin nombres de personas, montos ni contenido de documentos. Va en .fabrica/estado.json del repositorio del proyecto y lo actualiza el documentador al cerrar cada historia.",
+  "version_formato": 1,
+  "cliente": "slug-del-cliente",
+  "negocio": "slug-del-negocio",
+  "proyecto": "slug-del-proyecto",
+  "nucleo": "0.1.0",
+  "fase": "descubrimiento",
+  "_fases_posibles": "descubrimiento | especificacion | construccion | estabilizacion | operacion | cerrado",
+  "semaforo": "verde",
+  "_semaforo": "verde = avanza sin bloqueos; amarillo = algo espera a la Dirección o hay riesgo de plazo; rojo = detenido",
+  "historias": {
+    "total": 0,
+    "hechas": 0,
+    "en_curso": 0,
+    "en_revision": 0,
+    "bloqueadas": 0
+  },
+  "espera_direccion": {
+    "cantidad": 0,
+    "enlace": "https://github.com/<organizacion>/<repositorio>/issues?q=label%3Aespera%3Adireccion"
+  },
+  "proxima_entrega": {
+    "que": "",
+    "fecha": ""
+  },
+  "riesgo_principal": "",
+  "actualizado": "AAAA-MM-DDTHH:MM:SSZ"
+}
