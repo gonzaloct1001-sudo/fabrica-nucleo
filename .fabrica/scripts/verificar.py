@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _nucleo  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
-REFERENCIA = re.compile(r"`((?:nucleo/|plantillas/|\.fabrica/scripts/|\.fabrica/nucleo/)[A-Za-z0-9_./-]+)`")
+REFERENCIA = re.compile(r"`((?:nucleo/|plantillas/|\.fabrica/scripts/|\.fabrica/nucleo/|\.fabrica/motor/)[A-Za-z0-9_./-]+)`")
 MODELOS = {"opus", "sonnet", "haiku", "fable", "inherit"}
 ESFUERZOS = {"low", "medium", "high", "xhigh", "max"}
 COPIA_DEL_METODO = ".fabrica/nucleo/"  # en un proyecto, la copia de nucleo/ que arma nuevo_proyecto.py

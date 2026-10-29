@@ -14,13 +14,13 @@ Uso, desde la raíz de la instancia:
 import argparse
 import json
 import re
-import shutil
 import subprocess
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kit  # noqa: E402
 import _nucleo  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -55,25 +55,17 @@ def git(cwd, *args):
     return r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
 
 
-def copiar_arbol(origen, destino):
-    for x in sorted(Path(origen).rglob("*")):
-        rel = x.relative_to(origen)
-        if x.is_file() and not (set(rel.parts) & _nucleo.IGNORAR_PARTES) and rel.name not in _nucleo.IGNORAR_NOMBRES:
-            (destino / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(x, destino / rel)
-
-
 def armar_kit(destino, cliente, negocio, proyecto, nombre, propietario):
     """Arma en `destino` el kit de la fábrica y los archivos iniciales del proyecto."""
     version = _nucleo.version(RAIZ)
-    copiar_arbol(RAIZ / "kit", destino)
-    copiar_arbol(RAIZ / "nucleo", destino / ".fabrica" / "nucleo")
+    _kit.armar(RAIZ, destino)
 
     repo = f"{cliente}-{proyecto}"
     hoy = date.today().isoformat()
     datos = {"version_formato": 1, "cliente": cliente, "negocio": negocio, "proyecto": proyecto, "nombre": nombre,
              "repositorio": repo, "nucleo": version, "creado": hoy, "pausa": False,
-             "direccion": propietario}  # cuenta de GitHub cuyo "intégralo" autoriza un merge (nucleo/autonomia.md)
+             "direccion": propietario,  # cuenta de GitHub cuyo "intégralo" autoriza un merge (nucleo/autonomia.md)
+             "motor": {"pasos_por_corrida": 1}}  # nucleo/motor.md
     (destino / ".fabrica" / "proyecto.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n",
                                                         encoding="utf-8")
 

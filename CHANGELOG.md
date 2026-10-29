@@ -5,6 +5,31 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.3.0 · 2026-10-29
+
+El motor y la actualización de proyectos:
+- **Motor** (`nucleo/motor.md` y `kit/.fabrica/motor/corrida.md`): una tarea programada por proyecto, en la nube.
+  - Cada corrida avanza un paso del ciclo, en un orden fijo de prioridades.
+  - Trabaja en ramas y PRs, y nunca sube cambios a `main`.
+  - Deja las preguntas como issues `espera:direccion`.
+  - Solo integra con un "intégralo" de la cuenta de la Dirección.
+  - Escribe la bitácora de corridas en un issue fijo.
+  - El presupuesto va en `motor.pasos_por_corrida`, 1 por defecto, que cabe en el plan Pro.
+- **GitHub en la nube:** el kit usa la API REST (`gh api`) o las herramientas integradas, porque `gh issue` y `gh pr`
+  fallan en la nube (usan GraphQL).
+- **`actualizar_kit.py`:** actualiza el kit de un proyecto desde su instancia, sin tocar el código, `docs/`,
+  `pruebas/` ni su propia CI.
+  - Respalda, verifica, revierte si falla y deja un commit.
+  - La lógica común con `actualizar_nucleo.py` pasa a `_actualizacion.py`, y el armado del kit a `_kit.py`.
+- **Del piloto:**
+  - el kit trae `.gitattributes` (saltos de línea LF);
+  - `crear_etiquetas.py` usa REST y quita las etiquetas que GitHub crea por defecto.
+- **Corrección:** dos actualizaciones dentro del mismo segundo compartían carpeta de respaldo, y revertir la segunda
+  restauraba también los respaldos de la primera. Ahora cada una tiene su carpeta.
+- **Corrección en la prueba:** `git revert` no acepta `-q`, así que la prueba del revert nunca se había ejecutado de
+  verdad (la tapaba el error anterior). Ahora además se exige que la instancia quede limpia tras revertir.
+- **Pruebas:** 22 de actualización y 33 del kit, con resultados conocidos.
+
 ## 0.2.1 · 2026-10-29
 
 Quién integra cada PR:

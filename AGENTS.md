@@ -44,7 +44,8 @@ Consulta el resto del núcleo solo cuando la tarea lo pida:
 | Saber qué área se encarga de algo | `nucleo/areas.md` |
 | Cerrar un proyecto o proponer una mejora al núcleo | `nucleo/aprendizaje.md` |
 | Escribir una historia, un plan o un ADR | `nucleo/plantillas/` |
-| Crear una instancia, actualizar el núcleo o publicar una versión | `nucleo/actualizaciones.md` |
+| Crear una instancia, actualizar el núcleo o el kit de un proyecto, o publicar una versión | `nucleo/actualizaciones.md` |
+| Programar el motor que hace avanzar un proyecto solo, en la nube | `nucleo/motor.md` |
 
 ## Reglas que más se olvidan
 

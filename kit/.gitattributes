@@ -1,0 +1,13 @@
+# Saltos de línea LF en el repositorio, para que los archivos y los scripts funcionen igual en Windows, Mac, Linux y
+# en la nube. Este archivo es del kit de la fábrica.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary

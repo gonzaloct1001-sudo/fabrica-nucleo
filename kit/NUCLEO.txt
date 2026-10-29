@@ -9,7 +9,9 @@
 AGENTS.md
 CLAUDE.md
 NUCLEO.txt
+.gitattributes
 .fabrica/nucleo/
+.fabrica/motor/
 .fabrica/scripts/
 .claude/agents/
 .claude/skills/
