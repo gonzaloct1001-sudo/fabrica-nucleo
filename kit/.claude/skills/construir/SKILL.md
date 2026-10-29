@@ -84,9 +84,12 @@ ensuciaría y la corrección no tendría revisión.
    - el riesgo;
    - la sección **"Decisiones que tomé por ti"**, con todas las líneas `Decisión:` del registro, textuales;
    - los hallazgos estacionados, cada uno con su justificación.
-7. **Etiquetas.** Pasa la historia a `estado:construido`.
-   - **Nivel de autonomía 1:** nunca haces merge.
-   - **Nivel 2:** puedes hacer merge solo si el riesgo es bajo y todos los controles están en verde.
+7. **Quién integra.** Pasa la historia a `estado:construido` y pregunta quién integra, según "Quién integra cada
+   PR" en `.fabrica/nucleo/autonomia.md`.
+   - **Por defecto integra la Dirección.**
+   - **Tú integras solo en dos casos:** con un "intégralo" explícito para ese PR, o en el nivel 2, si el riesgo es
+     bajo y todos los controles están en verde.
+   - **Antes de integrar,** vuelve a comprobar los controles y que la rama esté al día con `main`.
 
 ## Cuándo te detienes
 

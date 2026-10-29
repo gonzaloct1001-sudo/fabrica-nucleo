@@ -67,8 +67,10 @@ Cada versión nueva sigue estos pasos:
 
 1. Se trabaja en una rama y se cierra con un PR que completa la lista de control.
 2. Se agrega la entrada en `CHANGELOG.md` y se sube `nucleo_version` en `config.ejemplo.json`.
-3. La CI corre la verificación y la prueba de actualización.
-4. Al integrar, se crea la etiqueta `vX.Y.Z` y su release en GitHub.
+3. La CI corre la verificación y las pruebas.
+4. Se integra el PR. Un agente puede integrarlo solo con la confirmación explícita de quien mantiene el núcleo,
+   pedida en la conversación para ese PR.
+5. Se crea la etiqueta `vX.Y.Z` y su release en GitHub.
 
 ## Mejoras que nacen en una instancia
 

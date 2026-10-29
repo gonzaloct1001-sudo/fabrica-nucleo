@@ -5,6 +5,19 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.2.1 · 2026-10-29
+
+Quién integra cada PR:
+- **En los proyectos,** la fábrica pregunta siempre "¿lo integro yo o lo integras tú?":
+  - por defecto, integra la Dirección;
+  - un "intégralo" autoriza solo ese PR, y si llega como comentario se comprueba que venga de la cuenta de la Dirección;
+  - nunca se integra por omisión.
+  Cambian `autonomia.md`, la skill `construir` y el `AGENTS.md` del kit.
+- **`.fabrica/proyecto.json`** registra en `direccion` la cuenta cuyo "intégralo" autoriza un merge.
+- **En el núcleo,** un agente puede integrar un PR solo con la confirmación explícita de quien lo mantiene
+  (`actualizaciones.md`).
+- La prueba del kit agrega un caso para el campo `direccion` (24 casos).
+
 ## 0.2.0 · 2026-10-29
 
 Agentes, skills y kit de proyecto:

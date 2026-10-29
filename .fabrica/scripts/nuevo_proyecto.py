@@ -72,7 +72,8 @@ def armar_kit(destino, cliente, negocio, proyecto, nombre, propietario):
     repo = f"{cliente}-{proyecto}"
     hoy = date.today().isoformat()
     datos = {"version_formato": 1, "cliente": cliente, "negocio": negocio, "proyecto": proyecto, "nombre": nombre,
-             "repositorio": repo, "nucleo": version, "creado": hoy, "pausa": False}
+             "repositorio": repo, "nucleo": version, "creado": hoy, "pausa": False,
+             "direccion": propietario}  # cuenta de GitHub cuyo "intégralo" autoriza un merge (nucleo/autonomia.md)
     (destino / ".fabrica" / "proyecto.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n",
                                                         encoding="utf-8")
 

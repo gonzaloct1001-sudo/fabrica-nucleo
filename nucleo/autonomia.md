@@ -50,13 +50,29 @@ solo cuando el examen de la fábrica (`aprendizaje.md`) lo respalda.
 
 | Nivel | Qué hace la fábrica sola | Para subir al siguiente |
 |---|---|---|
-| **1 · Propone** | Construye y abre el PR. La Dirección revisa y hace todos los merges. | 4 semanas sin defectos críticos escapados y al menos 70 % de historias sin intervención |
-| **2 · Integra lo de bajo riesgo** | Hace merge a staging de los PRs de riesgo bajo con todos los controles en verde. | 8 semanas en nivel 2 sin revertir un merge automático |
+| **1 · Propone** | Construye, abre el PR y pregunta quién lo integra. Por defecto lo integra la Dirección. | 4 semanas sin defectos críticos escapados y al menos 70 % de historias sin intervención |
+| **2 · Integra lo de bajo riesgo** | Integra sin preguntar los PRs de riesgo bajo con todos los controles en verde; los demás, como en el nivel 1. | 8 semanas en nivel 2 sin revertir un merge automático |
 | **3 · Especifica** | Además, convierte notas y entrevistas en historias. La Dirección solo confirma que describen la operación real. | No hay nivel superior |
 
 En todos los niveles, **producción es siempre una decisión de la Dirección**.
 
 Los umbrales son el punto de partida; cada instancia los ajusta en su configuración.
+
+## Quién integra cada PR
+
+Integrar un PR es un efecto fuera del espacio de la fábrica (motivo 3), así que nunca ocurre en silencio.
+
+- **Cada vez que un PR queda listo, la fábrica pregunta:** "¿Lo integro yo o lo integras tú?". Si la Dirección está
+  en la conversación, la pregunta va ahí. Si no, va en el resumen diario y como comentario en el PR.
+- **Por defecto, integra la Dirección.** Si no hay respuesta, el PR queda esperando: la fábrica nunca integra por
+  omisión.
+- **Una respuesta "intégralo" autoriza ese PR, y solo ese.** Si llega como comentario en el PR, la fábrica comprueba
+  que lo escribió la cuenta de la Dirección: la dueña del repositorio, o la que indique el campo `direccion` de
+  `.fabrica/proyecto.json`.
+- **Antes de integrar,** la fábrica vuelve a comprobar que todos los controles estén en verde y que la rama esté al
+  día con `main`.
+- **En el nivel 2,** los PRs de riesgo bajo con todos los controles en verde se integran sin preguntar. Los demás
+  siguen esta regla.
 
 ## Topes
 
