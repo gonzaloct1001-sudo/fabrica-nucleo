@@ -26,8 +26,8 @@ Las palabras "debería", "probablemente" y "parece" en un informe de estado son 
 ## Pruebas protegidas
 
 Las pruebas de aceptación de una historia se escriben y se aprueban antes de construir, en una carpeta propia
-(`pruebas/aceptacion/`). Un control en la CI rechaza cualquier PR de implementación que las modifique. Para
-cambiarlas hay que pasar por la especificación y por la Dirección.
+(`pruebas/aceptacion/`). La CI de cada proyecto rechaza cualquier PR que las modifique, salvo que lleve la etiqueta
+`pruebas-aprobadas`, que solo pone la Dirección. Para cambiarlas hay que volver a la especificación.
 
 ## Revisión por tarea: dos veredictos
 

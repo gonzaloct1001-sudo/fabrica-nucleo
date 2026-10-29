@@ -5,6 +5,29 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.2.0 · 2026-10-29
+
+Agentes, skills y kit de proyecto:
+- **Kit de proyecto** (`kit/`): lo que recibe cada repositorio de proyecto:
+  - un `AGENTS.md` para el coordinador del proyecto;
+  - diez agentes, uno por rol de cada área, con su modelo y su esfuerzo declarados;
+  - seis skills del ciclo: `triage`, `especificar`, `decidir`, `planificar`, `construir` y `cerrar`;
+  - plantillas de issues y de PR, y las etiquetas de estado, riesgo, ruta y tipo;
+  - la CI `fabrica.yml`, que rechaza cualquier cambio en `pruebas/aceptacion/` sin la etiqueta `pruebas-aprobadas`.
+- **Instancia:**
+  - las skills `nuevo-cliente` y `nuevo-proyecto`;
+  - los scripts `nuevo_cliente.py` (empresas, holdings con varios negocios, personas o propio) y
+    `nuevo_proyecto.py` (arma el kit, copia el método, crea el estado y el manifiesto, y opcionalmente el repositorio
+    privado en GitHub);
+  - un cliente con reserva estricta se deriva a una instancia propia.
+- **`verificar.py`** revisa además:
+  - el kit;
+  - el encabezado de cada agente (nombre, descripción, modelo y esfuerzo) y de cada skill;
+  - que cada rol de `modelos.md` tenga su agente;
+  - las referencias dentro del kit.
+- **Prueba de punta a punta del kit:** 23 casos con resultados conocidos, en la CI.
+- **La pausa por proyecto** se configura en `.fabrica/proyecto.json`.
+
 ## 0.1.0 · 2026-10-29
 
 Cimientos de la fábrica:

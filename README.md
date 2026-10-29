@@ -9,9 +9,12 @@ Está pensada para que una sola persona dirija varios clientes y proyectos dedic
 avanza sola, se detiene solo cuando de verdad necesita una decisión humana y entrega cada día un resumen con lo que
 hizo, lo que decidió y lo que espera.
 
-> Estado: **v0.1, en construcción.** Esta versión trae los cimientos: constitución, contrato de autonomía, áreas,
-> ciclo de vida, calidad, aislamiento, modelos, aprendizaje y plantillas. Los agentes, las skills y el motor en
-> GitHub llegan en la siguiente versión.
+> Estado: **v0.2, en construcción.**
+> - **v0.1:** los cimientos (constitución, autonomía, áreas, ciclo, calidad, aislamiento, modelos, aprendizaje y
+>   plantillas).
+> - **v0.2:** los agentes de cada área, las skills del ciclo y el kit que recibe cada proyecto.
+> - **Próximo:** el motor que hace avanzar los proyectos solos en la nube, el panel de seguimiento y el examen de las
+>   skills con casos conocidos.
 
 ## Cómo está organizada
 
@@ -31,9 +34,11 @@ fabrica/
 │   ├── actualizaciones.md núcleo e instancias: crear, actualizar sin perder nada, publicar versiones
 │   ├── referencias.md     marcos públicos que se estudiaron
 │   └── plantillas/        historia, plan, ADR, constitución de proyecto, cliente, estado, retrospectiva
+├── kit/               lo que recibe cada repositorio de proyecto: agentes, skills del ciclo, CI y plantillas
+├── .claude/skills/    skills de la instancia: registrar clientes y crear proyectos
 ├── .fabrica/
 │   ├── config.ejemplo.json   configuración de una instancia (nombres, niveles, topes)
-│   └── scripts/              verificar y actualizar el núcleo
+│   └── scripts/              verificar, actualizar el núcleo, registrar clientes y crear proyectos
 ├── pruebas/           pruebas del núcleo con resultados conocidos
 ├── .github/           CI y plantillas de issues y PR
 └── clientes/          registro de clientes de la instancia (vacío en el núcleo)

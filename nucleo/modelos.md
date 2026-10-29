@@ -26,6 +26,14 @@ Cada rol usa el modelo menos costoso que hace bien su trabajo. Los niveles son g
 | `cuentas` | Medio | Medio | |
 | `documentador` | Bajo | Bajo | |
 
+## Cómo se aplica en el asistente
+
+Cada agente del kit (`kit/.claude/agents/`) declara en su encabezado el modelo de su nivel por defecto, como alias de
+familia: `opus` para el nivel alto, `sonnet` para el medio y `haiku` para el bajo. Cada alias apunta siempre al modelo
+más nuevo de su familia, así que el kit no necesita cambios cuando sale un modelo nuevo. Al delegar, el coordinador
+declara el modelo según esta tabla, y lo sube un nivel cuando corresponde (rondas 4 y 5 de corrección, revisión final
+de la rama).
+
 ## Reglas
 
 - **Siempre se declara el modelo al delegar.** Un subagente sin modelo declarado hereda el de la sesión, que suele ser

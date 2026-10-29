@@ -23,3 +23,6 @@ jobs:
 
       - name: Probar la actualización del núcleo
         run: python3 pruebas/probar_actualizacion.py
+
+      - name: Probar clientes, proyectos y el kit
+        run: python3 pruebas/probar_kit.py

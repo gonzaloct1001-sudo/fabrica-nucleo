@@ -1,0 +1,27 @@
+name: Fábrica
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fabrica:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Verificar el proyecto y proteger las pruebas de aceptación
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python3 .fabrica/scripts/verificar_proyecto.py --base "origin/${{ github.base_ref }}"
+          else
+            python3 .fabrica/scripts/verificar_proyecto.py
+          fi
