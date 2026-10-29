@@ -1,0 +1,19 @@
+# Kit de proyecto de la fábrica.
+#
+# Rutas que pertenecen al kit: una por línea, y las que terminan en / son carpetas completas. Una actualización del
+# kit las reemplaza con la versión nueva.
+#
+# Todo lo demás es del proyecto y una actualización nunca lo toca: el código, docs/, pruebas/, .fabrica/proyecto.json,
+# .fabrica/estado.json y los archivos propios que el proyecto agregue dentro de estas carpetas (por ejemplo, su propio
+# .github/workflows/ci.yml o una skill local-*).
+AGENTS.md
+CLAUDE.md
+NUCLEO.txt
+.fabrica/nucleo/
+.fabrica/scripts/
+.claude/agents/
+.claude/skills/
+.github/workflows/fabrica.yml
+.github/PULL_REQUEST_TEMPLATE.md
+.github/ISSUE_TEMPLATE/
+.github/etiquetas.json

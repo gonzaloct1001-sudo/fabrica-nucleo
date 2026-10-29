@@ -16,6 +16,19 @@ recomendación explícita.
 - En una instancia no edites archivos del núcleo (los que lista `NUCLEO.txt`). Lo propio va en `instancia/`, en
   `clientes/` o como archivo nuevo con prefijo `local-` (`nucleo/actualizaciones.md`).
 
+## Qué se hace aquí y qué en cada proyecto
+
+En la instancia se administra la fábrica:
+
+| Para | Skill |
+|---|---|
+| Registrar un cliente (empresa, holding, persona o propio) | `nuevo-cliente` |
+| Crear un proyecto con su repositorio y el kit de la fábrica | `nuevo-proyecto` |
+
+El trabajo de un proyecto (especificar, construir, revisar y cerrar) se hace **dentro de su propio repositorio**, en
+`proyectos/<cliente>-<proyecto>/` o en una sesión en la nube. Cada proyecto trae su propio `AGENTS.md`, sus agentes,
+sus skills y una copia del método. El kit sale de la carpeta `kit/` del núcleo.
+
 ## Lo que siempre rige
 
 - `nucleo/constitucion.md`: principios no negociables. Si un pedido los contradice, dilo antes de seguir.

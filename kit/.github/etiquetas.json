@@ -1,0 +1,21 @@
+[
+  {"nombre": "estado:borrador", "color": "d4d4d4", "descripcion": "Especificación en curso o con dudas abiertas"},
+  {"nombre": "estado:listo", "color": "0e8a16", "descripcion": "Cumple la Definition of Ready"},
+  {"nombre": "estado:en-curso", "color": "1d76db", "descripcion": "Una corrida la está construyendo"},
+  {"nombre": "estado:en-revision", "color": "5319e7", "descripcion": "Construida; en revisión y verificación"},
+  {"nombre": "estado:construido", "color": "fbca04", "descripcion": "PR listo; espera a la Dirección"},
+  {"nombre": "estado:hecho", "color": "0b5d1e", "descripcion": "Integrada. Solo una persona la marca"},
+  {"nombre": "estado:bloqueado", "color": "b60205", "descripcion": "Detenida; el motivo está en un comentario"},
+  {"nombre": "espera:direccion", "color": "d93f0b", "descripcion": "Necesita una decisión de la Dirección"},
+  {"nombre": "riesgo:bajo", "color": "c2e0c6", "descripcion": "No toca dinero, datos personales ni permisos"},
+  {"nombre": "riesgo:medio", "color": "fef2c0", "descripcion": "Toca lógica de negocio o varias partes"},
+  {"nombre": "riesgo:alto", "color": "f9d0c4", "descripcion": "Toca dinero, stock, datos personales o seguridad"},
+  {"nombre": "ruta:directa", "color": "ededed", "descripcion": "Cambio obvio de bajo riesgo"},
+  {"nombre": "ruta:una-sesion", "color": "ededed", "descripcion": "Se especifica, construye y revisa de una vez"},
+  {"nombre": "ruta:completa", "color": "ededed", "descripcion": "Iniciativa con épicas e historias"},
+  {"nombre": "tipo:historia", "color": "bfdadc", "descripcion": "Funcionalidad nueva o cambio"},
+  {"nombre": "tipo:error", "color": "e99695", "descripcion": "Algo no funciona como debería"},
+  {"nombre": "tipo:tarea", "color": "bfdadc", "descripcion": "Trabajo técnico sin cambio visible"},
+  {"nombre": "tipo:investigacion", "color": "bfdadc", "descripcion": "Averiguar algo antes de decidir"},
+  {"nombre": "pruebas-aprobadas", "color": "0e8a16", "descripcion": "La Dirección aprueba cambios en pruebas/aceptacion/"}
+]

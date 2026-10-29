@@ -7,6 +7,9 @@
 # Repositorios de proyectos clonados dentro de la instancia: cada uno tiene su propio Git
 proyectos/
 
+# Configuración personal del asistente (cada persona tiene la suya)
+.claude/settings.local.json
+
 # Secretos y entorno
 .env
 .env.*

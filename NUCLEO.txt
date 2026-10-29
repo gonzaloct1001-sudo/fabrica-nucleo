@@ -15,7 +15,9 @@ NUCLEO.txt
 .gitignore
 .gitattributes
 nucleo/
+kit/
 pruebas/
+.claude/
 .fabrica/scripts/
 .fabrica/config.ejemplo.json
 .github/

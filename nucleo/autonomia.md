@@ -69,8 +69,8 @@ Los umbrales son el punto de partida; cada instancia los ajusta en su configurac
 
 ## Interruptor
 
-Con `"pausa": true` en `.fabrica/config.json` (o la etiqueta `fabrica:pausa` en un repositorio de proyecto), ninguna
-corrida inicia trabajo nuevo. Las que estaban en curso terminan su paso actual, registran dónde quedaron y se
+Con `"pausa": true` en `.fabrica/config.json`, la pausa rige para toda la instancia. Con `"pausa": true` en
+`.fabrica/proyecto.json`, rige solo para ese proyecto. En ambos casos, ninguna corrida inicia trabajo nuevo. Las que estaban en curso terminan su paso actual, registran dónde quedaron y se
 detienen.
 
 ## Resumen diario
