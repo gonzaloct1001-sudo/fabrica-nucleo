@@ -4,7 +4,7 @@
   "rol_humano": "Dirección",
   "idioma": "es",
   "zona_horaria": "UTC",
-  "nucleo_version": "0.2.0",
+  "nucleo_version": "0.2.1",
 
   "pausa": false,
   "nivel_autonomia": 1,

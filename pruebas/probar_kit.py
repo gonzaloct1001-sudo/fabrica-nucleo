@@ -91,6 +91,8 @@ def main():
                   datos["cliente"] == estado["cliente"] == "grupo-demo" and datos["proyecto"] == estado["proyecto"] ==
                   "plataforma" and estado["nucleo"] == _nucleo.version(RAIZ) and not any(k.startswith("_") for k in estado),
                   json.dumps(estado, ensure_ascii=False))
+        comprobar("proyecto.json registra la cuenta cuyo 'intégralo' autoriza un merge", "direccion" in datos,
+                  json.dumps(datos, ensure_ascii=False))
         comprobar("La constitución del proyecto lleva su nombre",
                   "# Constitución de Plataforma de reparto" in (proy / "docs/constitucion.md").read_text(encoding="utf-8"))
         rc_l, log = run(["git", "log", "--oneline"], proy)
