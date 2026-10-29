@@ -58,6 +58,21 @@ Al aplicar, el actualizador sigue estos pasos:
 Este comportamiento tiene una prueba automática con resultados conocidos (`pruebas/probar_actualizacion.py`), que
 corre en la CI en cada cambio del núcleo.
 
+## Actualizar el kit de cada proyecto
+
+Cada proyecto lleva una copia del kit y del método. Su `NUCLEO.txt` dice qué rutas son del kit; todo lo demás (el
+código, `docs/`, `pruebas/`, el estado y su propia CI) pertenece al proyecto.
+
+Después de actualizar la instancia, se actualiza cada proyecto desde ella:
+
+```
+python .fabrica/scripts/actualizar_kit.py proyectos/<cliente>-<proyecto>              # vista previa
+python .fabrica/scripts/actualizar_kit.py proyectos/<cliente>-<proyecto> --aplicar    # aplica
+```
+
+Funciona igual que la actualización del núcleo: respalda, verifica con `verificar_proyecto.py`, revierte si falla y
+deja un commit local. Subirlo e integrarlo sigue la regla de "Quién integra cada PR" (`autonomia.md`).
+
 ## Mantener el núcleo
 
 El repositorio del núcleo lo mantiene una sola persona. En esa copia, `git config fabrica.mantenedor true` impide

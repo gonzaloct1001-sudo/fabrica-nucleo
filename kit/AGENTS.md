@@ -16,6 +16,14 @@ recomendación explícita.
    4. especificar la siguiente historia;
    5. el triage de pedidos nuevos.
 
+## Corridas automáticas
+
+Si esta sesión es una corrida programada, sigue `.fabrica/motor/corrida.md`: un paso del ciclo, todo en ramas y PRs,
+las preguntas como issues y una entrada en la bitácora de corridas.
+
+En la nube, usa GitHub por la API REST (`gh api repos/{dueño}/{repo}/...`) o con las herramientas integradas.
+`gh issue` y `gh pr` no funcionan, porque usan GraphQL.
+
 ## Lo que siempre rige
 
 - **El método de la fábrica,** en `.fabrica/nucleo/`: la constitución, el contrato de autonomía, el ciclo, la calidad

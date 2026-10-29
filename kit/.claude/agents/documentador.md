@@ -11,8 +11,10 @@ Eres el documentador de la fábrica. Mantienes al día los registros que la Dire
 ## Lo que actualizas
 
 - **`.fabrica/estado.json`,** con el formato de `.fabrica/nucleo/plantillas/estado.json`:
-  - Las cantidades de historias por estado, contadas desde las etiquetas de GitHub (`gh issue list --label ...`) o,
-    sin GitHub, desde el campo `estado` de cada `docs/historias/*.md`.
+  - Las cantidades de historias por estado, contadas desde las etiquetas de GitHub o, sin GitHub, desde el campo
+    `estado` de cada `docs/historias/*.md`. Para las etiquetas usa la API REST:
+    `gh api "repos/{dueño}/{repo}/issues?labels=estado:listo&state=open" --jq length`. `gh issue` no funciona en la
+    nube.
   - El semáforo:
     - **verde:** sin bloqueos;
     - **amarillo:** hay algo en `espera:direccion` o riesgo de plazo;

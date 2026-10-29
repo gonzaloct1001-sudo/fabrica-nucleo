@@ -156,11 +156,14 @@ def main():
         comprobar("Tras revertir, los archivos siguen en v2", '"nucleo_version": "9.9.9"' in leer(inst / ".fabrica" / "config.json")
                   and "nucleo/no-existe.md" not in leer(inst / "NUCLEO.txt"))
         comprobar("Tras revertir, no hay commit nuevo", git(inst, "rev-parse", "HEAD")[1].strip() == cabeza)
+        rc_s, estado = git(inst, "status", "--porcelain")
+        comprobar("Tras revertir, la instancia queda sin cambios pendientes", rc_s == 0 and estado.strip() == "", estado)
 
         # Deshacer con git revert devuelve la instancia a v1
-        git(inst, "revert", "--no-edit", "-q", "HEAD")
+        rc_r, salida_r = git(inst, "revert", "--no-edit", "HEAD")
         comprobar("git revert deshace la actualización completa",
-                  "Regla nueva de v2." not in leer(inst / "nucleo" / "calidad.md") and (inst / "nucleo" / "obsoleto.md").exists())
+                  rc_r == 0 and "Regla nueva de v2." not in leer(inst / "nucleo" / "calidad.md")
+                  and (inst / "nucleo" / "obsoleto.md").exists(), salida_r)
 
         # En la copia del mantenedor, se niega
         git(inst, "config", "fabrica.mantenedor", "true")

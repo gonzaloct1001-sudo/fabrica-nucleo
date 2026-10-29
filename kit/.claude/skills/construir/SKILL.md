@@ -78,7 +78,8 @@ ensuciaría y la corrección no tendría revisión.
    diff completo desde `main` y la lista de hallazgos diferidos. Si encuentra problemas, se lanza una sola tanda de
    corrección con todos juntos y una revisión acotada de esa tanda. No hay segunda tanda.
 5. **Consistencia final.** El revisor compara el código con la historia. Lo que falte se vuelve una tarea nueva.
-6. **El PR.** Sube la rama y abre el PR con la plantilla del proyecto. Debe incluir:
+6. **El PR.** Sube la rama y abre el PR con la plantilla del proyecto. En la nube, ábrelo con las herramientas de
+   GitHub integradas o con `gh api -X POST repos/{dueño}/{repo}/pulls`, porque `gh pr` no funciona ahí. Debe incluir:
    - la evidencia de pruebas: comandos y salida;
    - el enlace a la vista previa, si existe;
    - el riesgo;

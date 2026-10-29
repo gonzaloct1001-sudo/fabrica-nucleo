@@ -9,12 +9,12 @@ Está pensada para que una sola persona dirija varios clientes y proyectos dedic
 avanza sola, se detiene solo cuando de verdad necesita una decisión humana y entrega cada día un resumen con lo que
 hizo, lo que decidió y lo que espera.
 
-> Estado: **v0.2, en construcción.**
+> Estado: **v0.3, en construcción.**
 > - **v0.1:** los cimientos (constitución, autonomía, áreas, ciclo, calidad, aislamiento, modelos, aprendizaje y
 >   plantillas).
 > - **v0.2:** los agentes de cada área, las skills del ciclo y el kit que recibe cada proyecto.
-> - **Próximo:** el motor que hace avanzar los proyectos solos en la nube, el panel de seguimiento y el examen de las
->   skills con casos conocidos.
+> - **v0.3:** el motor que hace avanzar cada proyecto solo en la nube, y la actualización del kit de cada proyecto.
+> - **Próximo:** el panel de seguimiento y el resumen diario, que la propia fábrica construye como su primer piloto.
 
 ## Cómo está organizada
 
@@ -32,6 +32,7 @@ fabrica/
 │   ├── modelos.md         qué nivel de modelo usa cada rol
 │   ├── aprendizaje.md     cómo mejora la fábrica con cada proyecto
 │   ├── actualizaciones.md núcleo e instancias: crear, actualizar sin perder nada, publicar versiones
+│   ├── motor.md           la tarea programada que hace avanzar cada proyecto en la nube
 │   ├── referencias.md     marcos públicos que se estudiaron
 │   └── plantillas/        historia, plan, ADR, constitución de proyecto, cliente, estado, retrospectiva
 ├── kit/               lo que recibe cada repositorio de proyecto: agentes, skills del ciclo, CI y plantillas

@@ -80,7 +80,7 @@ def main():
                      ".fabrica/scripts/verificar_proyecto.py", ".fabrica/nucleo/constitucion.md",
                      ".fabrica/nucleo/plantillas/historia.md", ".fabrica/proyecto.json", ".fabrica/estado.json",
                      ".fabrica/nucleo-instalado.csv", "docs/constitucion.md", "docs/bitacora.md",
-                     "pruebas/aceptacion/.gitkeep", ".gitignore"]
+                     "pruebas/aceptacion/.gitkeep", ".gitignore", ".gitattributes", ".fabrica/motor/corrida.md"]
         faltan = [e for e in esperados if not (proy / e).exists()]
         comprobar("El proyecto trae el kit completo", not faltan, f"faltan: {faltan}")
         comprobar("La copia del método es idéntica al núcleo",
@@ -93,6 +93,8 @@ def main():
                   json.dumps(estado, ensure_ascii=False))
         comprobar("proyecto.json registra la cuenta cuyo 'intégralo' autoriza un merge", "direccion" in datos,
                   json.dumps(datos, ensure_ascii=False))
+        comprobar("proyecto.json trae el presupuesto del motor (1 paso por corrida)",
+                  datos.get("motor", {}).get("pasos_por_corrida") == 1, json.dumps(datos, ensure_ascii=False))
         comprobar("La constitución del proyecto lleva su nombre",
                   "# Constitución de Plataforma de reparto" in (proy / "docs/constitucion.md").read_text(encoding="utf-8"))
         rc_l, log = run(["git", "log", "--oneline"], proy)
@@ -136,6 +138,49 @@ def main():
         # La verificación de la instancia completa, con su cliente y su proyecto, sigue pasando
         rc, out = script(inst, "verificar.py")
         comprobar("La instancia con clientes y proyectos pasa la verificación", rc == 0, out)
+
+        # Actualizar el kit del proyecto cuando la instancia recibe un núcleo nuevo
+        run(["git", "checkout", "-q", "main"], proy)
+        (proy / ".claude" / "skills" / "local-propia").mkdir(parents=True)
+        (proy / ".claude" / "skills" / "local-propia" / "SKILL.md").write_text("---\nname: local-propia\n---\n",
+                                                                              encoding="utf-8")
+        constitucion = (proy / "docs" / "constitucion.md").read_text(encoding="utf-8") + "\nP-9. Regla propia.\n"
+        (proy / "docs" / "constitucion.md").write_text(constitucion, encoding="utf-8")
+        run(["git", "add", "-A"], proy)
+        run(["git", "commit", "-qm", "Ajustes propios del proyecto"], proy)
+        (inst / "kit" / "AGENTS.md").write_text((inst / "kit" / "AGENTS.md").read_text(encoding="utf-8")
+                                                + "\nRegla nueva del kit.\n", encoding="utf-8")
+        (inst / "nucleo" / "calidad.md").write_text((inst / "nucleo" / "calidad.md").read_text(encoding="utf-8")
+                                                    + "\nRegla nueva del método.\n", encoding="utf-8")
+        log = inst / "CHANGELOG.md"
+        texto = log.read_text(encoding="utf-8")
+        i = texto.index("\n## ") + 1
+        log.write_text(texto[:i] + "## 9.9.9 · prueba\n\n- Cambio de prueba.\n\n" + texto[i:], encoding="utf-8")
+        destino = "proyectos/grupo-demo-plataforma"
+        rc, out = script(inst, "actualizar_kit.py", destino)
+        comprobar("La vista previa del kit anuncia la versión nueva y no cambia nada",
+                  rc == 0 and "→ 9.9.9" in out and "Regla nueva del kit." not in (proy / "AGENTS.md").read_text(encoding="utf-8"), out)
+        (proy / "borrador.txt").write_text("sin commit\n", encoding="utf-8")
+        rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar")
+        comprobar("No actualiza un proyecto con cambios sin commit", rc != 0 and "sin commit" in out, out)
+        (proy / "borrador.txt").unlink()
+        rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar")
+        comprobar("Actualiza el kit del proyecto", rc == 0, out)
+        comprobar("Trae el cambio del kit y el del método",
+                  "Regla nueva del kit." in (proy / "AGENTS.md").read_text(encoding="utf-8")
+                  and "Regla nueva del método." in (proy / ".fabrica/nucleo/calidad.md").read_text(encoding="utf-8"))
+        comprobar("Conserva lo propio del proyecto (skill local y constitución)",
+                  (proy / ".claude/skills/local-propia/SKILL.md").exists()
+                  and "P-9. Regla propia." in (proy / "docs/constitucion.md").read_text(encoding="utf-8"))
+        datos = json.loads((proy / ".fabrica/proyecto.json").read_text(encoding="utf-8"))
+        comprobar("Registra la versión nueva en proyecto.json sin tocar el resto",
+                  datos["nucleo"] == "9.9.9" and datos["proyecto"] == "plataforma", json.dumps(datos, ensure_ascii=False))
+        rc_l, ultimo = run(["git", "log", "-1", "--format=%s"], proy)
+        rc_s, pendiente = run(["git", "status", "--porcelain"], proy)
+        comprobar("Deja un commit propio y el proyecto limpio",
+                  "9.9.9" in ultimo and pendiente.strip() == "", f"{ultimo} | {pendiente}")
+        rc, out = run(verif, proy)
+        comprobar("El proyecto actualizado pasa su verificación", rc == 0, out)
 
         # En la copia del mantenedor, se niega
         run(["git", "init", "-q", "-b", "main"], inst)
