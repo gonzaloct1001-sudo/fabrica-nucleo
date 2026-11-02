@@ -40,6 +40,9 @@ Cada decisión que la fábrica toma por su cuenta queda en el registro del plan,
 Decisión: <qué se decidió> — <por qué> — <qué cuesta si es errada>
 ```
 
+Los supuestos que se anotan al especificar también son decisiones. Como todavía no hay plan, van en la sección
+"Decisiones que tomé por ti" del PR de especificación.
+
 Al cerrar una historia, la lista completa pasa al resumen diario, bajo **"Decisiones que tomé por ti"**. Es el único
 lugar donde la Dirección ve lo que se decidió en su nombre, así que no se resume ni se omite ninguna.
 

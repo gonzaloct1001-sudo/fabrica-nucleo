@@ -25,13 +25,16 @@ la Dirección, así que cada acción debe poder explicarse sola.
 - **Historias** y su estado: etiquetas `estado:*` en los issues, o el campo `estado` en `docs/historias/`.
 - **El registro de cualquier plan** con una construcción a medio hacer (`docs/planes/*-plan.md`).
 - **Pedidos sin clasificar:**
-  - issues sin etiqueta `estado:*`;
+  - issues sin etiqueta `estado:*`, salvo las preguntas (`Pregunta: …`), la bitácora de corridas y los PRs (la API
+    de issues también devuelve los PRs);
   - archivos `docs/descubrimiento/pedido-*.md` que todavía no tienen historia ni issue.
 
 ## 2. Elige UN paso, en este orden
 
-1. **Una respuesta de la Dirección** a una pregunta: aplícala a la historia o al ADR, en su rama, y quita la etiqueta
-   `espera:direccion`.
+1. **Las respuestas de la Dirección** a las preguntas de una misma historia, iniciativa o ADR: aplícalas todas
+   juntas, en su rama, y actualiza su PR si ya existe. En cada pregunta, quita la etiqueta `espera:direccion` y
+   ciérrala con un comentario que enlace el cambio. Todas las respuestas de un mismo documento cuentan como un solo
+   paso. Si hay respuestas para varios documentos, empieza por el más antiguo.
 2. **Un "intégralo" de la Dirección** en un PR con todos los controles en verde y la rama al día con `main`: intégralo
    (`.fabrica/nucleo/autonomia.md`, "Quién integra cada PR"). Si el sistema bloquea la integración, no insistas:
    anótalo en la bitácora y sigue.
@@ -81,7 +84,8 @@ vez. El comentario tiene máximo 15 líneas:
 ```
 Corrida <fecha y hora UTC> · paso: <qué hiciste>
 - Resultado: <enlaces a PRs, issues o archivos>
-- Decisiones que tomé por ti: <líneas "Decisión: qué — por qué — qué cuesta si es errada", o "ninguna">
+- Decisiones que tomé por ti: <líneas "Decisión: qué — por qué — qué cuesta si es errada", o "ninguna". Los
+  supuestos que anotaste también cuentan. Si son más de cinco, enlaza la sección del PR que los tiene todos>
 - Esperan tu decisión: <enlaces, o "nada">
 - Bloqueos: <motivo de la lista de ciclo.md, o "ninguno">
 - Próximo paso: <qué hará la siguiente corrida>

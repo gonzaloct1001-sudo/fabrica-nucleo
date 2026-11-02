@@ -22,7 +22,9 @@ La Dirección confirma la iniciativa antes de especificar las historias.
 2. **La historia.** El `analista` escribe `docs/historias/H-NNN-<slug>.md` desde
    `.fabrica/nucleo/plantillas/historia.md`, usando el siguiente número libre.
 3. **Lo que falta definir:**
-   - **Duda técnica:** el analista la decide y la anota en "Supuestos".
+   - **Duda técnica:** el analista la decide y la anota en "Supuestos". Cada supuesto es una decisión tomada en
+     nombre de la Dirección: va también como línea `Decisión:` en "Decisiones que tomé por ti" del PR de
+     especificación (`.fabrica/nucleo/autonomia.md`).
    - **Duda de negocio:** queda `[ACLARAR: … — decide: Dirección]`. El issue recibe la etiqueta `espera:direccion`,
      con la pregunta escrita en un comentario que se pueda responder en una línea. **Esa historia se detiene, y tú
      sigues con otra.**
