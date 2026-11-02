@@ -5,6 +5,17 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.3.1 · 2026-11-02
+
+Lo aprendido en la primera corrida real del motor:
+- **La corrida** ya no intenta fijar la bitácora como issue destacado, porque la API REST no lo permite. Ahora la
+  busca por su título y, si no existe, la crea.
+- **`nucleo/motor.md`** suma la sección "Diagnosticar una corrida":
+  - cómo leer el registro de una corrida;
+  - por qué una corrida de menos de diez segundos casi siempre es un problema de acceso;
+  - qué hacer ante los errores más comunes: suscripción no habilitada para Claude Code, repositorio sin acceso,
+    tareas apagadas por la organización y límite de uso.
+
 ## 0.3.0 · 2026-10-29
 
 El motor y la actualización de proyectos:

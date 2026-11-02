@@ -74,8 +74,9 @@ Esa historia queda detenida. La fábrica sigue con otra.
 
 ## 5. La bitácora de corridas
 
-Al terminar, deja un comentario en el issue **"Bitácora de corridas de la fábrica"**. Si no existe, créalo y fíjalo
-como issue destacado. El comentario tiene máximo 15 líneas:
+Al terminar, deja un comentario en el issue **"Bitácora de corridas de la fábrica"**. Búscalo por su título. Si no
+existe, créalo. La API REST no permite fijarlo como destacado: no lo intentes, la Dirección puede fijarlo a mano una
+vez. El comentario tiene máximo 15 líneas:
 
 ```
 Corrida <fecha y hora UTC> · paso: <qué hiciste>

@@ -60,6 +60,22 @@ como máximo tres tareas del plan.
   notifica sus propias preguntas ni la bitácora. Para recibir avisos hace falta un mensaje creado por otra identidad
   (por ejemplo, un bot de GitHub Actions). Ese es el trabajo del panel y del resumen diario de la instancia.
 
+## Diagnosticar una corrida
+
+Si en GitHub no aparece nada después de una corrida (ni comentario en la bitácora, ni ramas, ni issues), la corrida
+falló antes de trabajar. Su registro está en claude.ai/code/routines, en la página de la tarea, en la lista de
+corridas. Desde una sesión del asistente también se puede pedir: "muestra el registro de la última corrida de
+<tarea>".
+
+Una corrida que termina en menos de diez segundos casi siempre es un problema de acceso, no de la fábrica.
+
+| Mensaje | Qué significa | Qué hacer |
+|---|---|---|
+| "Your organization has disabled Claude subscription access for Claude Code" (`oauth_org_not_allowed`) | La cuenta no permite usar Claude Code con su suscripción en la nube | Revisar el plan y la configuración de la organización en claude.ai. Si persiste, autenticar con una clave de API o contactar al soporte |
+| "GitHub access to … is not enabled for this session" | La tarea no tiene acceso a ese repositorio | Instalar la aplicación de Claude para GitHub en el repositorio, o agregarlo a la tarea |
+| "Routines are disabled by your organization's policy" | La organización apagó las tareas programadas | Un dueño de la organización las activa en la configuración |
+| Se agotó el uso del plan | La corrida no inicia hasta que se reinicia el límite | Esperar el reinicio, reducir la frecuencia o subir de plan |
+
 ## Detener el motor
 
 - **Un proyecto:** `"pausa": true` en `.fabrica/proyecto.json`, mediante un PR. La siguiente corrida lo respeta.
