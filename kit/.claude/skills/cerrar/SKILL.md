@@ -22,8 +22,10 @@ description: Cierra una historia integrada o una épica terminada. Verifica la D
 2. **Refactorización:** cada hallazgo de duplicación o desvío se vuelve una historia aparte, que pasa por el ciclo
    normal.
 3. **Aprendizajes:** se clasifican en propios del proyecto, del rubro o del método (`.fabrica/nucleo/aprendizaje.md`).
-   Los del rubro y los del método se escriben limpios en `docs/aprendizajes.md`, sin nombres, montos ni datos del
-   cliente. La Dirección decide cuáles se proponen al núcleo.
+   Los del rubro y los del método se agregan limpios a `docs/aprendizajes.md`, sin nombres, montos ni datos del
+   cliente. Si el archivo no existe, se crea desde `.fabrica/nucleo/plantillas/aprendizajes.md`. Cada uno lleva el
+   siguiente número libre (`A-NNN`) y su tipo. No los envías a ningún lado: la instancia los recoge y la Dirección
+   decide cuáles se incorporan a la base del rubro o se proponen al núcleo.
 
 ## Lo que devuelves
 

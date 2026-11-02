@@ -28,8 +28,12 @@ Cliente            una persona o empresa que contrata, o la propia instancia ("p
 | Sale | No sale |
 |---|---|
 | Su `estado.json`: fase, avance, semáforo y cantidad de preguntas pendientes | Nombres de personas, datos de clientes, montos y documentos |
-| Aprendizajes limpiados y aprobados (`aprendizaje.md`) | Código, especificaciones y entrevistas |
+| Aprendizajes limpiados y aprobados: solo `docs/aprendizajes.md` (`aprendizaje.md`) | Código, especificaciones y entrevistas |
 | Mejoras propuestas al núcleo, sin datos del cliente | Credenciales y configuraciones |
+
+Lo que entra a un proyecto desde la instancia es el kit, el método y la base de su rubro. La base del rubro llega a
+todos los proyectos de ese rubro, de cualquier cliente. Por eso un aprendizaje se revisa dos veces antes de entrar a
+ella: al escribirlo en el proyecto y al recogerlo en la instancia.
 
 ## Clientes que exigen reserva
 

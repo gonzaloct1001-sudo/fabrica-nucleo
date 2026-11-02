@@ -29,7 +29,7 @@ import _actualizacion  # noqa: E402
 import _nucleo  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
-NUNCA = ("clientes/", "instancia/", "proyectos/", ".fabrica/config.json", ".fabrica/nucleo-instalado.csv",
+NUNCA = ("clientes/", "rubros/", "instancia/", "proyectos/", ".fabrica/config.json", ".fabrica/nucleo-instalado.csv",
          ".fabrica/respaldo-nucleo/")
 CONFIG = RAIZ / ".fabrica" / "config.json"
 

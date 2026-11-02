@@ -2,12 +2,16 @@
 """Prueba de punta a punta del registro de clientes, la creación de proyectos y la protección de las pruebas.
 
 En una instancia temporal comprueba que:
-- se registra un holding con dos negocios, y se rechazan identificadores inválidos, duplicados y la reserva estricta;
-- un proyecto nace con el kit completo, la copia del método, su estado, su manifiesto y su primer commit;
+- se registra un holding con dos negocios y nace la base de cada rubro; se rechazan identificadores y rubros
+  inválidos, duplicados y la reserva estricta;
+- un proyecto nace con el kit completo, la copia del método, la base de su rubro (o un aviso si no la hay), su estado,
+  su manifiesto y su primer commit;
 - la ficha del cliente lista el proyecto, y no se crean proyectos de negocios inexistentes ni repetidos;
 - la verificación del proyecto pasa en limpio;
 - un cambio en pruebas/aceptacion/ sin la etiqueta pruebas-aprobadas se rechaza, y con ella se acepta;
-- en la copia del mantenedor no se pueden registrar clientes ni crear proyectos.
+- la actualización del kit trae el método nuevo y la base del rubro al día, y conserva lo propio del proyecto;
+- la recolección de aprendizajes lista los nuevos, avisa de los datos del cliente y no repite los ya decididos;
+- en la copia del mantenedor no se pueden registrar clientes, crear proyectos ni recoger aprendizajes.
 
 Uso: python pruebas/probar_kit.py
 """
@@ -61,6 +65,13 @@ def main():
         comprobar("La ficha tiene nombre, tipo y negocios",
                   "# Grupo Demo" in texto and "tipo: holding" in texto and "| distribucion | logistica |" in texto
                   and "| farmacia | salud |" in texto and "<negocio>" not in texto and "<proyecto>" not in texto, texto)
+        base_logistica = inst / "rubros" / "logistica" / "conocimiento.md"
+        comprobar("Nace la base de cada rubro nuevo, desde la plantilla",
+                  base_logistica.exists() and (inst / "rubros" / "salud" / "conocimiento.md").exists()
+                  and "# Rubro: logistica" in base_logistica.read_text(encoding="utf-8"), out)
+        rc, out = script(inst, "nuevo_cliente.py", "--id", "otro-cliente", "--nombre", "X", "--negocio", "x:Gas Licuado")
+        comprobar("Rechaza un rubro que no es un identificador", rc != 0 and "El rubro" in out
+                  and not (inst / "clientes" / "otro-cliente").exists(), out)
         rc, out = script(inst, "nuevo_cliente.py", "--id", "grupo-demo", "--nombre", "Otro", "--negocio", "x:y")
         comprobar("Rechaza un cliente repetido", rc != 0 and "ya existe" in out, out)
         rc, out = script(inst, "nuevo_cliente.py", "--id", "Mi Cliente", "--nombre", "X", "--negocio", "x:y")
@@ -71,6 +82,8 @@ def main():
                   rc != 0 and "propia instancia" in out and not (inst / "clientes" / "reservado").exists(), out)
 
         # Proyecto
+        base_logistica.write_text(base_logistica.read_text(encoding="utf-8") + "\nRegla conocida del rubro.\n",
+                                  encoding="utf-8")
         rc, out = script(inst, "nuevo_proyecto.py", "--cliente", "grupo-demo", "--negocio", "distribucion",
                          "--proyecto", "plataforma", "--nombre", "Plataforma de reparto")
         proy = inst / "proyectos" / "grupo-demo-plataforma"
@@ -80,11 +93,14 @@ def main():
                      ".fabrica/scripts/verificar_proyecto.py", ".fabrica/nucleo/constitucion.md",
                      ".fabrica/nucleo/plantillas/historia.md", ".fabrica/proyecto.json", ".fabrica/estado.json",
                      ".fabrica/nucleo-instalado.csv", "docs/constitucion.md", "docs/bitacora.md",
-                     "pruebas/aceptacion/.gitkeep", ".gitignore", ".gitattributes", ".fabrica/motor/corrida.md"]
+                     "pruebas/aceptacion/.gitkeep", ".gitignore", ".gitattributes", ".fabrica/motor/corrida.md",
+                     ".fabrica/rubro/conocimiento.md"]
         faltan = [e for e in esperados if not (proy / e).exists()]
         comprobar("El proyecto trae el kit completo", not faltan, f"faltan: {faltan}")
         comprobar("La copia del método es idéntica al núcleo",
                   (proy / ".fabrica/nucleo/constitucion.md").read_bytes() == (inst / "nucleo/constitucion.md").read_bytes())
+        comprobar("El proyecto recibe la base de su rubro",
+                  (proy / ".fabrica/rubro/conocimiento.md").read_bytes() == base_logistica.read_bytes())
         datos = json.loads((proy / ".fabrica/proyecto.json").read_text(encoding="utf-8"))
         estado = json.loads((proy / ".fabrica/estado.json").read_text(encoding="utf-8"))
         comprobar("proyecto.json y estado.json identifican el proyecto",
@@ -108,6 +124,13 @@ def main():
         comprobar("Rechaza un proyecto repetido", rc != 0 and "no está vacía" in out, out)
         rc, out = script(inst, "nuevo_proyecto.py", "--cliente", "nadie", "--negocio", "x", "--proyecto", "x")
         comprobar("Rechaza un cliente no registrado", rc != 0 and "no está registrado" in out, out)
+        shutil.rmtree(inst / "rubros" / "salud")
+        rc, out = script(inst, "nuevo_proyecto.py", "--cliente", "grupo-demo", "--negocio", "farmacia",
+                         "--proyecto", "botica", "--sin-git")
+        aviso = inst / "proyectos" / "grupo-demo-botica" / ".fabrica" / "rubro" / "conocimiento.md"
+        comprobar("Sin base del rubro, el proyecto recibe un aviso en su lugar y se informa",
+                  rc == 0 and aviso.exists() and "todavía no tiene una base" in aviso.read_text(encoding="utf-8")
+                  and "no tiene base del rubro 'salud'" in out, out)
 
         # Verificación del proyecto y protección de las pruebas de aceptación
         verif = [sys.executable, ".fabrica/scripts/verificar_proyecto.py"]
@@ -152,6 +175,8 @@ def main():
                                                 + "\nRegla nueva del kit.\n", encoding="utf-8")
         (inst / "nucleo" / "calidad.md").write_text((inst / "nucleo" / "calidad.md").read_text(encoding="utf-8")
                                                     + "\nRegla nueva del método.\n", encoding="utf-8")
+        base_logistica.write_text(base_logistica.read_text(encoding="utf-8") + "\nRegla nueva del rubro.\n",
+                                  encoding="utf-8")
         log = inst / "CHANGELOG.md"
         texto = log.read_text(encoding="utf-8")
         i = texto.index("\n## ") + 1
@@ -166,9 +191,10 @@ def main():
         (proy / "borrador.txt").unlink()
         rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar")
         comprobar("Actualiza el kit del proyecto", rc == 0, out)
-        comprobar("Trae el cambio del kit y el del método",
+        comprobar("Trae el cambio del kit, el del método y el de la base del rubro",
                   "Regla nueva del kit." in (proy / "AGENTS.md").read_text(encoding="utf-8")
-                  and "Regla nueva del método." in (proy / ".fabrica/nucleo/calidad.md").read_text(encoding="utf-8"))
+                  and "Regla nueva del método." in (proy / ".fabrica/nucleo/calidad.md").read_text(encoding="utf-8")
+                  and "Regla nueva del rubro." in (proy / ".fabrica/rubro/conocimiento.md").read_text(encoding="utf-8"))
         comprobar("Conserva lo propio del proyecto (skill local y constitución)",
                   (proy / ".claude/skills/local-propia/SKILL.md").exists()
                   and "P-9. Regla propia." in (proy / "docs/constitucion.md").read_text(encoding="utf-8"))
@@ -182,6 +208,43 @@ def main():
         rc, out = run(verif, proy)
         comprobar("El proyecto actualizado pasa su verificación", rc == 0, out)
 
+        # Recoger aprendizajes: solo docs/aprendizajes.md de cada proyecto, con avisos de limpieza
+        plantilla = (inst / "nucleo" / "plantillas" / "aprendizajes.md").read_text(encoding="utf-8")
+        (proy / "docs" / "aprendizajes.md").write_text(plantilla + """
+## A-002 · Los envases se prestan
+- **Tipo:** rubro
+- **Qué aprendimos:** los envases retornables se controlan como activos en préstamo.
+- **Evidencia:** confirmado en la épica de despacho el 2026-11-02.
+- **Propuesta:** agregar la regla a la base del rubro.
+
+## A-003 · Historias largas
+- **Tipo:** método
+- **Qué aprendimos:** las historias con más de cinco criterios terminan divididas en revisión.
+- **Propuesta:** dividirlas antes de planificar.
+
+## A-004 · Descuento especial
+- **Tipo:** rubro
+- **Qué aprendimos:** Grupo Demo da un descuento de $ 15.000 a sus clientes frecuentes.
+""", encoding="utf-8")
+        recoger = ["recoger_aprendizajes.py", "--local"]
+        rc, out = script(inst, *recoger)
+        comprobar("Lista los aprendizajes nuevos y omite la entrada de ejemplo de la plantilla",
+                  rc == 0 and "Aprendizajes nuevos: 3" in out and "A-001" not in out and "[metodo]" in out, out)
+        bloque_limpio = out.split("A-002", 1)[-1].split("A-003", 1)[0]
+        bloque_sucio = out.split("A-004", 1)[-1]
+        comprobar("Avisa del nombre del cliente y del monto, y no confunde una fecha con un teléfono",
+                  "AVISO DE LIMPIEZA" not in bloque_limpio and "nombra al cliente" in bloque_sucio
+                  and "un monto" in bloque_sucio and "(1 con aviso de limpieza)" in out, out)
+        rc, out = script(inst, "recoger_aprendizajes.py", "--registrar", "grupo-demo-plataforma:A-002", "--decision",
+                         "rubro", "--nota", "base del rubro")
+        rc2, out2 = script(inst, *recoger)
+        comprobar("Una decisión registrada no se vuelve a recoger",
+                  rc == 0 and (inst / "instancia" / "aprendizajes-recogidos.csv").exists()
+                  and "Aprendizajes nuevos: 2" in out2 and "A-002" not in out2, out + out2)
+        rc, out = script(inst, "recoger_aprendizajes.py", "--registrar", "grupo-demo-plataforma:A-002", "--decision",
+                         "descartado")
+        comprobar("No registra dos veces el mismo aprendizaje", rc != 0 and "ya tiene una decisión" in out, out)
+
         # En la copia del mantenedor, se niega
         run(["git", "init", "-q", "-b", "main"], inst)
         run(["git", "config", "fabrica.mantenedor", "true"], inst)
@@ -189,6 +252,8 @@ def main():
         comprobar("En el núcleo no se registran clientes", rc != 0 and "núcleo que mantienes" in out, out)
         rc, out = script(inst, "nuevo_proyecto.py", "--cliente", "grupo-demo", "--negocio", "farmacia", "--proyecto", "y")
         comprobar("En el núcleo no se crean proyectos", rc != 0 and "núcleo que mantienes" in out, out)
+        rc, out = script(inst, "recoger_aprendizajes.py", "--local")
+        comprobar("En el núcleo no se recogen aprendizajes", rc != 0 and "núcleo que mantienes" in out, out)
 
     fallas = [n for n, ok in resultados if not ok]
     print(f"\nPruebas del kit: {len(resultados) - len(fallas)}/{len(resultados)} correctas.")

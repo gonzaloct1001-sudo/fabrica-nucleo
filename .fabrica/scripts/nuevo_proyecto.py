@@ -8,8 +8,9 @@ Uso, desde la raíz de la instancia:
 - El cliente debe estar registrado (nuevo_cliente.py) y el negocio, en su ficha.
 - Por defecto, el proyecto se crea en proyectos/<cliente>-<proyecto>/ con su propio repositorio Git y un primer
   commit. Con --github, crea además el repositorio privado en la cuenta de config.json y sus etiquetas.
-- El kit es lo que trae kit/ más una copia del método (nucleo/ → .fabrica/nucleo/). Su manifiesto queda registrado
-  para poder actualizarlo después sin tocar lo propio del proyecto.
+- El kit es lo que trae kit/ más una copia del método (nucleo/ → .fabrica/nucleo/) y la base del rubro del negocio
+  (rubros/<rubro>/ → .fabrica/rubro/). Su manifiesto queda registrado para poder actualizarlo después sin tocar lo
+  propio del proyecto.
 """
 import argparse
 import json
@@ -58,7 +59,7 @@ def git(cwd, *args):
 def armar_kit(destino, cliente, negocio, proyecto, nombre, propietario):
     """Arma en `destino` el kit de la fábrica y los archivos iniciales del proyecto."""
     version = _nucleo.version(RAIZ)
-    _kit.armar(RAIZ, destino)
+    _kit.armar(RAIZ, destino, _kit.rubro_de(RAIZ, cliente, negocio))
 
     repo = f"{cliente}-{proyecto}"
     hoy = date.today().isoformat()
@@ -128,7 +129,7 @@ def main():
     ficha = RAIZ / "clientes" / a.cliente / "cliente.md"
     if not ficha.exists():
         sys.exit(f"El cliente '{a.cliente}' no está registrado. Regístralo primero con nuevo_cliente.py.")
-    if not re.search(rf"^\|\s*{re.escape(a.negocio)}\s*\|", ficha.read_text(encoding="utf-8"), re.M):
+    if a.negocio not in _kit.negocios(ficha):
         sys.exit(f"El negocio '{a.negocio}' no está en la ficha de '{a.cliente}'. Agrégalo a su tabla de negocios.")
 
     repo = f"{a.cliente}-{a.proyecto}"
@@ -147,6 +148,9 @@ def main():
     armar_kit(destino, a.cliente, a.negocio, a.proyecto, a.nombre or a.proyecto, propietario)
     anotar_en_ficha(ficha, a.cliente, a.negocio, a.proyecto)
     print(f"Proyecto creado en {destino} con el kit de la fábrica (núcleo {_nucleo.version(RAIZ)}).")
+    rubro = _kit.rubro_de(RAIZ, a.cliente, a.negocio)
+    if not (RAIZ / "rubros" / rubro).is_dir():
+        print(f"Aviso: la instancia no tiene base del rubro '{rubro}' (rubros/{rubro}/). El proyecto parte sin ella.")
 
     if not a.sin_git:
         git(destino, "init", "-q", "-b", "main")

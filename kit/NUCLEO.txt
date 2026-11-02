@@ -11,6 +11,7 @@ CLAUDE.md
 NUCLEO.txt
 .gitattributes
 .fabrica/nucleo/
+.fabrica/rubro/
 .fabrica/motor/
 .fabrica/scripts/
 .claude/agents/

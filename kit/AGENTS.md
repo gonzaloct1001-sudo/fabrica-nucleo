@@ -28,6 +28,9 @@ En la nube, usa GitHub por la API REST (`gh api repos/{dueño}/{repo}/...`) o co
 
 - **El método de la fábrica,** en `.fabrica/nucleo/`: la constitución, el contrato de autonomía, el ciclo, la calidad
   y los modelos. Es una copia del núcleo: no la edites aquí.
+- **La base del rubro,** en `.fabrica/rubro/`: lo que la fábrica sabe de este rubro, sin datos de ningún cliente. Es
+  una copia que llega con el kit: no la edites aquí. Lo que este proyecto aprenda del rubro va a
+  `docs/aprendizajes.md` (skill `cerrar`).
 - **La constitución propia del proyecto,** en `docs/constitucion.md`, y los ADR en `docs/adr/`.
 
 ## Las skills del ciclo

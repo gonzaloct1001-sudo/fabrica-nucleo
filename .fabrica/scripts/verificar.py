@@ -11,7 +11,7 @@ Comprueba que:
 5. El kit de proyecto esté completo (kit/NUCLEO.txt).
 6. Cada agente tenga nombre igual a su archivo, descripción, un modelo válido y un esfuerzo válido; cada skill, nombre
    igual a su carpeta y descripción; y cada rol de nucleo/modelos.md tenga su agente en el kit.
-7. Solo en el núcleo: no haya datos de una instancia (clientes, instancia/, config.json).
+7. Solo en el núcleo: no haya datos de una instancia (clientes, rubros/, instancia/, config.json).
    Se activa con --nucleo, con la variable FABRICA_ES_NUCLEO=true o con git config fabrica.mantenedor true.
 """
 import argparse
@@ -29,6 +29,7 @@ REFERENCIA = re.compile(r"`((?:nucleo/|plantillas/|\.fabrica/scripts/|\.fabrica/
 MODELOS = {"opus", "sonnet", "haiku", "fable", "inherit"}
 ESFUERZOS = {"low", "medium", "high", "xhigh", "max"}
 COPIA_DEL_METODO = ".fabrica/nucleo/"  # en un proyecto, la copia de nucleo/ que arma nuevo_proyecto.py
+COPIA_DEL_RUBRO = ".fabrica/rubro/"  # en un proyecto, la base de su rubro, que sale de rubros/ de la instancia
 
 
 def frontmatter(ruta):
@@ -111,7 +112,7 @@ def revisar_kit(errores):
         return
     for linea in lista.read_text(encoding="utf-8").splitlines():
         e = linea.strip()
-        if not e or e.startswith("#") or e.startswith(COPIA_DEL_METODO):
+        if not e or e.startswith("#") or e.startswith((COPIA_DEL_METODO, COPIA_DEL_RUBRO)):
             continue
         p = RAIZ / "kit" / e
         if (e.endswith("/") and not p.is_dir()) or (not e.endswith("/") and not p.is_file()):
@@ -164,9 +165,9 @@ def revisar_nucleo_limpio(errores):
         extra = [x for x in clientes.rglob("*") if x.is_file() and x.name != ".gitkeep"]
         if extra:
             errores.append(f"El núcleo no debe tener clientes: hay {len(extra)} archivo(s) en clientes/.")
-    instancia = RAIZ / "instancia"
-    if instancia.is_dir() and any(x.is_file() for x in instancia.rglob("*")):
-        errores.append("El núcleo no debe tener la carpeta instancia/ con archivos.")
+    for carpeta in ("instancia", "rubros"):
+        if (RAIZ / carpeta).is_dir() and any(x.is_file() for x in (RAIZ / carpeta).rglob("*")):
+            errores.append(f"El núcleo no debe tener la carpeta {carpeta}/ con archivos: pertenece a cada instancia.")
     if (RAIZ / ".fabrica" / "config.json").exists():
         errores.append("El núcleo no debe tener .fabrica/config.json: eso pertenece a cada instancia.")
 

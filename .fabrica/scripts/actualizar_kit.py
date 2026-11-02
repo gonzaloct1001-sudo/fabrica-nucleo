@@ -7,8 +7,9 @@ Uso, desde la raíz de la instancia:
 
 - La versión nueva es la del núcleo instalado en esta instancia. Primero se actualiza la instancia con
   actualizar_nucleo.py, y después cada proyecto con este comando.
-- Solo cambia las rutas del NUCLEO.txt del proyecto: AGENTS.md, agentes, skills, la copia del método, el motor, la CI
-  de la fábrica y las plantillas. Nunca toca el código, docs/, pruebas/, .fabrica/estado.json ni .fabrica/proyecto.json
+- Solo cambia las rutas del NUCLEO.txt del proyecto: AGENTS.md, agentes, skills, la copia del método, la base del
+  rubro (rubros/<rubro>/ de la instancia, según la ficha del cliente), el motor, la CI de la fábrica y las plantillas.
+  Nunca toca el código, docs/, pruebas/, .fabrica/estado.json ni .fabrica/proyecto.json
   (salvo la versión que registra), ni los archivos propios del proyecto (por ejemplo, su propia CI o una skill local-*).
 - Exige que el proyecto no tenga cambios sin commit, respalda lo que reemplaza, corre verificar_proyecto.py y, si
   falla, revierte todo. Termina con un commit local; subirlo e integrarlo sigue la regla de quién integra cada PR.
@@ -48,8 +49,10 @@ def main():
     if a.aplicar:
         _actualizacion.exigir_arbol_limpio(proyecto)
 
-    v_local = json.loads(ficha.read_text(encoding="utf-8")).get("nucleo", "")
+    datos = json.loads(ficha.read_text(encoding="utf-8"))
+    v_local = datos.get("nucleo", "")
     v_nueva = _nucleo.version(RAIZ)
+    rubro = _kit.rubro_de(RAIZ, datos.get("cliente", ""), datos.get("negocio", ""))
 
     def registrar_version(v):
         if v:
@@ -58,7 +61,7 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="fabrica-kit-") as tmp:
         fuente = Path(tmp) / "kit"
-        _kit.armar(RAIZ, fuente)
+        _kit.armar(RAIZ, fuente, rubro)
         destino = _actualizacion.Destino(
             raiz=proyecto, nunca=NUNCA, version_local=v_local, registrar_version=registrar_version,
             verificador=[sys.executable, ".fabrica/scripts/verificar_proyecto.py"],

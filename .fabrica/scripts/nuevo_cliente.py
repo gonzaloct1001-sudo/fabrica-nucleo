@@ -5,8 +5,10 @@ Uso, desde la raíz de la instancia:
     python .fabrica/scripts/nuevo_cliente.py --id <slug> --nombre "<Nombre>" [--tipo empresa|holding|persona|propio]
         --negocio "<slug>:<rubro>:<descripción breve>" [--negocio ...]
 
-Un holding lleva un --negocio por cada unidad. Un cliente con reserva estricta no se registra aquí: recibe su
-propia instancia de la fábrica (nucleo/aislamiento.md).
+Un holding lleva un --negocio por cada unidad. El rubro también es un slug (por ejemplo, gas-licuado o farmacia): si
+la instancia todavía no tiene su base de conocimiento, se crea rubros/<rubro>/conocimiento.md desde la plantilla
+(nucleo/aprendizaje.md). Un cliente con reserva estricta no se registra aquí: recibe su propia instancia de la fábrica
+(nucleo/aislamiento.md).
 """
 import argparse
 import re
@@ -35,6 +37,7 @@ def leer_negocios(entradas):
         if len(partes) < 2:
             sys.exit(f"--negocio '{e}' debe tener la forma <slug>:<rubro>[:<descripción>].")
         validar_slug(partes[0], "El negocio")
+        validar_slug(partes[1], "El rubro")
         negocios.append((partes[0], partes[1], partes[2] if len(partes) > 2 else ""))
     if len({n[0] for n in negocios}) != len(negocios):
         sys.exit("Hay negocios repetidos.")
@@ -92,6 +95,13 @@ def main():
     ficha.parent.mkdir(parents=True, exist_ok=True)
     ficha.write_text(armar_ficha(plantilla, a.id, a.nombre, a.tipo, negocios), encoding="utf-8")
     print(f"Cliente registrado: {ficha.relative_to(RAIZ).as_posix()} ({len(negocios)} negocio(s)).")
+    plantilla_rubro = (RAIZ / "nucleo" / "plantillas" / "rubro.md").read_text(encoding="utf-8")
+    for rubro in dict.fromkeys(r for _, r, _ in negocios):
+        base = RAIZ / "rubros" / rubro / "conocimiento.md"
+        if not base.exists():
+            base.parent.mkdir(parents=True, exist_ok=True)
+            base.write_text(plantilla_rubro.replace("<nombre del rubro>", rubro, 1), encoding="utf-8")
+            print(f"Rubro nuevo: {base.relative_to(RAIZ).as_posix()}, desde la plantilla. Complétalo con lo que se sepa.")
     print("Completa en la ficha la contraparte y los acuerdos. Después crea su primer proyecto con nuevo_proyecto.py.")
     return 0
 

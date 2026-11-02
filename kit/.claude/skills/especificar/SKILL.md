@@ -17,8 +17,10 @@ La Dirección confirma la iniciativa antes de especificar las historias.
 
 ## Por cada historia
 
-1. **Descubrimiento, si falta conocimiento del dominio.** El `analista` (nivel alto) completa
-   `docs/descubrimiento/<tema>.md`. Lo que solo sabe una persona del cliente queda como pregunta con dueño.
+1. **Descubrimiento, si falta conocimiento del dominio.** El `analista` (nivel alto) parte de
+   `.fabrica/rubro/conocimiento.md` y completa `docs/descubrimiento/<tema>.md`. Cada "pregunta que siempre hay que
+   hacer" del rubro queda respondida o anotada como pregunta. Lo que solo sabe una persona del cliente queda como
+   pregunta con dueño.
 2. **La historia.** El `analista` escribe `docs/historias/H-NNN-<slug>.md` desde
    `.fabrica/nucleo/plantillas/historia.md`, usando el siguiente número libre.
 3. **Lo que falta definir:**
