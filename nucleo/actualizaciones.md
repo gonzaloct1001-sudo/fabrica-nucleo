@@ -78,6 +78,28 @@ deja un commit local. Subirlo e integrarlo sigue la regla de "Quién integra cad
 La base del rubro viaja igual: si cambió `rubros/<rubro>/` en la instancia, la siguiente actualización del kit la lleva
 a cada proyecto de ese rubro, aunque el núcleo no haya cambiado de versión.
 
+## Adoptar un proyecto que ya existe
+
+Un proyecto que llega con su propio repositorio (con historia, documentos o código) entra a la fábrica sin perder
+nada. El procedimiento completo está en la skill `adoptar-proyecto`.
+
+```
+python .fabrica/scripts/adoptar_proyecto.py <carpeta> --cliente <c> --negocio <n> --proyecto <p>              # vista previa
+python .fabrica/scripts/adoptar_proyecto.py <carpeta> --cliente <c> --negocio <n> --proyecto <p> --aplicar    # adopta
+```
+
+- **Instala el kit completo,** igual que en un proyecto nuevo.
+- **Crea solo los archivos propios que falten:** la ficha, el estado, la constitución, la bitácora y las carpetas de
+  la fábrica. Nunca pisa el código, el README, `docs/` ni la CI propia, y al `.gitignore` solo le agrega líneas.
+- **Si un archivo del proyecto ocupa una ruta del kit,** lo respalda antes de reemplazarlo. Por ejemplo, su propio
+  `CLAUDE.md` o un agente con el mismo nombre. Lo que decía ese archivo se lleva antes a `docs/constitucion.md`.
+- **Los agentes y skills propios que el kit no trae se conservan.** Una actualización del kit los reconoce como
+  propios.
+- **Verifica el proyecto adoptado** y, si falla, deja todo como estaba. Termina con un commit que se deshace con
+  `git revert HEAD`.
+
+Desde ese momento, el proyecto se actualiza como cualquier otro, con `actualizar_kit.py`.
+
 ## Mantener el núcleo
 
 El repositorio del núcleo lo mantiene una sola persona. En esa copia, `git config fabrica.mantenedor true` impide

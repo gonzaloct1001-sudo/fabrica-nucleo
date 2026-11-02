@@ -4,6 +4,8 @@
 Uso, desde la raíz de la instancia:
     python .fabrica/scripts/nuevo_cliente.py --id <slug> --nombre "<Nombre>" [--tipo empresa|holding|persona|propio]
         --negocio "<slug>:<rubro>:<descripción breve>" [--negocio ...]
+    python .fabrica/scripts/nuevo_cliente.py --id <slug> --agregar --negocio "<slug>:<rubro>:<descripción>"
+        agrega negocios a un cliente ya registrado
 
 Un holding lleva un --negocio por cada unidad. El rubro también es un slug (por ejemplo, gas-licuado o farmacia): si
 la instancia todavía no tiene su base de conocimiento, se crea rubros/<rubro>/conocimiento.md desde la plantilla
@@ -17,6 +19,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _kit  # noqa: E402
 import _nucleo  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -66,14 +69,40 @@ def armar_ficha(plantilla, cid, nombre, tipo, negocios):
     return "\n".join(salida) + "\n"
 
 
+def agregar_a_ficha(ficha, negocios):
+    """Agrega negocios a la tabla "Negocios" de una ficha que ya existe."""
+    lineas = ficha.read_text(encoding="utf-8").splitlines()
+    for i, linea in enumerate(lineas):
+        if linea.startswith("| Negocio (slug) |"):
+            j = i + 2
+            while j < len(lineas) and lineas[j].startswith("|"):
+                j += 1
+            lineas[j:j] = [f"| {s} | {r} | {d} |" for s, r, d in negocios]
+            ficha.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+            return
+    sys.exit(f"La ficha {ficha.name} no tiene la tabla de negocios de la plantilla: agrégalos a mano.")
+
+
+def crear_rubros(negocios):
+    """Crea desde la plantilla la base de cada rubro que la instancia todavía no tenga."""
+    plantilla = (RAIZ / "nucleo" / "plantillas" / "rubro.md").read_text(encoding="utf-8")
+    for rubro in dict.fromkeys(r for _, r, _ in negocios):
+        base = RAIZ / "rubros" / rubro / "conocimiento.md"
+        if not base.exists():
+            base.parent.mkdir(parents=True, exist_ok=True)
+            base.write_text(plantilla.replace("<nombre del rubro>", rubro, 1), encoding="utf-8")
+            print(f"Rubro nuevo: {base.relative_to(RAIZ).as_posix()}, desde la plantilla. Complétalo con lo que se sepa.")
+
+
 def main():
     _nucleo.preparar_consola()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--id", required=True, help="identificador corto del cliente (slug)")
-    ap.add_argument("--nombre", required=True, help="nombre legible del cliente")
+    ap.add_argument("--nombre", help="nombre legible del cliente (obligatorio al registrarlo)")
     ap.add_argument("--tipo", default="empresa", choices=TIPOS)
     ap.add_argument("--reserva", default="estandar", choices=("estandar", "estricta"))
     ap.add_argument("--negocio", action="append", default=[], help="<slug>:<rubro>[:<descripción>], uno por negocio")
+    ap.add_argument("--agregar", action="store_true", help="agregar negocios a un cliente ya registrado")
     a = ap.parse_args()
 
     if _nucleo.es_mantenedor(RAIZ):
@@ -89,19 +118,26 @@ def main():
         print(f"Aviso: un cliente de tipo '{a.tipo}' con varios negocios suele ser un holding.")
 
     ficha = RAIZ / "clientes" / a.id / "cliente.md"
+    if a.agregar:
+        if not ficha.exists():
+            sys.exit(f"El cliente '{a.id}' no está registrado: regístralo sin --agregar.")
+        repetidos = [s for s, _, _ in negocios if s in _kit.negocios(ficha)]
+        if repetidos:
+            sys.exit(f"El cliente '{a.id}' ya tiene el negocio '{repetidos[0]}'.")
+        agregar_a_ficha(ficha, negocios)
+        print(f"Negocios agregados a {ficha.relative_to(RAIZ).as_posix()}: {', '.join(s for s, _, _ in negocios)}.")
+        crear_rubros(negocios)
+        return 0
     if ficha.exists():
-        sys.exit(f"El cliente '{a.id}' ya existe: {ficha.relative_to(RAIZ).as_posix()}")
+        sys.exit(f"El cliente '{a.id}' ya existe: {ficha.relative_to(RAIZ).as_posix()}. Para sumarle negocios, usa "
+                 "--agregar.")
+    if not a.nombre:
+        sys.exit("Indica el --nombre del cliente.")
     plantilla = (RAIZ / "nucleo" / "plantillas" / "cliente.md").read_text(encoding="utf-8")
     ficha.parent.mkdir(parents=True, exist_ok=True)
     ficha.write_text(armar_ficha(plantilla, a.id, a.nombre, a.tipo, negocios), encoding="utf-8")
     print(f"Cliente registrado: {ficha.relative_to(RAIZ).as_posix()} ({len(negocios)} negocio(s)).")
-    plantilla_rubro = (RAIZ / "nucleo" / "plantillas" / "rubro.md").read_text(encoding="utf-8")
-    for rubro in dict.fromkeys(r for _, r, _ in negocios):
-        base = RAIZ / "rubros" / rubro / "conocimiento.md"
-        if not base.exists():
-            base.parent.mkdir(parents=True, exist_ok=True)
-            base.write_text(plantilla_rubro.replace("<nombre del rubro>", rubro, 1), encoding="utf-8")
-            print(f"Rubro nuevo: {base.relative_to(RAIZ).as_posix()}, desde la plantilla. Complétalo con lo que se sepa.")
+    crear_rubros(negocios)
     print("Completa en la ficha la contraparte y los acuerdos. Después crea su primer proyecto con nuevo_proyecto.py.")
     return 0
 

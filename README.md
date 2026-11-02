@@ -9,13 +9,14 @@ Está pensada para que una sola persona dirija varios clientes y proyectos dedic
 avanza sola, se detiene solo cuando de verdad necesita una decisión humana y entrega cada día un resumen con lo que
 hizo, lo que decidió y lo que espera.
 
-> Estado: **v0.4, en construcción.**
+> Estado: **v0.5, en construcción.**
 > - **v0.1:** los cimientos (constitución, autonomía, áreas, ciclo, calidad, aislamiento, modelos, aprendizaje y
 >   plantillas).
 > - **v0.2:** los agentes de cada área, las skills del ciclo y el kit que recibe cada proyecto.
 > - **v0.3:** el motor que hace avanzar cada proyecto solo en la nube, y la actualización del kit de cada proyecto.
 > - **v0.4:** la base de conocimiento de cada rubro, que llega a todos sus proyectos, y el camino de vuelta de lo que
 >   aprende cada proyecto.
+> - **v0.5:** adoptar un proyecto que ya existe sin perder nada, y sumar negocios a un cliente.
 > - **Próximo:** el panel de seguimiento y el resumen diario, que la propia fábrica construye como su primer piloto.
 
 ## Cómo está organizada
@@ -39,11 +40,11 @@ fabrica/
 │   └── plantillas/        historia, plan, ADR, constitución de proyecto, cliente, rubro, aprendizajes, estado,
 │                          retrospectiva
 ├── kit/               lo que recibe cada repositorio de proyecto: agentes, skills del ciclo, CI y plantillas
-├── .claude/skills/    skills de la instancia: registrar clientes, crear proyectos y recoger aprendizajes
+├── .claude/skills/    skills de la instancia: registrar clientes, crear o adoptar proyectos y recoger aprendizajes
 ├── .fabrica/
 │   ├── config.ejemplo.json   configuración de una instancia (nombres, niveles, topes)
-│   └── scripts/              verificar, actualizar el núcleo y los proyectos, registrar clientes, crear proyectos
-│                             y recoger aprendizajes
+│   └── scripts/              verificar, actualizar el núcleo y los proyectos, registrar clientes, crear o adoptar
+│                             proyectos y recoger aprendizajes
 ├── pruebas/           pruebas del núcleo con resultados conocidos
 ├── .github/           CI y plantillas de issues y PR
 ├── clientes/          registro de clientes de la instancia (vacío en el núcleo)
