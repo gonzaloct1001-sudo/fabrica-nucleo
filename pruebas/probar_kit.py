@@ -11,7 +11,10 @@ En una instancia temporal comprueba que:
 - un cambio en pruebas/aceptacion/ sin la etiqueta pruebas-aprobadas se rechaza, y con ella se acepta;
 - la actualización del kit trae el método nuevo y la base del rubro al día, y conserva lo propio del proyecto;
 - la recolección de aprendizajes lista los nuevos, avisa de los datos del cliente y no repite los ya decididos;
-- en la copia del mantenedor no se pueden registrar clientes, crear proyectos ni recoger aprendizajes.
+- a un cliente registrado se le suman negocios;
+- un proyecto que ya existe se adopta sin perder su historia ni lo propio, respalda lo que el kit reemplaza y, si la
+  verificación falla, queda como estaba;
+- en la copia del mantenedor no se pueden registrar clientes, crear ni adoptar proyectos, ni recoger aprendizajes.
 
 Uso: python pruebas/probar_kit.py
 """
@@ -36,6 +39,11 @@ resultados = []
 def comprobar(nombre, condicion, detalle=""):
     resultados.append((nombre, bool(condicion)))
     print(f"{'OK   ' if condicion else 'FALLA'} {nombre}" + (f" — {detalle[:600]}" if detalle and not condicion else ""))
+
+
+def leer(p):
+    """Texto de un archivo, o cadena vacía si no existe: así el caso falla en vez de cortar la prueba."""
+    return Path(p).read_text(encoding="utf-8") if Path(p).is_file() else ""
 
 
 def run(cmd, cwd):
@@ -100,7 +108,7 @@ def main():
         comprobar("La copia del método es idéntica al núcleo",
                   (proy / ".fabrica/nucleo/constitucion.md").read_bytes() == (inst / "nucleo/constitucion.md").read_bytes())
         comprobar("El proyecto recibe la base de su rubro",
-                  (proy / ".fabrica/rubro/conocimiento.md").read_bytes() == base_logistica.read_bytes())
+                  leer(proy / ".fabrica/rubro/conocimiento.md") == leer(base_logistica))
         datos = json.loads((proy / ".fabrica/proyecto.json").read_text(encoding="utf-8"))
         estado = json.loads((proy / ".fabrica/estado.json").read_text(encoding="utf-8"))
         comprobar("proyecto.json y estado.json identifican el proyecto",
@@ -245,6 +253,100 @@ def main():
                          "descartado")
         comprobar("No registra dos veces el mismo aprendizaje", rc != 0 and "ya tiene una decisión" in out, out)
 
+        # Sumar un negocio a un cliente que ya existe
+        rc, out = script(inst, "nuevo_cliente.py", "--id", "grupo-demo", "--agregar", "--negocio",
+                         "muebles:mobiliario:Venta de muebles")
+        comprobar("Suma un negocio a un cliente registrado y crea la base de su rubro",
+                  rc == 0 and "| muebles | mobiliario | Venta de muebles |" in ficha.read_text(encoding="utf-8")
+                  and (inst / "rubros" / "mobiliario" / "conocimiento.md").exists(), out)
+        rc, out = script(inst, "nuevo_cliente.py", "--id", "grupo-demo", "--agregar", "--negocio", "muebles:mobiliario")
+        comprobar("No suma un negocio repetido", rc != 0 and "ya tiene el negocio" in out, out)
+        rc, out = script(inst, "nuevo_cliente.py", "--id", "nadie", "--agregar", "--negocio", "x:y")
+        comprobar("No suma negocios a un cliente no registrado", rc != 0 and "no está registrado" in out, out)
+
+        # Adoptar un proyecto que ya existe, con choques de rutas y archivos propios
+        viejo = Path(tmp) / "tienda-vieja"
+        propios_viejo = {"README.md": "# Tienda propia\n", "CLAUDE.md": "Reglas propias del proyecto.\n",
+                         ".claude/agents/analista.md": "agente propio\n", ".claude/agents/dev-movil.md": "propio\n",
+                         ".claude/skills/propia/SKILL.md": "---\nname: propia\n---\n",
+                         ".github/pull_request_template.md": "plantilla propia\n",
+                         ".github/workflows/ci.yml": "# CI propia\n", "docs/01-descubrimiento/venta.md": "notas\n",
+                         ".gitignore": "node_modules/\n.env\n", "src/app.txt": "código\n"}
+        for rel, texto in propios_viejo.items():
+            (viejo / rel).parent.mkdir(parents=True, exist_ok=True)
+            (viejo / rel).write_text(texto, encoding="utf-8")
+        run(["git", "init", "-q", "-b", "master"], viejo)
+        run(["git", "add", "-A"], viejo)
+        run(["git", "commit", "-qm", "Historia propia"], viejo)
+        adoptar = ["adoptar_proyecto.py", str(viejo), "--cliente", "grupo-demo", "--negocio", "muebles",
+                   "--proyecto", "tienda", "--fase", "especificacion"]
+        rc, out = script(inst, *adoptar)
+        comprobar("La vista previa de la adopción muestra choques y propios, y no cambia nada",
+                  rc == 0 and "CLAUDE.md" in out and ".claude/agents/analista.md" in out
+                  and ".github/pull_request_template.md" in out and ".claude/agents/dev-movil.md" in out
+                  and "renómbralo a grupo-demo-tienda" in out
+                  and (viejo / "CLAUDE.md").read_text(encoding="utf-8") == "Reglas propias del proyecto.\n", out)
+        (viejo / "borrador.txt").write_text("sin commit\n", encoding="utf-8")
+        rc, out = script(inst, *adoptar, "--aplicar")
+        comprobar("No adopta un proyecto con cambios sin commit", rc != 0 and "sin commit" in out, out)
+        (viejo / "borrador.txt").unlink()
+        rc, out = script(inst, *adoptar, "--aplicar")
+        datos = json.loads((viejo / ".fabrica/proyecto.json").read_text(encoding="utf-8")) if rc == 0 else {}
+        comprobar("Adopta el proyecto con el kit, su ficha y la base de su rubro",
+                  rc == 0 and (viejo / "AGENTS.md").exists() and (viejo / ".fabrica/nucleo/constitucion.md").exists()
+                  and "# Rubro: mobiliario" in (viejo / ".fabrica/rubro/conocimiento.md").read_text(encoding="utf-8")
+                  and datos.get("proyecto") == "tienda", out)
+        estado_v = json.loads((viejo / ".fabrica/estado.json").read_text(encoding="utf-8")) if rc == 0 else {}
+        comprobar("El estado del proyecto adoptado parte en la fase indicada", estado_v.get("fase") == "especificacion")
+        comprobar("No pisa el código, el README, docs/, la CI propia ni sus agentes y skills propios",
+                  all((viejo / r).read_text(encoding="utf-8") == propios_viejo[r] for r in
+                      ("README.md", "src/app.txt", "docs/01-descubrimiento/venta.md", ".github/workflows/ci.yml",
+                       ".claude/agents/dev-movil.md", ".claude/skills/propia/SKILL.md")))
+        respaldo = next((viejo / ".fabrica" / "respaldo-nucleo").glob("*"), None)
+        comprobar("Respalda lo que el kit reemplaza, también el choque de mayúsculas",
+                  respaldo is not None and leer(respaldo / "CLAUDE.md") == "Reglas propias del proyecto.\n"
+                  and leer(respaldo / ".claude/agents/analista.md") == "agente propio\n"
+                  and (respaldo / ".github/pull_request_template.md").exists()
+                  and leer(viejo / "CLAUDE.md") == leer(inst / "kit/CLAUDE.md"))
+        nombres_github = {x.name for x in (viejo / ".github").iterdir() if x.is_file() and "template" in x.name.lower()}
+        comprobar("Tras un choque de mayúsculas queda solo la plantilla del kit",
+                  nombres_github == {"PULL_REQUEST_TEMPLATE.md"}, str(nombres_github))
+        ignorar = (viejo / ".gitignore").read_text(encoding="utf-8")
+        comprobar("Al .gitignore solo le agrega líneas", ignorar.startswith("node_modules/\n.env\n")
+                  and ".fabrica/respaldo-nucleo/" in ignorar and ignorar.count(".env\n") == 1, ignorar)
+        rc_s, pendiente = run(["git", "status", "--porcelain"], viejo)
+        rc_l, log = run(["git", "log", "--oneline"], viejo)
+        comprobar("Deja un commit propio, conserva la historia y el proyecto queda limpio",
+                  pendiente.strip() == "" and len(log.strip().splitlines()) == 2 and "Adopta" in log, log + pendiente)
+        comprobar("La ficha del cliente lista el proyecto adoptado",
+                  "| tienda | muebles | `grupo-demo-tienda` | activo |" in ficha.read_text(encoding="utf-8"))
+        rc, out = run(verif, viejo)
+        comprobar("El proyecto adoptado pasa su verificación", rc == 0, out)
+        rc, out = script(inst, *adoptar, "--aplicar")
+        comprobar("No adopta dos veces el mismo proyecto", rc != 0 and "ya es un proyecto de la fábrica" in out, out)
+        rc, out = script(inst, "actualizar_kit.py", str(viejo), "--aplicar")
+        comprobar("El proyecto adoptado se actualiza como cualquier otro y conserva lo propio",
+                  rc == 0 and (viejo / ".claude/agents/dev-movil.md").exists()
+                  and (viejo / ".claude/skills/propia/SKILL.md").exists(), out)
+
+        # Si la verificación falla, la adopción se deshace entera
+        roto = Path(tmp) / "roto"
+        for rel, texto in {"CLAUDE.md": "Reglas del roto.\n", ".fabrica/estado.json": "{roto",
+                           ".gitignore": "dist/\n"}.items():
+            (roto / rel).parent.mkdir(parents=True, exist_ok=True)
+            (roto / rel).write_text(texto, encoding="utf-8")
+        run(["git", "init", "-q", "-b", "main"], roto)
+        run(["git", "add", "-A"], roto)
+        run(["git", "commit", "-qm", "Roto"], roto)
+        rc, out = script(inst, "adoptar_proyecto.py", str(roto), "--cliente", "grupo-demo", "--negocio", "muebles",
+                         "--proyecto", "roto", "--aplicar")
+        rc_s, pendiente = run(["git", "status", "--porcelain", "--ignored"], roto)
+        comprobar("Si la verificación falla, deshace la adopción y deja el proyecto como estaba",
+                  rc != 0 and "se deshizo" in out and pendiente.strip() == ""
+                  and (roto / "CLAUDE.md").read_text(encoding="utf-8") == "Reglas del roto.\n"
+                  and (roto / ".gitignore").read_text(encoding="utf-8") == "dist/\n"
+                  and "| roto |" not in ficha.read_text(encoding="utf-8"), out + pendiente)
+
         # En la copia del mantenedor, se niega
         run(["git", "init", "-q", "-b", "main"], inst)
         run(["git", "config", "fabrica.mantenedor", "true"], inst)
@@ -254,6 +356,9 @@ def main():
         comprobar("En el núcleo no se crean proyectos", rc != 0 and "núcleo que mantienes" in out, out)
         rc, out = script(inst, "recoger_aprendizajes.py", "--local")
         comprobar("En el núcleo no se recogen aprendizajes", rc != 0 and "núcleo que mantienes" in out, out)
+        rc, out = script(inst, "adoptar_proyecto.py", str(Path(tmp) / "tienda-vieja"), "--cliente", "grupo-demo",
+                         "--negocio", "muebles", "--proyecto", "otra")
+        comprobar("En el núcleo no se adoptan proyectos", rc != 0 and "núcleo que mantienes" in out, out)
 
     fallas = [n for n, ok in resultados if not ok]
     print(f"\nPruebas del kit: {len(resultados) - len(fallas)}/{len(resultados)} correctas.")

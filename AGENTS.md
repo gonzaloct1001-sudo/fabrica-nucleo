@@ -22,8 +22,9 @@ En la instancia se administra la fábrica:
 
 | Para | Skill |
 |---|---|
-| Registrar un cliente (empresa, holding, persona o propio) | `nuevo-cliente` |
+| Registrar un cliente (empresa, holding, persona o propio), o sumarle un negocio | `nuevo-cliente` |
 | Crear un proyecto con su repositorio y el kit de la fábrica | `nuevo-proyecto` |
+| Traer a la fábrica un proyecto que ya existe, sin perder nada | `adoptar-proyecto` |
 | Recoger lo que aprendieron los proyectos e incorporarlo a la base del rubro o al núcleo | `recoger-aprendizajes` |
 
 La base de conocimiento de cada rubro vive en `rubros/<rubro>/` y llega a cada proyecto del rubro con su kit

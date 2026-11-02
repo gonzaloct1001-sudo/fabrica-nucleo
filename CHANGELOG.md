@@ -5,6 +5,25 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.5.0 · 2026-11-02
+
+Adoptar un proyecto que ya existe, y sumar negocios a un cliente:
+- **`adoptar_proyecto.py`** y la skill de instancia `adoptar-proyecto`: un repositorio que ya tiene historia,
+  documentos o código entra a la fábrica sin perder nada (`nucleo/actualizaciones.md`).
+  - Instala el kit completo y crea solo los archivos propios que falten. Nunca pisa el código, el README, `docs/` ni
+    la CI propia, y al `.gitignore` solo le agrega líneas.
+  - Respalda lo que el kit reemplaza, incluso un archivo que solo difiere en mayúsculas (en Windows y macOS son el
+    mismo). Conserva los agentes y skills propios.
+  - Verifica y, si falla, deja todo como estaba. Termina con un commit y anota el proyecto en la ficha del cliente.
+  - La skill lleva antes las reglas propias a `docs/constitucion.md` y decide con la Dirección qué pasa con cada
+    agente y skill propios.
+- **`nuevo_cliente.py --agregar`:** suma negocios a un cliente registrado, y crea la base de su rubro si es nuevo.
+- **Una sola lógica para crear y adoptar:** los archivos iniciales de un proyecto salen de `_kit.preparar_proyecto`,
+  que nunca pisa uno que ya exista.
+- **Pruebas:** 24 de actualización y 60 del kit. Las nuevas se comprobaron rompiendo el código a propósito (sin
+  respaldo, sin reversión, pisando lo existente), y cada falla introducida hace fallar su caso. Un archivo que falta
+  hace fallar el caso en vez de cortar la prueba.
+
 ## 0.4.0 · 2026-11-02
 
 La base de conocimiento de cada rubro, y el camino completo de un aprendizaje (`nucleo/aprendizaje.md`):

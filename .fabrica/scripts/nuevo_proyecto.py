@@ -17,7 +17,6 @@ import json
 import re
 import subprocess
 import sys
-from datetime import date, datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,24 +25,6 @@ import _nucleo  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-
-GITIGNORE = """# Entorno y secretos
-.env
-.env.*
-!.env.example
-
-# Archivos de trabajo de la fábrica (fichas, informes y diffs de cada corrida)
-.fabrica/trabajo/
-.fabrica/respaldo-nucleo/
-
-# Configuración personal del asistente
-.claude/settings.local.json
-
-# Sistema
-.DS_Store
-Thumbs.db
-desktop.ini
-"""
 
 
 def validar_slug(valor, que):
@@ -60,56 +41,8 @@ def armar_kit(destino, cliente, negocio, proyecto, nombre, propietario):
     """Arma en `destino` el kit de la fábrica y los archivos iniciales del proyecto."""
     version = _nucleo.version(RAIZ)
     _kit.armar(RAIZ, destino, _kit.rubro_de(RAIZ, cliente, negocio))
-
-    repo = f"{cliente}-{proyecto}"
-    hoy = date.today().isoformat()
-    datos = {"version_formato": 1, "cliente": cliente, "negocio": negocio, "proyecto": proyecto, "nombre": nombre,
-             "repositorio": repo, "nucleo": version, "creado": hoy, "pausa": False,
-             "direccion": propietario,  # cuenta de GitHub cuyo "intégralo" autoriza un merge (nucleo/autonomia.md)
-             "motor": {"pasos_por_corrida": 1}}  # nucleo/motor.md
-    (destino / ".fabrica" / "proyecto.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n",
-                                                        encoding="utf-8")
-
-    estado = json.loads((RAIZ / "nucleo" / "plantillas" / "estado.json").read_text(encoding="utf-8"))
-    estado = {k: v for k, v in estado.items() if not k.startswith("_")}
-    estado.update({"cliente": cliente, "negocio": negocio, "proyecto": proyecto, "nucleo": version,
-                   "fase": "descubrimiento", "semaforo": "verde", "riesgo_principal": "",
-                   "actualizado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
-    estado["espera_direccion"]["enlace"] = (
-        f"https://github.com/{propietario}/{repo}/issues?q=label%3Aespera%3Adireccion" if propietario else "")
-    (destino / ".fabrica" / "estado.json").write_text(json.dumps(estado, ensure_ascii=False, indent=2) + "\n",
-                                                      encoding="utf-8")
-
-    constitucion = (RAIZ / "nucleo" / "plantillas" / "constitucion-proyecto.md").read_text(encoding="utf-8")
-    constitucion = constitucion.replace("# Constitución de <proyecto>", f"# Constitución de {nombre}", 1)
-    constitucion = constitucion.replace("<AAAA-MM-DD>", hoy, 1)
-    (destino / "docs").mkdir(parents=True, exist_ok=True)
-    (destino / "docs" / "constitucion.md").write_text(constitucion, encoding="utf-8")
-    (destino / "docs" / "bitacora.md").write_text(
-        f"# Bitácora\n\n## {hoy}\n\n- Proyecto creado desde la fábrica (núcleo {version}).\n", encoding="utf-8")
-    for carpeta in ("docs/historias", "docs/planes", "docs/adr", "docs/descubrimiento", "pruebas/aceptacion"):
-        (destino / carpeta).mkdir(parents=True, exist_ok=True)
-        (destino / carpeta / ".gitkeep").write_text("", encoding="utf-8")
-    (destino / "README.md").write_text(
-        f"# {nombre}\n\nProyecto construido con una fábrica de software. Las instrucciones para agentes están en "
-        f"`AGENTS.md`; el método, en `.fabrica/nucleo/`; las historias, en `docs/historias/`.\n", encoding="utf-8")
-    (destino / ".gitignore").write_text(GITIGNORE, encoding="utf-8")
-    (destino / ".env.example").write_text("# Variables de entorno del proyecto. Nunca pongas valores reales aquí.\n",
-                                          encoding="utf-8")
+    _kit.preparar_proyecto(RAIZ, destino, cliente, negocio, proyecto, nombre, propietario, version)
     _nucleo.escribir_manifiesto(destino, _nucleo.archivos(destino))
-
-
-def anotar_en_ficha(ficha, cliente, negocio, proyecto):
-    lineas = ficha.read_text(encoding="utf-8").splitlines()
-    for i, linea in enumerate(lineas):
-        if linea.startswith("| Proyecto | Negocio | Repositorio | Estado |"):
-            j = i + 2
-            while j < len(lineas) and lineas[j].startswith("|"):
-                j += 1
-            lineas.insert(j, f"| {proyecto} | {negocio} | `{cliente}-{proyecto}` | activo |")
-            ficha.write_text("\n".join(lineas) + "\n", encoding="utf-8")
-            return True
-    return False
 
 
 def main():
@@ -146,7 +79,7 @@ def main():
 
     destino.mkdir(parents=True, exist_ok=True)
     armar_kit(destino, a.cliente, a.negocio, a.proyecto, a.nombre or a.proyecto, propietario)
-    anotar_en_ficha(ficha, a.cliente, a.negocio, a.proyecto)
+    _kit.anotar_en_ficha(ficha, a.cliente, a.negocio, a.proyecto)
     print(f"Proyecto creado en {destino} con el kit de la fábrica (núcleo {_nucleo.version(RAIZ)}).")
     rubro = _kit.rubro_de(RAIZ, a.cliente, a.negocio)
     if not (RAIZ / "rubros" / rubro).is_dir():
