@@ -5,6 +5,15 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.5.1 · 2026-11-02
+
+Lo aprendido al adoptar el primer proyecto real:
+- **Corrección en `adoptar_proyecto.py`:** en Windows y macOS, git no registra un cambio que es solo de mayúsculas.
+  Al reemplazar `pull_request_template.md` por `PULL_REQUEST_TEMPLATE.md`, el índice conservaba el nombre anterior, y
+  en Linux (la CI) faltaba la ruta del kit. Ahora la adopción saca el nombre anterior del índice antes del commit.
+- **La prueba** revisa además el índice de git, no solo el disco. Sin la corrección, falla con el mismo síntoma que
+  apareció en el proyecto real.
+
 ## 0.5.0 · 2026-11-02
 
 Adoptar un proyecto que ya existe, y sumar negocios a un cliente:

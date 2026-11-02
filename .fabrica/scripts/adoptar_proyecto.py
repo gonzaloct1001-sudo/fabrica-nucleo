@@ -183,6 +183,11 @@ def main():
 
     _kit.anotar_en_ficha(ficha, a.cliente, a.negocio, a.proyecto)
     print(f"La ficha del cliente lista el proyecto: {ficha.relative_to(RAIZ).as_posix()}. Haz commit en la instancia.")
+    if _actualizacion.es_repositorio(raiz):
+        # En Windows y macOS, git no registra un cambio que es solo de mayúsculas: sin esto, el índice conserva el
+        # nombre anterior y en Linux falta la ruta del kit
+        for real in choques:
+            _actualizacion.git(raiz, "rm", "--cached", "-q", "--ignore-unmatch", "--", real)
     if _actualizacion.es_repositorio(raiz) and not a.sin_commit:
         _actualizacion.git(raiz, "add", "-A")
         mensaje = f"Adopta el proyecto en la fábrica (núcleo {version})"
