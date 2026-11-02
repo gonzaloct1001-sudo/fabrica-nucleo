@@ -309,8 +309,11 @@ def main():
                   and (respaldo / ".github/pull_request_template.md").exists()
                   and leer(viejo / "CLAUDE.md") == leer(inst / "kit/CLAUDE.md"))
         nombres_github = {x.name for x in (viejo / ".github").iterdir() if x.is_file() and "template" in x.name.lower()}
-        comprobar("Tras un choque de mayúsculas queda solo la plantilla del kit",
-                  nombres_github == {"PULL_REQUEST_TEMPLATE.md"}, str(nombres_github))
+        rc_g, indice = run(["git", "ls-files", ".github"], viejo)
+        plantillas_git = {n for n in (l.rsplit("/", 1)[-1] for l in indice.splitlines()) if "template" in n.lower()}
+        comprobar("Tras un choque de mayúsculas queda solo la plantilla del kit, en el disco y en el índice de git",
+                  nombres_github == {"PULL_REQUEST_TEMPLATE.md"} and plantillas_git == {"PULL_REQUEST_TEMPLATE.md"},
+                  f"disco: {nombres_github} | git: {plantillas_git}")
         ignorar = (viejo / ".gitignore").read_text(encoding="utf-8")
         comprobar("Al .gitignore solo le agrega líneas", ignorar.startswith("node_modules/\n.env\n")
                   and ".fabrica/respaldo-nucleo/" in ignorar and ignorar.count(".env\n") == 1, ignorar)
