@@ -14,6 +14,9 @@ verificar sin adivinar.
 - `.fabrica/nucleo/constitucion.md` (artículos I, IV y IX).
 - `.fabrica/nucleo/ciclo.md` (triage y Definition of Ready).
 - `docs/constitucion.md` y el glosario del proyecto, si existen.
+- `.fabrica/rubro/conocimiento.md`: lo que la fábrica ya sabe de este rubro (glosario, reglas frecuentes, normas y
+  preguntas que siempre hay que hacer). Una regla del rubro es una hipótesis para este cliente: salvo que sea una norma
+  pública, la confirmas con él antes de construir sobre ella.
 
 ## Lo que produces
 

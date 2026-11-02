@@ -7,7 +7,7 @@ Cada archivo pertenece a una de dos zonas. Esa separación es la que permite act
 | Zona | Qué contiene | Quién la cambia | Al actualizar |
 |---|---|---|---|
 | **Núcleo** | Las rutas de `NUCLEO.txt`: `nucleo/`, `AGENTS.md`, `.fabrica/scripts/`, `.github/`, `pruebas/` y los archivos de la raíz | Solo el repositorio del núcleo | Se reemplaza por la versión nueva |
-| **Instancia** | `clientes/`, `instancia/`, `proyectos/`, `.fabrica/config.json` y los archivos propios dentro de carpetas del núcleo | Solo la instancia | Nunca se toca |
+| **Instancia** | `clientes/`, `rubros/`, `instancia/`, `proyectos/`, `.fabrica/config.json` y los archivos propios dentro de carpetas del núcleo | Solo la instancia | Nunca se toca |
 
 **La regla de oro:** en una instancia no se editan archivos del núcleo. Lo propio va en estos lugares:
 
@@ -60,8 +60,10 @@ corre en la CI en cada cambio del núcleo.
 
 ## Actualizar el kit de cada proyecto
 
-Cada proyecto lleva una copia del kit y del método. Su `NUCLEO.txt` dice qué rutas son del kit; todo lo demás (el
-código, `docs/`, `pruebas/`, el estado y su propia CI) pertenece al proyecto.
+Cada proyecto lleva una copia del kit, del método y de la base de su rubro (`.fabrica/rubro/`, desde
+`rubros/<rubro>/` de la instancia; ver `aprendizaje.md`). El rubro sale de la ficha del cliente, según el negocio del
+proyecto. Su `NUCLEO.txt` dice qué rutas son del kit; todo lo demás (el código, `docs/`, `pruebas/`, el estado y su
+propia CI) pertenece al proyecto.
 
 Después de actualizar la instancia, se actualiza cada proyecto desde ella:
 
@@ -72,6 +74,9 @@ python .fabrica/scripts/actualizar_kit.py proyectos/<cliente>-<proyecto> --aplic
 
 Funciona igual que la actualización del núcleo: respalda, verifica con `verificar_proyecto.py`, revierte si falla y
 deja un commit local. Subirlo e integrarlo sigue la regla de "Quién integra cada PR" (`autonomia.md`).
+
+La base del rubro viaja igual: si cambió `rubros/<rubro>/` en la instancia, la siguiente actualización del kit la lleva
+a cada proyecto de ese rubro, aunque el núcleo no haya cambiado de versión.
 
 ## Mantener el núcleo
 

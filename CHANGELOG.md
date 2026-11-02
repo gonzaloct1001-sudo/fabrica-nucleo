@@ -5,6 +5,33 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.4.0 · 2026-11-02
+
+La base de conocimiento de cada rubro, y el camino completo de un aprendizaje (`nucleo/aprendizaje.md`):
+- **Base del rubro:** lo que la fábrica sabe de un rubro, sin datos de ningún cliente. Incluye el glosario, los
+  flujos, las reglas frecuentes, las normas y las preguntas que siempre hay que hacer (`plantillas/rubro.md`).
+  - Vive en la instancia, en `rubros/<rubro>/`. El núcleo solo define su forma y nunca la trae ni la toca.
+  - `nuevo_cliente.py` la crea desde la plantilla con el primer cliente del rubro. El rubro pasa a ser un
+    identificador (por ejemplo, `gas-licuado`).
+- **Llega sola a cada proyecto,** en `.fabrica/rubro/`, al crearlo y con cada actualización del kit, aunque el núcleo
+  no cambie de versión. El rubro sale de la ficha del cliente, según el negocio del proyecto. Sin base, el proyecto
+  recibe un aviso en su lugar.
+- **El analista** parte de la base del rubro, y cada "pregunta que siempre hay que hacer" queda respondida o anotada
+  como pregunta. Una regla del rubro es una hipótesis para cada cliente, salvo que sea una norma pública.
+- **El camino de vuelta:**
+  - la skill `cerrar` escribe los aprendizajes en `docs/aprendizajes.md`, con su número y su tipo
+    (`plantillas/aprendizajes.md`);
+  - la skill de instancia `recoger-aprendizajes` y `recoger_aprendizajes.py` los recogen de todos los proyectos;
+  - de cada proyecto se lee solo ese archivo, con avisos de lo que parece un dato del cliente: su nombre, correos,
+    teléfonos, montos y enlaces;
+  - cada decisión (rubro, método o descartado) queda en `instancia/aprendizajes-recogidos.csv`.
+- **`verificar.py`** exige que el núcleo no tenga `rubros/`. `nuevo_proyecto.py` lee los negocios solo de su tabla en
+  la ficha.
+- **Pruebas:** 24 de actualización y 42 del kit, con resultados conocidos.
+  - Un caso nuevo prueba la protección de verdad: un núcleo defectuoso que reclama `clientes/` y `rubros/` no los pisa.
+    Antes, "no toca clientes/" pasaba aunque se quitara la protección, porque el núcleo nunca listaba esa carpeta.
+  - Las pruebas nuevas se comprobaron rompiendo el código a propósito: cada falla introducida hace fallar su caso.
+
 ## 0.3.2 · 2026-11-02
 
 Lo aprendido al responder las primeras preguntas del motor:

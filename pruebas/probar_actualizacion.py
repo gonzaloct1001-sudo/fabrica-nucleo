@@ -3,7 +3,8 @@
 
 Arma en una carpeta temporal un núcleo v1, una instancia con datos propios y un núcleo v2, y comprueba que:
 - la actualización reemplaza, agrega y elimina lo que corresponde al núcleo;
-- nunca toca clientes/, instancia/, config.json (salvo su versión) ni los archivos propios dentro de carpetas del núcleo;
+- nunca toca clientes/, rubros/, instancia/, config.json (salvo su versión) ni los archivos propios dentro de carpetas
+  del núcleo;
 - respalda los archivos del núcleo modificados a mano;
 - deja un commit propio que se puede revertir;
 - revierte todo si la versión nueva no pasa la verificación;
@@ -100,6 +101,8 @@ def main():
         (inst / "clientes" / "demo" / "cliente.md").write_text("Cliente de la instancia.\n", encoding="utf-8")
         (inst / "instancia").mkdir()
         (inst / "instancia" / "reglas.md").write_text("Regla propia de la instancia.\n", encoding="utf-8")
+        (inst / "rubros" / "demo").mkdir(parents=True)
+        (inst / "rubros" / "demo" / "conocimiento.md").write_text("Base del rubro.\n", encoding="utf-8")
         (inst / ".github" / "workflows" / "local-propio.yml").write_text("# flujo propio de la instancia\n",
                                                                           encoding="utf-8")
         git(inst, "init", "-q", "-b", "main")
@@ -136,6 +139,7 @@ def main():
         comprobar("Elimina el archivo que el núcleo ya no trae", not (inst / "nucleo" / "obsoleto.md").exists())
         comprobar("No toca clientes/", leer(inst / "clientes" / "demo" / "cliente.md") == "Cliente de la instancia.\n")
         comprobar("No toca instancia/", leer(inst / "instancia" / "reglas.md") == "Regla propia de la instancia.\n")
+        comprobar("No toca rubros/", leer(inst / "rubros" / "demo" / "conocimiento.md") == "Base del rubro.\n")
         comprobar("Conserva un archivo propio dentro de una carpeta del núcleo",
                   (inst / ".github" / "workflows" / "local-propio.yml").exists())
         cfg = leer(inst / ".fabrica" / "config.json")
@@ -164,6 +168,20 @@ def main():
         comprobar("git revert deshace la actualización completa",
                   rc_r == 0 and "Regla nueva de v2." not in leer(inst / "nucleo" / "calidad.md")
                   and (inst / "nucleo" / "obsoleto.md").exists(), salida_r)
+
+        # Núcleo v4, defectuoso: su NUCLEO.txt reclama carpetas de la instancia y trae contenido para ellas
+        v4 = tmp / "v4"
+        shutil.copytree(v2, v4)
+        (v4 / "NUCLEO.txt").write_text(leer(v4 / "NUCLEO.txt") + "clientes/\nrubros/\n", encoding="utf-8")
+        (v4 / "clientes" / "demo").mkdir(parents=True)
+        (v4 / "clientes" / "demo" / "cliente.md").write_text("Cliente pisado.\n", encoding="utf-8")
+        (v4 / "rubros" / "demo").mkdir(parents=True)
+        (v4 / "rubros" / "demo" / "conocimiento.md").write_text("Base pisada.\n", encoding="utf-8")
+        subir_version(v4, "9.9.11")
+        rc, out = actualizar(inst, v4, "--aplicar")
+        comprobar("Aunque un núcleo defectuoso las reclame, no pisa clientes/ ni rubros/",
+                  leer(inst / "clientes" / "demo" / "cliente.md") == "Cliente de la instancia.\n"
+                  and leer(inst / "rubros" / "demo" / "conocimiento.md") == "Base del rubro.\n", out)
 
         # En la copia del mantenedor, se niega
         git(inst, "config", "fabrica.mantenedor", "true")

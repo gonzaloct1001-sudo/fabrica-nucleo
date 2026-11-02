@@ -24,6 +24,10 @@ En la instancia se administra la fábrica:
 |---|---|
 | Registrar un cliente (empresa, holding, persona o propio) | `nuevo-cliente` |
 | Crear un proyecto con su repositorio y el kit de la fábrica | `nuevo-proyecto` |
+| Recoger lo que aprendieron los proyectos e incorporarlo a la base del rubro o al núcleo | `recoger-aprendizajes` |
+
+La base de conocimiento de cada rubro vive en `rubros/<rubro>/` y llega a cada proyecto del rubro con su kit
+(`nucleo/aprendizaje.md`).
 
 El trabajo de un proyecto (especificar, construir, revisar y cerrar) se hace **dentro de su propio repositorio**, en
 `proyectos/<cliente>-<proyecto>/` o en una sesión en la nube. Cada proyecto trae su propio `AGENTS.md`, sus agentes,

@@ -21,15 +21,36 @@ Cada aprendizaje se clasifica en una de tres categorías:
 | Tipo | Ejemplo | Destino |
 |---|---|---|
 | Propio del proyecto | "El cliente factura por sucursal" | Se queda en el repositorio del proyecto |
-| Del dominio o rubro | "Los envases retornables se controlan como activos en préstamo" | Base de conocimiento del rubro, sin datos del cliente |
+| Del dominio o rubro | "Los envases retornables se controlan como activos en préstamo" | La base del rubro, en la instancia: `rubros/<rubro>/conocimiento.md` |
 | Del método | "Las historias con más de cinco criterios terminan divididas en revisión" | Propuesta de mejora al núcleo |
 
 Antes de salir del proyecto, todo aprendizaje se **limpia**: sin nombres de personas, clientes, montos, direcciones,
-ni ningún detalle que identifique al cliente. La propuesta al núcleo es un PR pequeño, con su porqué. La Dirección lo
-aprueba y el núcleo sube de versión (`CHANGELOG.md`).
+ni ningún detalle que identifique al cliente.
 
-Las mejoras del núcleo llegan a cada proyecto como una actualización revisable del kit de la fábrica, nunca de forma
-silenciosa.
+### La base de cada rubro
+
+Es lo que la fábrica sabe de un rubro (gas, farmacia, muebles…), sin datos de ningún cliente: su glosario, sus flujos,
+sus reglas frecuentes, las normas que aplican y las preguntas que siempre hay que hacer (`plantillas/rubro.md`).
+
+- **Vive en la instancia,** en `rubros/<rubro>/`, porque nace de sus clientes. El núcleo solo define su forma.
+- **Nace con el primer cliente del rubro:** `nuevo_cliente.py` la crea desde la plantilla. Se puede completar desde
+  antes con fuentes públicas, como las normas del rubro.
+- **Llega a cada proyecto del rubro** en `.fabrica/rubro/`, al crearlo y con cada actualización del kit. Así un
+  proyecto nuevo parte sabiendo lo que aprendieron los anteriores, sin ver nada de ellos.
+- **Un cliente con reserva estricta** tiene su propia instancia, y lo que se aprende con él se queda en ella.
+
+### El camino de un aprendizaje
+
+1. **En el proyecto.** Al cerrar una épica, la skill `cerrar` escribe los aprendizajes del rubro y del método en
+   `docs/aprendizajes.md` (`plantillas/aprendizajes.md`), ya limpios.
+2. **En la instancia.** La Dirección los recoge con la skill `recoger-aprendizajes`, que lee solo ese archivo de cada
+   proyecto (`aislamiento.md`), revisa por segunda vez que estén limpios y anota cada decisión en
+   `instancia/aprendizajes-recogidos.csv`, para no recoger dos veces lo mismo.
+   - **Uno del rubro** se incorpora a la base del rubro. Si ya estaba, sube su cuenta de "Confirmada en".
+   - **Uno del método** se propone al núcleo como un PR pequeño, con su porqué, o como un issue si quien opera la
+     instancia no mantiene el núcleo. La Dirección lo aprueba y el núcleo sube de versión (`CHANGELOG.md`).
+3. **De vuelta a los proyectos.** La siguiente actualización del kit (`actualizaciones.md`) lleva a cada proyecto el
+   método nuevo y la base de su rubro. Llega como una actualización revisable, nunca de forma silenciosa.
 
 ## 3. Examen de la fábrica
 
