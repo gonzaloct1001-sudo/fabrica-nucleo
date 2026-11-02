@@ -5,6 +5,18 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.3.2 · 2026-11-02
+
+Lo aprendido al responder las primeras preguntas del motor:
+- **Las respuestas a las preguntas** de una misma historia, iniciativa o ADR se aplican todas juntas y cuentan como
+  un solo paso. Antes, cada respuesta gastaba un paso, y cuatro respuestas tardaban cuatro corridas. Al aplicarlas, la
+  corrida actualiza el PR del documento y cierra cada pregunta con un enlace al cambio.
+- **Pedidos sin clasificar:** la corrida ya no confunde con pedidos nuevos las preguntas, la bitácora de corridas ni
+  los PRs, que tampoco llevan etiqueta `estado:*`.
+- **Los supuestos son decisiones:** los que se anotan al especificar van también en "Decisiones que tomé por ti" del
+  PR de especificación y de la bitácora. Antes, un PR con varios supuestos podía decir "ninguna" (`autonomia.md` y la
+  skill `especificar`).
+
 ## 0.3.1 · 2026-11-02
 
 Lo aprendido en la primera corrida real del motor:
