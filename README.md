@@ -9,7 +9,7 @@ Está pensada para que una sola persona dirija varios clientes y proyectos dedic
 avanza sola, se detiene solo cuando de verdad necesita una decisión humana y entrega cada día un resumen con lo que
 hizo, lo que decidió y lo que espera.
 
-> Estado: **v0.8, en construcción.**
+> Estado: **v0.9, en construcción.**
 > - **v0.1:** los cimientos (constitución, autonomía, áreas, ciclo, calidad, aislamiento, modelos, aprendizaje y
 >   plantillas).
 > - **v0.2:** los agentes de cada área, las skills del ciclo y el kit que recibe cada proyecto.
@@ -20,6 +20,8 @@ hizo, lo que decidió y lo que espera.
 > - **v0.6:** la bandeja de la Dirección, para decidir desde la conversación sin entrar a GitHub.
 > - **v0.7:** el ritmo del motor: por horario, por relevos cuando la Dirección tiene tiempo, o en sesión.
 > - **v0.8:** una página visual por decisión y otra al cerrar la jornada: la Dirección ve lo que aprueba.
+> - **v0.9:** seguridad en capas: las cuatro puertas, el equipo rojo, la revisión independiente según el riesgo y una
+>   CI que no deja entrar acciones sin huella, archivos ilegibles ni código sin control.
 > - **Próximo:** el panel de seguimiento y el resumen diario, que la propia fábrica construye como su primer piloto.
 
 ## Cómo está organizada
@@ -34,6 +36,7 @@ fabrica/
 │   ├── areas.md           las áreas de la fábrica, como en una consultora de software
 │   ├── ciclo.md           de la entrada de un pedido hasta su cierre, con estados y compuertas
 │   ├── calidad.md         revisión, pruebas, evidencia y Definition of Done
+│   ├── seguridad.md       las cuatro puertas, lo que se exige antes de datos reales y qué hacer si pasa algo
 │   ├── aislamiento.md     clientes, negocios y proyectos, sin que la información se cruce
 │   ├── modelos.md         qué nivel de modelo usa cada rol
 │   ├── aprendizaje.md     cómo mejora la fábrica con cada proyecto
@@ -41,7 +44,7 @@ fabrica/
 │   ├── motor.md           la tarea programada que hace avanzar cada proyecto en la nube
 │   ├── referencias.md     marcos públicos que se estudiaron
 │   └── plantillas/        historia, plan, ADR, constitución de proyecto, cliente, rubro, aprendizajes, estado,
-│                          retrospectiva y la página de la Dirección
+│                          retrospectiva, modelo de amenazas y la página de la Dirección
 ├── kit/               lo que recibe cada repositorio de proyecto: agentes, skills del ciclo, CI y plantillas
 ├── .claude/skills/    skills de la instancia: registrar clientes, crear o adoptar proyectos y recoger aprendizajes
 ├── .fabrica/
