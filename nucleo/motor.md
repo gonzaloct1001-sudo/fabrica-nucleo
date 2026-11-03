@@ -45,6 +45,32 @@ activen créditos de uso extra.
 El valor por defecto (1 paso) está en `.fabrica/proyecto.json` de cada proyecto. Un "paso" de construcción ejecuta
 como máximo tres tareas del plan.
 
+## El ritmo: por horario, por relevos o en sesión
+
+La Dirección elige el ritmo según el tiempo que tenga. Los tres usan la misma corrida y las mismas reglas: solo cambia
+quién la dispara y cuándo.
+
+| Ritmo | Cuándo conviene | Cómo avanza |
+|---|---|---|
+| **Por horario** | Siempre: es la base, y la Dirección no necesita estar | La tarea programada corre a sus horas, un paso por corrida. Lo que espera a la Dirección se acumula en su bandeja |
+| **Por relevos** | La Dirección tiene un rato y quiere decidir rápido | Desde la bandeja (`bandeja-direccion`), cada decisión despierta en el momento la corrida del proyecto. Cuando termina, la bandeja trae lo nuevo, la Dirección decide y sale el relevo siguiente |
+| **En sesión** | La Dirección tiene un bloque largo | Se abre el asistente en la carpeta del proyecto y el coordinador trabaja en vivo, con las mismas skills y reglas. Las decisiones se toman al momento |
+
+- **Despertar una corrida** es ejecutar ahora la tarea `fabrica · <repositorio>`: desde el asistente, con su
+  herramienta de tareas programadas, o con el botón de ejecutar en claude.ai/code/routines. La tarea programada
+  sigue igual: un relevo no cambia su horario.
+- **Un relevo a la vez por proyecto.** Antes de despertar una corrida, la anterior tiene que haber terminado: su
+  entrada en la bitácora lo confirma (`bandeja.py --esperar <repositorio>`). Dos corridas sobre el mismo repositorio
+  pisarían sus ramas.
+- **Si no hay nada que decidir, los relevos siguen solos,** hasta cinco seguidos o el tope que fije la Dirección.
+  También paran cuando una corrida deja una decisión, cuando no tiene nada que hacer o cuando la Dirección se va.
+- **Una meta acota los relevos:** por ejemplo, "hasta que el ADR quede aceptado" o "hasta que la historia H-001 esté
+  lista". Al llegar, paran.
+- **En sesión,** conviene que la tarea programada de ese proyecto no corra en medio. Se puede apagar mientras dure,
+  en claude.ai/code/routines, o elegir un bloque fuera de su horario.
+- **Cada relevo gasta lo mismo que una corrida programada** (tabla de arriba). Los relevos aprovechan el tiempo
+  disponible de la Dirección; el horario mantiene el avance cuando no está.
+
 ## Lo que la nube permite y lo que no
 
 - **GitHub:**

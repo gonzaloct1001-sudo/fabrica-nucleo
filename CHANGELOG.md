@@ -5,6 +5,21 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.7.0 · 2026-11-03
+
+El ritmo del motor: avanzar más rápido cuando la Dirección tiene tiempo, sin perder el horario:
+- **`nucleo/motor.md`, "El ritmo":** tres ritmos con la misma corrida y las mismas reglas.
+  - **Por horario:** la tarea programada, como hasta ahora; es la base.
+  - **Por relevos:** cada decisión tomada en la bandeja despierta en el momento la corrida del proyecto, y al
+    terminar sale el relevo siguiente. Un relevo a la vez por proyecto; sin decisiones pendientes siguen solos hasta
+    cinco seguidos o hasta la meta que fije la Dirección.
+  - **En sesión:** el coordinador trabaja en vivo en la carpeta del proyecto, sin que la tarea programada corra en
+    medio.
+- **`bandeja.py --esperar <repositorio> [--desde <hora UTC>] [--minutos N]`:** espera a que la corrida deje su
+  entrada en la bitácora y la muestra. Un corte de red no termina la espera; si se acaba el tiempo, lo dice.
+- **La skill `bandeja-direccion`** despierta la corrida, espera y sigue con los relevos.
+- **`probar_bandeja.py`:** 25 casos, 4 nuevos para la espera.
+
 ## 0.6.0 · 2026-11-03
 
 La bandeja de la Dirección, para decidir desde la conversación sin entrar a GitHub:

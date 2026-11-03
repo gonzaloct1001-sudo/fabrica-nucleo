@@ -13,6 +13,9 @@ Uso, desde la raíz de la instancia:
         crea un pedido para el motor, sin etiquetas: la próxima corrida lo clasifica
     python .fabrica/scripts/bandeja.py --integrar <repositorio>#<n>
         integra un PR, solo si sus controles están en verde y su rama está al día
+    python .fabrica/scripts/bandeja.py --esperar <repositorio> [--desde <AAAA-MM-DDTHH:MM:SSZ>] [--minutos 25]
+        espera a que la corrida de ese proyecto termine (deja su entrada en la bitácora después de --desde, por
+        defecto ahora) y la muestra: es lo que permite avanzar por relevos (nucleo/motor.md, "El ritmo")
 
 - Los proyectos salen de las fichas de clientes/ (tabla "Proyectos"; los cerrados no cuentan) y se leen de GitHub
   con la cuenta de config.json.
@@ -27,7 +30,8 @@ import os
 import re
 import subprocess
 import sys
-from datetime import date
+import time
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
@@ -41,6 +45,7 @@ BITACORA = "Bitácora de corridas de la fábrica"
 MARCA = "_Respuesta de la Dirección, tomada en una conversación y publicada con la bandeja de la fábrica._"
 MARCA_PEDIDO = "_Pedido de la Dirección, creado con la bandeja de la fábrica._"
 REF = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*)#(\d+)$")
+HORA_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 VERDE = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 ROJO = {"FAILURE", "CANCELLED", "TIMED_OUT", "ERROR", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE"}
 
@@ -92,13 +97,37 @@ def leer(propietario, repo):
                  if "pull_request" not in i]
     prs = gh_json("pr", "list", "-R", f"{propietario}/{repo}", "--state", "open", "--json",
                   "number,title,isDraft,statusCheckRollup,url")
+    return {"preguntas": preguntas, "prs": prs, "ultima": ultima_corrida(base)}
+
+
+def ultima_corrida(base):
+    """Último comentario de la bitácora de corridas del proyecto, o None si todavía no hay."""
     bitacora = [i for i in gh_json("api", f"{base}/issues?state=open&per_page=100") if i.get("title") == BITACORA]
-    ultima = None
-    if bitacora and bitacora[0].get("comments"):
-        pagina = gh_json("api", f"{base}/issues/{bitacora[0]['number']}/comments?per_page=1"
-                                f"&page={bitacora[0]['comments']}")
-        ultima = pagina[0] if pagina else None
-    return {"preguntas": preguntas, "prs": prs, "ultima": ultima}
+    if not bitacora or not bitacora[0].get("comments"):
+        return None
+    pagina = gh_json("api", f"{base}/issues/{bitacora[0]['number']}/comments?per_page=1"
+                            f"&page={bitacora[0]['comments']}")
+    return pagina[0] if pagina else None
+
+
+def esperar(propietario, repo, desde, minutos):
+    """Espera la primera entrada de la bitácora posterior a `desde`: la corrida terminó."""
+    base = f"repos/{propietario}/{repo}"
+    pausa = float(os.environ.get("FABRICA_ESPERA_SEG", "20"))
+    limite = time.monotonic() + minutos * 60
+    while True:
+        try:
+            ultima = ultima_corrida(base)
+        except SystemExit:
+            ultima = None  # un corte de red no termina la espera
+        if ultima and (ultima.get("created_at") or "") > desde:
+            print(f"Corrida terminada en {repo} ({cuando(ultima.get('created_at'))}):")
+            print("\n".join(f"> {linea}" for linea in (ultima.get("body") or "").strip().splitlines()[:15]))
+            return 0
+        if time.monotonic() >= limite:
+            sys.exit(f"En {minutos:g} min no apareció una entrada nueva en la bitácora de {repo}: la corrida sigue, o "
+                     "falló antes de trabajar (nucleo/motor.md, \"Diagnosticar una corrida\").")
+        time.sleep(pausa)
 
 
 def cuando(marca):
@@ -229,6 +258,9 @@ def main():
     accion.add_argument("--responder", metavar="REPOSITORIO#N", help="publicar la respuesta de la Dirección")
     accion.add_argument("--pedido", metavar="REPOSITORIO", help="crear un pedido para el motor")
     accion.add_argument("--integrar", metavar="REPOSITORIO#N", help="integrar un PR en verde")
+    accion.add_argument("--esperar", metavar="REPOSITORIO", help="esperar a que termine la corrida de un proyecto")
+    ap.add_argument("--desde", default="", help="hora UTC desde la que cuenta una entrada nueva (por defecto, ahora)")
+    ap.add_argument("--minutos", type=float, default=25, help="cuánto esperar como máximo")
     ap.add_argument("--titulo", default="", help="título del pedido")
     ap.add_argument("--texto", default="", help="respuesta o cuerpo del pedido, con las palabras de la Dirección")
     a = ap.parse_args()
@@ -248,6 +280,13 @@ def main():
         return responder(propietario, *referencia(a.responder, validos), a.texto)
     if a.integrar:
         return integrar(propietario, *referencia(a.integrar, validos))
+    if a.esperar:
+        if a.esperar not in validos:
+            sys.exit(f"{a.esperar} no es un proyecto activo de esta instancia.")
+        desde = a.desde or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if not HORA_UTC.match(desde):
+            sys.exit(f"--desde «{desde}» debe ser una hora UTC como 2026-11-03T13:57:05Z.")
+        return esperar(propietario, a.esperar, desde, a.minutos)
     if a.pedido:
         if a.pedido not in validos:
             sys.exit(f"{a.pedido} no es un proyecto activo de esta instancia.")

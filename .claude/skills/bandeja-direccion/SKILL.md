@@ -1,6 +1,6 @@
 ---
 name: bandeja-direccion
-description: Trae a la conversación lo que espera a la Dirección en los proyectos de la instancia (preguntas, PRs listos, lo último de cada corrida), lo presenta en lenguaje simple con una recomendación, y publica en GitHub sus respuestas, sus pedidos y las integraciones que autorice. Úsala cuando la Dirección pregunte qué hay pendiente, abra una sesión para operar la fábrica o prefiera decidir desde el chat en vez de GitHub.
+description: Trae a la conversación lo que espera a la Dirección en los proyectos de la instancia (preguntas, PRs listos, lo último de cada corrida), lo presenta en lenguaje simple con una recomendación, y publica en GitHub sus respuestas, sus pedidos y las integraciones que autorice. Si la Dirección quiere avanzar sin esperar el horario, despierta la corrida del proyecto en el momento y trabaja por relevos. Úsala cuando la Dirección pregunte qué hay pendiente, abra una sesión para operar la fábrica, prefiera decidir desde el chat en vez de GitHub o diga que tiene tiempo para avanzar.
 ---
 
 # Bandeja de la Dirección
@@ -39,7 +39,18 @@ sus respuestas (`nucleo/motor.md`, `nucleo/autonomia.md`). El script es `.fabric
 5. **Integra los PRs que la Dirección autorizó:** `python .fabrica/scripts/bandeja.py --integrar <repositorio>#<n>`.
    Si el script se niega, explica por qué. Si el sistema bloquea la integración, dilo y no insistas: la Dirección
    puede integrarlo en GitHub.
-6. **Pedidos nuevos:** cuando la Dirección pida trabajo,
+6. **Relevos, si la Dirección quiere avanzar sin esperar el horario** (`nucleo/motor.md`, "El ritmo"):
+   1. Anota la hora UTC y despierta la corrida del proyecto con la herramienta de tareas programadas: busca la tarea
+      `fabrica · <repositorio>`, comprueba que su última corrida terminó (tiene hora de término) y ejecútala.
+   2. Espera en segundo plano a que termine:
+      `python .fabrica/scripts/bandeja.py --esperar <repositorio> --desde <hora UTC del paso anterior>`.
+   3. Con su entrada en la bitácora, vuelve al paso 2 de esta skill: presenta lo nuevo y publica lo que se decida.
+   4. Si no hay nada que decidir, despierta el relevo siguiente: hasta cinco seguidos, o el tope o la meta que fije
+      la Dirección. Para cuando aparezca una decisión, cuando una corrida no tenga nada que hacer o cuando la
+      Dirección se vaya.
+   5. Si la herramienta de tareas no está disponible, dilo: la Dirección puede ejecutar la tarea en
+      claude.ai/code/routines, o la aplica la próxima corrida programada.
+7. **Pedidos nuevos:** cuando la Dirección pida trabajo,
    `python .fabrica/scripts/bandeja.py --pedido <repositorio> --titulo "<título>" --texto "<cuerpo>"`, con tres
    secciones: "## Qué necesitas", "## Por qué ahora" y "## Cómo sé que está listo". Va sin etiquetas: la próxima
    corrida lo clasifica.
@@ -48,4 +59,4 @@ sus respuestas (`nucleo/motor.md`, `nucleo/autonomia.md`). El script es `.fabric
 
 - una tabla con lo que se publicó (respuestas, integraciones, pedidos) y sus enlaces;
 - lo que sigue esperando y por qué;
-- cuándo lo aplica el motor: la próxima corrida de cada proyecto, y un paso por corrida.
+- cuándo lo aplica el motor: el relevo que despertaste o la próxima corrida programada, y un paso por corrida.
