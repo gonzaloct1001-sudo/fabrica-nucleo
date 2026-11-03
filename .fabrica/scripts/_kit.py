@@ -41,6 +41,11 @@ GITIGNORE = """# Entorno y secretos
 # Configuración personal del asistente
 .claude/settings.local.json
 
+# Compilados y cachés: nadie puede leerlos ni revisarlos, así que no van al repositorio
+__pycache__/
+*.py[cod]
+*.class
+
 # Sistema
 .DS_Store
 Thumbs.db

@@ -26,6 +26,8 @@ La Dirección ve lo que aprueba: una página visual por decisión y otra al cerr
 - **`nucleo/plantillas/pagina-direccion.html`:** la plantilla de ambas páginas. Funciona en claro y en oscuro, y en
   el teléfono. Una instancia puede usar la suya en `instancia/plantillas/pagina-direccion.html`.
 - **Seguridad:** todo texto que viene de GitHub se escapa, así que un issue no puede meter código en la página.
+- **Kit:** el `.gitignore` de cada proyecto deja fuera los compilados y cachés (`__pycache__/`, `*.py[cod]`,
+  `*.class`), que nadie puede revisar. Un proyecto los recibe al actualizar su kit.
 - **Corrección:** un control que volvió a correr (por ejemplo, al ponerle una etiqueta al PR) cuenta por su última
   corrida, igual que en GitHub. Antes, una falla vieja dejaba el PR "en rojo" en la bandeja y `--integrar` se negaba.
 - **`probar_bandeja.py`:** 40 casos, 15 nuevos. Se comprobó además que detectan 10 fallas provocadas: sin escape,
