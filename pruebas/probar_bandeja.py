@@ -47,6 +47,14 @@ if a[0] == "api" and "-f" in a:
     else:
         anotar({"accion": "pedido", "ruta": a[1], "title": campo("title"), "body": campo("body"), "args": a})
         print(json.dumps({"number": 99, "html_url": "https://github.com/x/i/99"}))
+elif a[0] == "api" and a[1] in datos.get("secuencias", {}):
+    # respuestas que cambian de una llamada a la siguiente (una corrida que termina mientras se espera)
+    ruta_estado = os.environ["GH_FALSO_ESTADO"]
+    estado = json.load(open(ruta_estado, encoding="utf-8")) if os.path.exists(ruta_estado) else {}
+    serie = datos["secuencias"][a[1]]
+    print(json.dumps(serie[min(estado.get(a[1], 0), len(serie) - 1)]))
+    estado[a[1]] = estado.get(a[1], 0) + 1
+    json.dump(estado, open(ruta_estado, "w", encoding="utf-8"))
 elif a[0] == "api":
     if a[1] not in datos["api"]:
         sys.stderr.write("HTTP 404: Not Found"); sys.exit(1)
@@ -134,7 +142,8 @@ def main():
         (tmp / "datos.json").write_text(json.dumps(datos(), ensure_ascii=False), encoding="utf-8")
         entorno = {k: v for k, v in os.environ.items() if k != "FABRICA_ES_NUCLEO"}
         entorno.update({"FABRICA_GH": str(tmp / "gh_falso.py"), "GH_FALSO_DATOS": str(tmp / "datos.json"),
-                        "GH_FALSO_LOG": str(log)})
+                        "GH_FALSO_LOG": str(log), "GH_FALSO_ESTADO": str(tmp / "estado.json"),
+                        "FABRICA_ESPERA_SEG": "0.05"})
 
         def correr(*args):
             r = subprocess.run([sys.executable, ".fabrica/scripts/bandeja.py", *args], cwd=inst, capture_output=True,
@@ -214,6 +223,32 @@ def main():
         comprobar("Integra un PR en verde y al día",
                   rc == 0 and hechos[-1]["accion"] == "integrar" and hechos[-1]["ref"] == "propio-panel#4"
                   and "--merge" in hechos[-1]["args"], out)
+
+        # Relevos: esperar a que la corrida deje su entrada en la bitácora
+        t_b = "repos/duena/cliente-b-app/issues?state=open&per_page=100"
+        con_relevo = datos()
+        con_relevo["secuencias"] = {
+            t_b: [[{"number": 3, "title": bandeja.BITACORA, "comments": 1}],
+                  [{"number": 3, "title": bandeja.BITACORA, "comments": 1}],
+                  [{"number": 3, "title": bandeja.BITACORA, "comments": 2}]],
+            "repos/duena/cliente-b-app/issues/3/comments?per_page=1&page=1": [
+                [{"created_at": "2026-11-03T10:00:00Z", "body": "Corrida vieja · paso: ninguno"}]],
+            "repos/duena/cliente-b-app/issues/3/comments?per_page=1&page=2": [
+                [{"created_at": "2026-11-04T01:00:00Z", "body": "Corrida nueva · paso: ajustar el plan"}]],
+        }
+        (tmp / "datos.json").write_text(json.dumps(con_relevo, ensure_ascii=False), encoding="utf-8")
+        rc, out = correr("--esperar", "cliente-b-app", "--desde", "2026-11-04T00:00:00Z", "--minutos", "1")
+        estado = json.loads((tmp / "estado.json").read_text(encoding="utf-8")) if (tmp / "estado.json").exists() else {}
+        comprobar("Espera a que termine la corrida y muestra su entrada nueva",
+                  rc == 0 and "Corrida nueva · paso: ajustar el plan" in out and "Corrida vieja" not in out
+                  and estado.get(t_b, 0) >= 3, out)
+        rc, out = correr("--esperar", "propio-panel", "--desde", "2099-01-01T00:00:00Z", "--minutos", "0.005")
+        comprobar("Si la corrida no termina a tiempo, lo dice y sale con error",
+                  rc != 0 and "no apareció una entrada nueva" in out, out)
+        rc, out = correr("--esperar", "propio-panel", "--desde", "ayer")
+        comprobar("Rechaza una hora que no está en UTC", rc != 0 and "--desde" in out, out)
+        rc, out = correr("--esperar", "otro-repo", "--minutos", "0.005")
+        comprobar("No espera en un repositorio ajeno", rc != 0 and "no es un proyecto activo" in out, out)
 
         subprocess.run(["git", "init", "-q"], cwd=inst, check=True)
         subprocess.run(["git", "config", "--local", "fabrica.mantenedor", "true"], cwd=inst, check=True)
