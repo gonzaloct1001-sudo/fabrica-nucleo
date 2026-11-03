@@ -5,6 +5,36 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.8.0 · 2026-11-03
+
+La Dirección ve lo que aprueba: una página visual por decisión y otra al cerrar la jornada.
+- **Regla nueva (`nucleo/autonomia.md`, skill `bandeja-direccion`):** nunca se pide una decisión sin mostrar antes
+  dónde verla. Tampoco se encadenan aprobaciones rápidas sin que la Dirección vea el resultado de cada una.
+- **`bandeja.py --pagina <repositorio>#<n> [--carpeta <ruta local>] [--salida <archivo>]`:** arma la página de una
+  decisión con lo que hay en GitHub:
+  - qué se pide y el estado del PR o la pregunta;
+  - lo que el motor decidió por la Dirección ("Decisión: …"), sin repetir;
+  - cada documento con su enlace a la versión del PR y su ruta local, y destacado si nadie puede leerlo ni revisarlo
+    (compilados, binarios, comprimidos);
+  - los controles.
+
+  Las secciones en lenguaje simple (en simple, cómo se ve, qué pasa si dice sí o no) quedan marcadas «Por completar»
+  para quien la presenta.
+- **`bandeja.py --jornada <repositorio> [--fecha <AAAA-MM-DD>] [--salida <archivo>]`:** la página de cierre del día.
+  Trae corridas, PRs integrados, preguntas cerradas, las decisiones que tomó la fábrica y lo que sigue, en la zona
+  horaria de la instancia.
+- **`nucleo/plantillas/pagina-direccion.html`:** la plantilla de ambas páginas. Funciona en claro y en oscuro, y en
+  el teléfono. Una instancia puede usar la suya en `instancia/plantillas/pagina-direccion.html`.
+- **Seguridad:** todo texto que viene de GitHub se escapa, así que un issue no puede meter código en la página.
+- **Kit:** el `.gitignore` de cada proyecto deja fuera los compilados y cachés (`__pycache__/`, `*.py[cod]`,
+  `*.class`), que nadie puede revisar. Un proyecto los recibe al actualizar su kit.
+- **Corrección:** un control que volvió a correr (por ejemplo, al ponerle una etiqueta al PR) cuenta por su última
+  corrida, igual que en GitHub. Antes, una falla vieja dejaba el PR "en rojo" en la bandeja y `--integrar` se negaba.
+- **`probar_bandeja.py`:** 40 casos, 15 nuevos. Se comprobó además que detectan 10 fallas provocadas: sin escape,
+  sin filtro del día, sin deduplicar, la hora en UTC, la plantilla propia ignorada, la ruta local omitida, el texto
+  "Más en el PR" sin quitar, sin la última corrida de cada control, sin destacar lo ilegible y un PR integrado
+  presentado como abierto.
+
 ## 0.7.0 · 2026-11-03
 
 El ritmo del motor: avanzar más rápido cuando la Dirección tiene tiempo, sin perder el horario:

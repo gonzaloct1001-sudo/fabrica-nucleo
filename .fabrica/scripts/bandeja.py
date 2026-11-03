@@ -16,6 +16,11 @@ Uso, desde la raíz de la instancia:
     python .fabrica/scripts/bandeja.py --esperar <repositorio> [--desde <AAAA-MM-DDTHH:MM:SSZ>] [--minutos 25]
         espera a que la corrida de ese proyecto termine (deja su entrada en la bitácora después de --desde, por
         defecto ahora) y la muestra: es lo que permite avanzar por relevos (nucleo/motor.md, "El ritmo")
+    python .fabrica/scripts/bandeja.py --pagina <repositorio>#<n> [--carpeta <ruta local>] [--salida <archivo>]
+        arma la página de una decisión: qué se pide, lo que el motor decidió por la Dirección, los documentos con su
+        enlace y los controles; las secciones en lenguaje simple quedan marcadas para completarlas antes de mostrarla
+    python .fabrica/scripts/bandeja.py --jornada <repositorio> [--fecha <AAAA-MM-DD>] [--salida <archivo>]
+        arma la página de cierre de una jornada: corridas, PRs integrados, preguntas cerradas y lo que sigue
 
 - Los proyectos salen de las fichas de clientes/ (tabla "Proyectos"; los cerrados no cuentan) y se leen de GitHub
   con la cuenta de config.json.
@@ -23,15 +28,20 @@ Uso, desde la raíz de la instancia:
   cliente, y en una misma conversación no se abre el de otro.
 - Lo que se publica queda firmado con la cuenta de la Dirección, que es como el motor reconoce sus respuestas. Por eso
   se publica solo lo que la Dirección decidió, con sus palabras.
+- Las páginas usan nucleo/plantillas/pagina-direccion.html, o instancia/plantillas/pagina-direccion.html si la
+  instancia tiene la suya. Todo texto que viene de GitHub se escapa: un issue no puede meter código en la página.
 """
 import argparse
+import html
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from datetime import time as hora_del_dia
 from pathlib import Path
 from urllib.parse import quote
 
@@ -48,6 +58,10 @@ REF = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*)#(\d+)$")
 HORA_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 VERDE = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 ROJO = {"FAILURE", "CANCELLED", "TIMED_OUT", "ERROR", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE"}
+DECISION = re.compile(r"Decisi[oó]n:\s*")
+COMPLETAR = "data-completar"
+# archivos que una persona no puede leer ni revisar: si un PR los trae, la página lo destaca
+NO_SE_LEEN = re.compile(r"(^|/)__pycache__/|\.(pyc|pyo|exe|dll|so|dylib|class|jar|whl|egg|zip|bin)$", re.I)
 
 
 def gh(*args):
@@ -78,8 +92,24 @@ def proyectos():
     return salida
 
 
+def ultimos_controles(checks):
+    """Cada control con su última corrida: si corrió de nuevo (por ejemplo, al ponerle una etiqueta al PR), la
+    anterior ya no cuenta, igual que en GitHub."""
+    ultimos, sin_nombre = {}, []
+    for c in checks or []:
+        nombre = c.get("name") or c.get("context")
+        if not nombre:
+            sin_nombre.append(c)
+            continue
+        clave = (c.get("workflowName") or "", nombre)
+        if clave not in ultimos or (c.get("startedAt") or "") >= (ultimos[clave].get("startedAt") or ""):
+            ultimos[clave] = c
+    return list(ultimos.values()) + sin_nombre
+
+
 def estado_ci(checks):
     """verde, rojo, pendiente o sin CI, a partir del statusCheckRollup de gh."""
+    checks = ultimos_controles(checks)
     if not checks:
         return "sin CI"
     finales = [(c.get("conclusion") or c.get("state") or "").upper() for c in checks]
@@ -250,6 +280,206 @@ def integrar(propietario, repo, numero):
     return 0
 
 
+# --- Páginas para la Dirección -------------------------------------------------------------------------------------
+
+def zona(config):
+    """Zona horaria de la instancia (zona_horaria de config.json); UTC si falta o el sistema no la conoce."""
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo(config.get("zona_horaria") or "UTC")
+    except Exception:
+        return timezone.utc
+
+
+def instante(marca):
+    return datetime.strptime(marca, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+
+def e(texto):
+    """Texto de GitHub escapado para la página, con `código` en monoespaciado."""
+    return re.sub(r"`([^`]+)`", r"<code>\1</code>", html.escape(str(texto or "")))
+
+
+def enlace(url, texto):
+    return f'<a href="{html.escape(url or "", quote=True)}">{e(texto)}</a>' if url else e(texto)
+
+
+def completar(que):
+    return f'<p class="completar" {COMPLETAR}>Por completar: {html.escape(que)}</p>'
+
+
+def seccion(titulo, cuerpo):
+    return f"<section>\n<h2>{html.escape(titulo)}</h2>\n{cuerpo}\n</section>"
+
+
+def decisiones(*textos):
+    """Las decisiones que el motor tomó por la Dirección ("Decisión: qué — por qué — si es errada, …"), sin repetir."""
+    vistas = []
+    for texto in textos:
+        for linea in (texto or "").splitlines():
+            for parte in DECISION.split(linea)[1:]:
+                parte = re.sub(r"\s*Más [^.]*\.?\s*$", "", parte).strip(" .-")
+                if parte and parte not in vistas:
+                    vistas.append(parte)
+    return vistas
+
+
+def tarjetas_decisiones(lista):
+    if not lista:
+        return "<p>El motor no registró decisiones tomadas por ti.</p>"
+    tarjetas = []
+    for d in lista:
+        trozos = [t.strip() for t in d.split(" — ")]
+        si = next((t for t in trozos[1:] if t.lower().startswith("si es errad")), "")
+        porque = " — ".join(t for t in trozos[1:] if t != si)
+        tarjetas.append('<div class="card"><span class="tag">la fábrica decidió por ti</span>'
+                        f'<div class="v">{e(trozos[0])}</div>' + (f"<p>{e(porque)}</p>" if porque else "")
+                        + (f'<div class="si">{e(si[0].upper() + si[1:])}</div>' if si else "") + "</div>")
+    return '<div class="cards">' + "".join(tarjetas) + "</div>"
+
+
+def pie(tz):
+    ahora = datetime.now(tz).strftime("%Y-%m-%d %H:%M")
+    return f"<footer>Armada con la bandeja de la fábrica el {ahora} ({tz}).</footer>"
+
+
+def armar(titulo, descripcion, partes, salida):
+    propia = RAIZ / "instancia" / "plantillas" / "pagina-direccion.html"
+    plantilla = propia if propia.exists() else RAIZ / "nucleo" / "plantillas" / "pagina-direccion.html"
+    texto = (plantilla.read_text(encoding="utf-8").replace("{{titulo}}", html.escape(titulo))
+             .replace("{{descripcion}}", html.escape(descripcion, quote=True))
+             .replace("{{contenido}}", "\n\n".join(partes)))
+    salida.parent.mkdir(parents=True, exist_ok=True)
+    salida.write_text(texto, encoding="utf-8")
+    print(f"Página lista: {salida}")
+    pendientes = texto.count(COMPLETAR)
+    if pendientes:
+        print(f"Antes de mostrarla, completa {pendientes} sección(es) marcadas con {COMPLETAR}, en lenguaje simple.")
+    return 0
+
+
+def pagina(propietario, repo, numero, carpeta, salida, tz):
+    base = f"repos/{propietario}/{repo}"
+    item = gh_json("api", f"{base}/issues/{numero}")
+    comentarios = gh_json("api", f"{base}/issues/{numero}/comments?per_page=100") if item.get("comments") else []
+    es_pr = "pull_request" in item
+    titulo = item.get("title") or f"{repo}#{numero}"
+    estado = "abierto" if item.get("state") == "open" else "cerrado"
+    hechos = [f"<span><b>{e(repo)}</b> · {'PR' if es_pr else 'pregunta'} #{numero}</span>",
+              f"<span>{enlace(item.get('html_url'), 'Abrir en GitHub')}</span>"]
+    if es_pr:
+        pr = gh_json("pr", "view", str(numero), "-R", f"{propietario}/{repo}", "--json",
+                     "state,isDraft,statusCheckRollup,headRefOid,files")
+        estado = {"OPEN": "abierto", "MERGED": "integrado", "CLOSED": "cerrado"}.get(pr.get("state"), estado)
+        if pr.get("isDraft"):
+            estado += ", borrador"
+        ci = estado_ci(pr.get("statusCheckRollup"))
+        hechos.append(f'<span>Controles <span class="estado {({"verde": "ok", "rojo": "mal"}).get(ci, "")}">{ci}'
+                      "</span></span>")
+        if pr.get("state") == "OPEN":
+            pide = (f"<p>Si das el sí, se integra este PR a la rama principal de <b>{e(repo)}</b> y el motor sigue con "
+                    "el paso siguiente. Si no, dices qué cambiar: va como comentario al PR y la corrida lo "
+                    "corrige.</p>")
+        else:
+            pide = f"<p>Este PR ya está {estado}: la página sirve para revisar lo que se hizo.</p>"
+    else:
+        pide = f'<div class="texto">{e(recorte(item.get("body"), 4000))}</div>'
+    hechos.insert(1, f"<span>Estado <b>{estado}</b></span>")
+    partes = [f'<header class="top"><span class="eyebrow">Para decidir</span><h1>{e(titulo)}</h1>'
+              f'<div class="facts">{"".join(hechos)}</div></header>',
+              seccion("Qué decides", pide),
+              seccion("En simple", completar("qué cambia y para quién, en dos o tres frases, sin jerga.")),
+              seccion("Cómo se ve", completar("bocetos de las pantallas o un diagrama, si cambia algo que se ve o se "
+                                              "usa. Si no aplica, borra esta sección.")),
+              seccion("Lo que la fábrica decidió por ti", tarjetas_decisiones(
+                  decisiones(item.get("body"), *(c.get("body") for c in comentarios))))]
+    if es_pr:
+        filas = []
+        for f in pr.get("files") or []:
+            ruta = f.get("path", "")
+            url = f"https://github.com/{propietario}/{repo}/blob/{pr.get('headRefOid', '')}/{quote(ruta)}"
+            local = f'<span class="local">{e(Path(carpeta) / ruta)}</span>' if carpeta else ""
+            if NO_SE_LEEN.search(ruta):
+                local += '<span class="estado mal">nadie puede leerlo ni revisarlo: ¿por qué está aquí?</span>'
+            filas.append(f"<tr><td>{enlace(url, ruta)}{local}</td>"
+                         f'<td class="num">+{f.get("additions", 0)} −{f.get("deletions", 0)}</td></tr>')
+        partes.append(seccion("Documentos", '<div class="tabla"><table><thead><tr><th>Archivo</th><th>Líneas</th>'
+                                            f'</tr></thead><tbody>{"".join(filas)}</tbody></table></div>'
+                              if filas else "<p>El PR no cambia archivos.</p>"))
+        controles = "".join(f"<li>{e(c.get('name') or c.get('context') or 'control')}: "
+                            f"{e((c.get('conclusion') or c.get('state') or c.get('status') or '—').lower())}</li>"
+                            for c in ultimos_controles(pr.get("statusCheckRollup")))
+        partes.append(seccion("Controles", f"<ul>{controles}</ul>" if controles
+                              else "<p>Este proyecto no tiene CI.</p>"))
+    partes += [seccion("Si dices sí, si dices no", completar("qué pasa en cada caso y tu recomendación.")), pie(tz)]
+    salida = salida or Path(tempfile.gettempdir()) / "fabrica-paginas" / f"{repo}-{numero}.html"
+    return armar(f"Decisión {repo} #{numero}", f"Lo que se pide decidir en {repo}#{numero}: {titulo}", partes, salida)
+
+
+def linea_de(texto, rotulo):
+    """El texto que sigue a "- <rótulo>:" en una entrada de la bitácora."""
+    m = re.search(rf"^\s*-\s*{rotulo}:\s*(.+)$", texto or "", re.M | re.I)
+    return m.group(1).strip() if m else ""
+
+
+def jornada(propietario, repo, dia, salida, tz):
+    base = f"repos/{propietario}/{repo}"
+    inicio = datetime.combine(dia, hora_del_dia.min, tzinfo=tz).astimezone(timezone.utc)
+    fin = datetime.combine(dia + timedelta(days=1), hora_del_dia.min, tzinfo=tz).astimezone(timezone.utc)
+    desde = inicio.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def del_dia(marca):
+        return bool(marca) and inicio <= instante(marca) < fin
+
+    bitacora = [i for i in gh_json("api", f"{base}/issues?state=open&per_page=100") if i.get("title") == BITACORA]
+    corridas = [c for c in gh_json("api", f"{base}/issues/{bitacora[0]['number']}/comments?since={desde}"
+                                          "&per_page=100") if del_dia(c.get("created_at"))] if bitacora else []
+    integrados = [p for p in gh_json("pr", "list", "-R", f"{propietario}/{repo}", "--state", "merged", "--search",
+                                     f"merged:>={inicio.date().isoformat()}", "--json", "number,title,url,mergedAt")
+                  if del_dia(p.get("mergedAt"))]
+    cerrados = [i for i in gh_json("api", f"{base}/issues?state=closed&since={desde}&per_page=100")
+                if "pull_request" not in i and del_dia(i.get("closed_at"))]
+    tomadas = decisiones(*(c.get("body") for c in corridas))
+
+    eventos = []
+    for c in corridas:
+        primera = ((c.get("body") or "").strip().splitlines() or [""])[0]
+        paso = primera.split("paso:", 1)[1].strip() if "paso:" in primera else primera
+        eventos.append((c["created_at"], f"Corrida: {paso}", linea_de(c.get("body"), "Resultado"), c.get("html_url")))
+    eventos += [(p["mergedAt"], f"Integrado el PR #{p['number']}: {p.get('title', '')}", "", p.get("url"))
+                for p in integrados]
+    eventos += [(i["closed_at"], f"Cerrado #{i['number']}: {i.get('title', '')}", "", i.get("html_url"))
+                for i in cerrados]
+    eventos.sort(key=lambda x: x[0])
+
+    hechos = f"<span><b>{e(repo)}</b></span><span>{dia.isoformat()}</span><span>horas en {e(tz)}</span>"
+    cifras = [(len(corridas), "corridas del motor"), (len(integrados), "PRs integrados"),
+              (len(cerrados), "preguntas o pedidos cerrados"), (len(tomadas), "decisiones que tomó la fábrica")]
+    partes = [f'<header class="top"><span class="eyebrow">Cierre de jornada</span><h1>Lo que pasó en {e(repo)}</h1>'
+              f'<div class="facts">{hechos}</div></header>',
+              '<div class="cifras">' + "".join(f'<div class="cifra"><b>{n}</b><span>{t}</span></div>'
+                                               for n, t in cifras) + "</div>",
+              seccion("Lo más importante", completar("en tres o cuatro líneas, qué quedó decidido y qué cambia para "
+                                                     "el negocio."))]
+    if eventos:
+        items = "".join(f'<li><span class="hora">{instante(t).astimezone(tz).strftime("%H:%M")}</span>'
+                        f'<span class="que">{enlace(url, que)}</span>'
+                        + (f'<span class="donde">{e(det)}</span>' if det else "") + "</li>"
+                        for t, que, det, url in eventos)
+        partes.append(seccion("El día en orden", f'<ol class="dia">{items}</ol>'))
+    else:
+        partes.append(seccion("El día en orden", "<p>Ese día no hubo corridas, integraciones ni cierres.</p>"))
+    partes.append(seccion("Lo que la fábrica decidió por ti", tarjetas_decisiones(tomadas)))
+    ultima = corridas[-1].get("body") if corridas else ""
+    sigue = "".join(f"<li><b>{r}:</b> {e(t)}</li>" for r, t in
+                    ((r, linea_de(ultima, r)) for r in ("Esperan tu decisión", "Bloqueos", "Próximo paso")) if t)
+    partes += [seccion("Lo que sigue", f"<ul>{sigue}</ul>" if sigue else
+                       completar("qué viene después; la última corrida no lo dejó escrito.")), pie(tz)]
+    salida = salida or Path(tempfile.gettempdir()) / "fabrica-paginas" / f"{repo}-jornada-{dia.isoformat()}.html"
+    return armar(f"Jornada {repo} {dia.strftime('%d-%m')}", f"Cierre de la jornada del {dia.isoformat()} en {repo}.",
+                 partes, salida)
+
+
 def main():
     _nucleo.preparar_consola()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -259,18 +489,22 @@ def main():
     accion.add_argument("--pedido", metavar="REPOSITORIO", help="crear un pedido para el motor")
     accion.add_argument("--integrar", metavar="REPOSITORIO#N", help="integrar un PR en verde")
     accion.add_argument("--esperar", metavar="REPOSITORIO", help="esperar a que termine la corrida de un proyecto")
+    accion.add_argument("--pagina", metavar="REPOSITORIO#N", help="armar la página de una decisión")
+    accion.add_argument("--jornada", metavar="REPOSITORIO", help="armar la página de cierre de una jornada")
     ap.add_argument("--desde", default="", help="hora UTC desde la que cuenta una entrada nueva (por defecto, ahora)")
     ap.add_argument("--minutos", type=float, default=25, help="cuánto esperar como máximo")
     ap.add_argument("--titulo", default="", help="título del pedido")
     ap.add_argument("--texto", default="", help="respuesta o cuerpo del pedido, con las palabras de la Dirección")
+    ap.add_argument("--fecha", default="", help="día de la jornada, AAAA-MM-DD (por defecto, hoy)")
+    ap.add_argument("--carpeta", default="", help="carpeta local del proyecto, para mostrar la ruta de cada documento")
+    ap.add_argument("--salida", default="", help="dónde escribir la página (por defecto, en la carpeta temporal)")
     a = ap.parse_args()
 
     if _nucleo.es_mantenedor(RAIZ):
         sys.exit("Esta carpeta es el núcleo que mantienes: la bandeja se usa en una instancia.")
-    config = RAIZ / ".fabrica" / "config.json"
-    propietario = ""
-    if config.exists():
-        propietario = (json.loads(config.read_text(encoding="utf-8")).get("github") or {}).get("propietario", "")
+    ruta_config = RAIZ / ".fabrica" / "config.json"
+    config = json.loads(ruta_config.read_text(encoding="utf-8")) if ruta_config.exists() else {}
+    propietario = (config.get("github") or {}).get("propietario", "")
     if not propietario:
         sys.exit("Falta github.propietario en .fabrica/config.json: la bandeja lee los proyectos desde GitHub.")
     todos = proyectos()
@@ -287,6 +521,17 @@ def main():
         if not HORA_UTC.match(desde):
             sys.exit(f"--desde «{desde}» debe ser una hora UTC como 2026-11-03T13:57:05Z.")
         return esperar(propietario, a.esperar, desde, a.minutos)
+    salida = Path(a.salida).resolve() if a.salida else None
+    if a.pagina:
+        return pagina(propietario, *referencia(a.pagina, validos), a.carpeta, salida, zona(config))
+    if a.jornada:
+        if a.jornada not in validos:
+            sys.exit(f"{a.jornada} no es un proyecto activo de esta instancia.")
+        try:
+            dia = date.fromisoformat(a.fecha) if a.fecha else datetime.now(zona(config)).date()
+        except ValueError:
+            sys.exit(f"--fecha «{a.fecha}» debe ser un día como 2026-11-03.")
+        return jornada(propietario, a.jornada, dia, salida, zona(config))
     if a.pedido:
         if a.pedido not in validos:
             sys.exit(f"{a.pedido} no es un proyecto activo de esta instancia.")

@@ -9,6 +9,9 @@ En una instancia temporal con dos clientes comprueba que:
 - una respuesta se publica con la marca de la bandeja, y no se publica en un repositorio ajeno ni en un issue cerrado;
 - un pedido se crea sin etiquetas;
 - un PR se integra solo con los controles en verde y la rama al día;
+- la página de una decisión escapa lo que viene de GitHub, trae las decisiones del motor sin repetir, enlaza cada
+  documento en la versión del PR y marca lo que falta escribir en lenguaje simple;
+- la página de una jornada cuenta solo lo de ese día, en la hora de la instancia, y dice lo que sigue;
 - sin cuenta configurada, y en la copia del mantenedor, la bandeja no corre.
 
 Uso: python pruebas/probar_bandeja.py
@@ -19,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import timezone
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -60,7 +64,7 @@ elif a[0] == "api":
         sys.stderr.write("HTTP 404: Not Found"); sys.exit(1)
     print(json.dumps(datos["api"][a[1]]))
 elif a[:2] == ["pr", "list"]:
-    print(json.dumps(datos["prs"].get(repo(), [])))
+    print(json.dumps(datos["integrados" if "merged" in a else "prs"].get(repo(), [])))
 elif a[:2] == ["pr", "view"]:
     print(json.dumps(datos["pr_view"][repo() + "#" + a[2]]))
 elif a[:2] == ["pr", "merge"]:
@@ -89,7 +93,37 @@ def datos():
             f"repos/duena/propio-panel/{t}": [{"number": 2, "title": bandeja.BITACORA, "comments": 3}],
             "repos/duena/propio-panel/issues/2/comments?per_page=1&page=3": [
                 {"created_at": "2026-11-03T09:12:44Z", "body": "Corrida 2026-11-03 · paso: especificar H-001"}],
-            "repos/duena/propio-panel/issues/5": {"state": "open", "labels": [{"name": "espera:direccion"}]},
+            "repos/duena/propio-panel/issues/5": {"state": "open", "labels": [{"name": "espera:direccion"}],
+                                                  "title": "Pregunta: plazo de entrega", "body": "Responde A o B.",
+                                                  "comments": 0},
+            "repos/duena/propio-panel/issues/4": {
+                "state": "open", "pull_request": {}, "comments": 2, "title": "Iniciativa <script>alert(1)</script>",
+                "html_url": "https://github.com/duena/propio-panel/pull/4",
+                "body": "Resumen.\n\n## Decisiones que tomé por ti\n\n- Decisión: usar `semaforo` de tres colores — lo "
+                        "pide la ficha — si es errada, se cambia el componente.\n- Decisión: sin sonido — molesta "
+                        "en bodega — si es errada, se agrega."},
+            "repos/duena/propio-panel/issues/20": {"state": "closed", "pull_request": {}, "comments": 0,
+                                                   "title": "Ya integrado", "body": ""},
+            "repos/duena/propio-panel/issues/4/comments?per_page=100": [
+                {"body": "- Decisión: sin sonido — molesta en bodega — si es errada, se agrega."},
+                {"body": "- Decisiones que tomé por ti: Decisión: plazo de 2 días — dato del cliente — si es errada, "
+                         "se ajusta. Más en el PR #4."}],
+            # jornada del 2026-11-03 en America/Santiago (UTC−3): de 03:00 UTC del 3 a 03:00 UTC del 4
+            "repos/duena/propio-panel/issues/2/comments?since=2026-11-03T03:00:00Z&per_page=100": [
+                {"created_at": "2026-11-03T02:30:00Z", "body": "Corrida 2026-11-02 · paso: noche anterior"},
+                {"created_at": "2026-11-03T13:47:00Z", "html_url": "c1",
+                 "body": "Corrida 2026-11-03 · paso: especificar H-001\n- Resultado: PR #16 con la historia.\n"
+                         "- Decisiones que tomé por ti: Decisión: partir la capa en tres — es lo mínimo — si es "
+                         "errada, se reagrupan. Decisión: la hoja de ruta hace de iniciativa — ya validada — si es "
+                         "errada, se escribe. Más supuestos en el PR #16.\n- Próximo paso: diseño."},
+                {"created_at": "2026-11-04T02:59:00Z", "html_url": "c2",
+                 "body": "Corrida 2026-11-03 · paso: diseño y pruebas\n- Resultado: PR #17.\n- Decisiones que "
+                         "tomé por ti: ninguna nueva.\n- Esperan tu decisión: PR #17.\n- Bloqueos: ninguno.\n"
+                         "- Próximo paso: plan de construcción."},
+                {"created_at": "2026-11-04T03:00:00Z", "body": "Corrida 2026-11-04 · paso: mañana siguiente"}],
+            "repos/duena/propio-panel/issues?state=closed&since=2026-11-03T03:00:00Z&per_page=100": [
+                {"number": 12, "title": "Precios", "closed_at": "2026-11-03T14:50:00Z", "html_url": "u12"},
+                {"number": 18, "title": "PR cerrado", "pull_request": {}, "closed_at": "2026-11-03T15:00:00Z"}],
             "repos/duena/propio-panel/issues/7": {"state": "closed", "labels": [{"name": "espera:direccion"}]},
             # existe en GitHub, pero no es un proyecto de la instancia: la bandeja no debe tocarlo
             "repos/duena/otro-repo/issues/1": {"state": "open", "labels": [{"name": "espera:direccion"}]},
@@ -107,11 +141,22 @@ def datos():
             "propio-plataforma": [
                 {"number": 3, "title": "ADR-0001", "isDraft": False, "statusCheckRollup": EN_CURSO, "url": "u3"}],
         },
+        "integrados": {
+            "propio-panel": [
+                {"number": 16, "title": "H-001", "url": "u16", "mergedAt": "2026-11-03T14:58:00Z"},
+                {"number": 15, "title": "Viejo", "url": "u15", "mergedAt": "2026-11-02T20:00:00Z"}],
+        },
         "pr_view": {
             "propio-panel#4": {"state": "OPEN", "isDraft": False, "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN",
-                               "statusCheckRollup": VERDE, "title": "Iniciativa del panel", "baseRefName": "main"},
+                               "statusCheckRollup": VERDE, "title": "Iniciativa del panel", "baseRefName": "main",
+                               "headRefOid": "abc123",
+                               "files": [{"path": "docs/diseño panel.md", "additions": 10, "deletions": 2},
+                                         {"path": "app/__pycache__/x.cpython-311.pyc", "additions": 0,
+                                          "deletions": 0}]},
             "propio-panel#9": {"state": "OPEN", "isDraft": False, "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN",
                                "statusCheckRollup": ROJO, "title": "Kit nuevo", "baseRefName": "main"},
+            "propio-panel#20": {"state": "MERGED", "isDraft": False, "statusCheckRollup": VERDE, "headRefOid": "d4",
+                                "files": []},
             "propio-panel#10": {"state": "OPEN", "isDraft": False, "mergeable": "MERGEABLE",
                                 "mergeStateStatus": "BEHIND", "statusCheckRollup": VERDE, "title": "Atrasado",
                                 "baseRefName": "master"},
@@ -129,6 +174,13 @@ def main():
     comprobar("Estado de los controles: verde, rojo, pendiente y sin CI",
               (bandeja.estado_ci(VERDE), bandeja.estado_ci(ROJO), bandeja.estado_ci(EN_CURSO),
                bandeja.estado_ci([])) == ("verde", "rojo", "pendiente", "sin CI"))
+    viejo_mal = {"name": "fabrica", "workflowName": "CI", "startedAt": "2026-11-03T10:00:00Z", "conclusion": "FAILURE"}
+    nuevo_bien = {"name": "fabrica", "workflowName": "CI", "startedAt": "2026-11-03T10:05:00Z", "conclusion": "SUCCESS"}
+    comprobar("Un control que volvió a correr cuenta por su última corrida",
+              bandeja.estado_ci([viejo_mal, nuevo_bien]) == "verde"
+              and bandeja.estado_ci([nuevo_bien, viejo_mal]) == "verde"
+              and bandeja.estado_ci([dict(viejo_mal, startedAt="2026-11-03T11:00:00Z"), nuevo_bien]) == "rojo")
+    comprobar("Una zona horaria desconocida cae en UTC", bandeja.zona({"zona_horaria": "No/Existe"}) is timezone.utc)
 
     with tempfile.TemporaryDirectory(prefix="prueba-bandeja-") as tmp:
         tmp = Path(tmp)
@@ -249,6 +301,64 @@ def main():
         comprobar("Rechaza una hora que no está en UTC", rc != 0 and "--desde" in out, out)
         rc, out = correr("--esperar", "otro-repo", "--minutos", "0.005")
         comprobar("No espera en un repositorio ajeno", rc != 0 and "no es un proyecto activo" in out, out)
+
+        # Páginas para la Dirección
+        def leer_pagina(nombre):
+            ruta = tmp / nombre
+            return ruta.read_text(encoding="utf-8") if ruta.exists() else ""
+
+        antes = len(registro())
+        rc, out = correr("--pagina", "propio-panel#4", "--carpeta", "C:/proy", "--salida", str(tmp / "p4.html"))
+        web = leer_pagina("p4.html")
+        comprobar("La página de un PR escapa lo que viene de GitHub",
+                  rc == 0 and "Iniciativa &lt;script&gt;" in web and "<script>alert" not in web, out + web[-800:])
+        comprobar("La página trae las decisiones del motor, sin repetir",
+                  "usar <code>semaforo</code> de tres colores" in web and web.count("sin sonido") == 1
+                  and "plazo de 2 días" in web and "Si es errada, se cambia el componente" in web
+                  and "Más en el PR" not in web, web[-3000:])
+        comprobar("La página enlaza cada documento en la versión del PR y muestra su ruta local",
+                  "https://github.com/duena/propio-panel/blob/abc123/docs/dise%C3%B1o%20panel.md" in web
+                  and str(Path("C:/proy") / "docs/diseño panel.md") in web and "+10 −2" in web, web[-3000:])
+        comprobar("La página destaca los archivos que nadie puede revisar",
+                  web.count("nadie puede leerlo") == 1
+                  and web.index("x.cpython-311.pyc") < web.index("nadie puede leerlo"), web[-3000:])
+        comprobar("La página marca lo que falta escribir en lenguaje simple",
+                  web.count(bandeja.COMPLETAR) == 3 and "completa 3 sección(es)" in out, out)
+        comprobar("Armar una página no publica nada", len(registro()) == antes, str(registro()[antes:]))
+        rc, out = correr("--pagina", "propio-panel#5", "--salida", str(tmp / "p5.html"))
+        web = leer_pagina("p5.html")
+        comprobar("La página de una pregunta muestra su texto",
+                  rc == 0 and "Responde A o B." in web and "Documentos" not in web, out)
+        rc, out = correr("--pagina", "propio-panel#20", "--salida", str(tmp / "p20.html"))
+        web = leer_pagina("p20.html")
+        comprobar("La página de un PR ya integrado no ofrece integrarlo",
+                  rc == 0 and "ya está integrado" in web and "Si das el sí" not in web, out)
+        rc, out = correr("--pagina", "otro-repo#1", "--salida", str(tmp / "otro.html"))
+        comprobar("No arma páginas de un repositorio ajeno",
+                  rc != 0 and "no es un proyecto activo" in out and not (tmp / "otro.html").exists(), out)
+
+        (inst / ".fabrica" / "config.json").write_text(json.dumps(
+            {"github": {"propietario": "duena"}, "zona_horaria": "America/Santiago"}), encoding="utf-8")
+        rc, out = correr("--jornada", "propio-panel", "--fecha", "2026-11-03", "--salida", str(tmp / "j.html"))
+        web = leer_pagina("j.html")
+        comprobar("La jornada cuenta solo lo de ese día, en la hora de la instancia",
+                  rc == 0 and "<b>2</b><span>corridas del motor" in web and "<b>1</b><span>PRs integrados" in web
+                  and "<b>1</b><span>preguntas o pedidos cerrados" in web
+                  and "<b>2</b><span>decisiones que tomó la fábrica" in web
+                  and not any(x in web for x in ("noche anterior", "mañana siguiente", "Viejo", "PR cerrado")),
+                  out + web[-3000:])
+        horas = [web.find(f'<span class="hora">{h}</span>') for h in ("10:47", "11:50", "11:58", "23:59")]
+        comprobar("La jornada ordena el día con horas locales y dice lo que sigue",
+                  -1 not in horas and horas == sorted(horas) and "plan de construcción" in web
+                  and "<b>Bloqueos:</b> ninguno" in web, str(horas))
+        rc, out = correr("--jornada", "propio-panel", "--fecha", "3-nov")
+        comprobar("Rechaza una fecha mal escrita", rc != 0 and "--fecha" in out, out)
+        propia = inst / "instancia" / "plantillas" / "pagina-direccion.html"
+        propia.parent.mkdir(parents=True, exist_ok=True)
+        propia.write_text("<html>PLANTILLA PROPIA {{titulo}} {{contenido}}</html>", encoding="utf-8")
+        rc, out = correr("--pagina", "propio-panel#5", "--salida", str(tmp / "propia.html"))
+        comprobar("Una instancia puede usar su propia plantilla", "PLANTILLA PROPIA" in leer_pagina("propia.html"), out)
+        propia.unlink()
 
         subprocess.run(["git", "init", "-q"], cwd=inst, check=True)
         subprocess.run(["git", "config", "--local", "fabrica.mantenedor", "true"], cwd=inst, check=True)
