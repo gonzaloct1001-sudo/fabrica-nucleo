@@ -9,7 +9,7 @@ Está pensada para que una sola persona dirija varios clientes y proyectos dedic
 avanza sola, se detiene solo cuando de verdad necesita una decisión humana y entrega cada día un resumen con lo que
 hizo, lo que decidió y lo que espera.
 
-> Estado: **v0.5, en construcción.**
+> Estado: **v0.6, en construcción.**
 > - **v0.1:** los cimientos (constitución, autonomía, áreas, ciclo, calidad, aislamiento, modelos, aprendizaje y
 >   plantillas).
 > - **v0.2:** los agentes de cada área, las skills del ciclo y el kit que recibe cada proyecto.
@@ -17,6 +17,7 @@ hizo, lo que decidió y lo que espera.
 > - **v0.4:** la base de conocimiento de cada rubro, que llega a todos sus proyectos, y el camino de vuelta de lo que
 >   aprende cada proyecto.
 > - **v0.5:** adoptar un proyecto que ya existe sin perder nada, y sumar negocios a un cliente.
+> - **v0.6:** la bandeja de la Dirección, para decidir desde la conversación sin entrar a GitHub.
 > - **Próximo:** el panel de seguimiento y el resumen diario, que la propia fábrica construye como su primer piloto.
 
 ## Cómo está organizada
