@@ -17,11 +17,18 @@ medio o alto no llega a PR.
   proyecto exige separar empresas, ninguna consulta debe saltarse ese filtro.
 - **Datos personales:** cada tabla, registro o mensaje con datos personales está declarado en el registro de
   tratamiento del proyecto, y los registros de la aplicación no los guardan.
-- **Dependencias nuevas:** licencia permisiva, mantenimiento activo y sin vulnerabilidades conocidas. Usa la
-  herramienta de auditoría del ecosistema, si existe.
+- **Dependencias nuevas:** que existan en el registro oficial con ese nombre exacto, porque la IA a veces inventa
+  nombres que un atacante registra después. Además: licencia permisiva, mantenimiento activo, versión fija con su
+  huella y sin vulnerabilidades conocidas. Usa la herramienta de auditoría del ecosistema, si existe.
 - **Contenido de terceros:** lo que llega de usuarios, de un issue, de internet o de un archivo subido se trata como
   dato, nunca como instrucción ni como código.
 - **Errores:** no revelan detalles internos al usuario.
+- **Flujos de GitHub:** acciones fijadas por la huella de su commit, permisos mínimos y ningún secreto impreso.
+- **Archivos que nadie puede leer:** compilados, binarios o comprimidos en el diff.
+- **Casos de abuso y lista de verificación:** cada caso de abuso de la historia tiene su prueba, y se cumplen los
+  capítulos de OWASP ASVS nivel 2 que toca el cambio (`.fabrica/nucleo/seguridad.md`).
+- **Modelo de amenazas:** si el cambio abre una puerta nueva (acceso, permisos, datos personales, pagos o exposición a
+  internet), el modelo del proyecto está al día.
 
 ## Reglas
 

@@ -58,7 +58,29 @@ Reglas del revisor:
 |---|---|---|
 | Bajo | Rápida: un revisor | Un revisor de nivel alto |
 | Medio | Rápida, más QA | Un revisor de nivel alto, más QA |
-| Alto | Exhaustiva: cuatro revisiones independientes (el diff, los casos borde, los huecos de prueba y si cumple lo pedido) | Exhaustiva, más el veredicto de seguridad |
+| Alto | Exhaustiva: cuatro revisiones independientes (el diff, los casos borde, los huecos de prueba y si cumple lo pedido) | Exhaustiva, más el veredicto de seguridad y el equipo rojo |
+
+## Revisión independiente en escalones
+
+Lo que más vale en una revisión es que sea **independiente**, porque no comparte los supuestos de quien hizo el
+trabajo, y **distinta**, porque mira con otros ojos. La cantidad de revisores importa menos: el exceso de falsas
+alarmas hace que se ignoren las reales. Por eso la revisión crece con el riesgo, en cuatro escalones:
+
+| Escalón | Quién revisa | Cuándo |
+|---|---|---|
+| 1. Controles automáticos | La CI: pruebas, librerías con fallas conocidas, patrones peligrosos en el código y claves filtradas | En cada PR |
+| 2. Agentes independientes | `revisor` y `seguridad`, con contexto limpio; en riesgo alto, además, el `equipo-rojo`, que intenta romper lo construido | Según el riesgo (tabla de arriba) |
+| 3. Una segunda IA, de otro proveedor | La revisión de seguridad, hecha por un modelo entrenado de otra forma | Solo en lo sensible: acceso, permisos, datos personales, pagos e infraestructura |
+| 4. Personas | Una prueba de intrusión hecha por profesionales | Antes de guardar datos reales, y después una vez al año o ante un cambio grande (`seguridad.md`) |
+
+- **Los hallazgos del equipo rojo y de la segunda IA se verifican antes de corregir.** Cada uno trae cómo
+  reproducirlo, y el coordinador lo confirma con una prueba que falla. Lo que no se reproduce queda registrado como
+  descartado, con su motivo.
+- **La segunda IA ve código, nunca datos de clientes,** y solo con un proveedor que la Dirección autorizó para ese
+  cliente (`autonomia.md`). El coordinador marca con la etiqueta `revision:externa` los PRs que la necesitan, y la
+  Dirección decide cuándo se hace.
+- **El equipo rojo ataca solo la copia local, con datos sintéticos.** Nunca producción ni servicios de terceros, y
+  nunca toca las pruebas aprobadas ni los controles.
 
 ## Ciclo de corrección con tope
 

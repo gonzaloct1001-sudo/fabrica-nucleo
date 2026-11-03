@@ -19,7 +19,7 @@ rol responsable. Los roles son agentes de IA. La Dirección encabeza la fábrica
 | **Arquitectura** | Tomar solo las decisiones que mantienen consistentes las partes construidas por separado | ADR, constitución del proyecto y contratos | `arquitecto` | Sólida |
 | **Desarrollo** | Convertir planes en código probado | Código, pruebas y commits | `desarrollador` | Sólida |
 | **Calidad y pruebas** | Comprobar que lo construido cumple lo pedido y está bien hecho | Veredictos de revisión, pruebas de punta a punta y evidencia | `revisor`, `qa` | Sólida |
-| **Seguridad** | Que nada exponga datos, credenciales ni permisos | Veredicto de seguridad y revisión de dependencias | `seguridad` | Base |
+| **Seguridad** | Que nada exponga datos, credenciales ni permisos | Modelo de amenazas, veredicto de seguridad, ataque controlado y revisión de dependencias | `seguridad`, `equipo-rojo` | Base |
 | **Servidores y despliegue** | Ambientes, CI/CD, respaldos y monitoreo | Ambientes, pipelines y runbooks | `operaciones` | Por desarrollar |
 | **Soporte y operación** | Recibir, clasificar y resolver errores e incidentes | Triage de errores, postmortems | `operaciones` | Por desarrollar |
 
