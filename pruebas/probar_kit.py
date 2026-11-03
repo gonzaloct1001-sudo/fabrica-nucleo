@@ -9,6 +9,8 @@ En una instancia temporal comprueba que:
 - la ficha del cliente lista el proyecto, y no se crean proyectos de negocios inexistentes ni repetidos;
 - la verificación del proyecto pasa en limpio;
 - un cambio en pruebas/aceptacion/ sin la etiqueta pruebas-aprobadas se rechaza, y con ella se acepta;
+- un PR que agrega una acción de GitHub sin su huella, un compilado o código que ningún flujo prueba ni revisa en sus
+  librerías se rechaza; lo heredado solo se avisa, y el código del kit y de docs/ no cuenta;
 - la actualización del kit trae el método nuevo y la base del rubro al día, y conserva lo propio del proyecto;
 - la recolección de aprendizajes lista los nuevos, avisa de los datos del cliente y no repite los ya decididos;
 - a un cliente registrado se le suman negocios;
@@ -53,6 +55,24 @@ def run(cmd, cwd):
 
 def script(inst, nombre, *args):
     return run([sys.executable, f".fabrica/scripts/{nombre}", *args], inst)
+
+
+def commit(proy, rama, mensaje, archivos=None, borrar=()):
+    """Crea la rama desde la actual y deja en ella un commit con esos archivos (texto o bytes) y esos borrados. Los
+    archivos entran aunque el .gitignore del kit los ignore, como en un proyecto que los traía antes de adoptarse."""
+    run(["git", "checkout", "-q", "-b", rama], proy)
+    for rel, contenido in (archivos or {}).items():
+        (proy / rel).parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(contenido, bytes):
+            (proy / rel).write_bytes(contenido)
+        else:
+            (proy / rel).write_text(contenido, encoding="utf-8")
+    for rel in borrar:
+        (proy / rel).unlink()
+    run(["git", "add", "-A"], proy)
+    if archivos:
+        run(["git", "add", "-f", *archivos], proy)
+    run(["git", "commit", "-qm", mensaje], proy)
 
 
 def main():
@@ -165,6 +185,62 @@ def main():
         rc, out = run(verif + ["--base", "main"], proy)
         comprobar("Lee las etiquetas del evento de GitHub (sin la etiqueta, rechaza)", rc != 0, out)
         ENTORNO.pop("GITHUB_EVENT_PATH")
+
+        # Seguridad: lo nuevo entra limpio y lo heredado se avisa
+        run(["git", "checkout", "-q", "main"], proy)
+        rc, out = run(verif, proy)
+        comprobar("Un proyecto recién creado no recibe avisos de seguridad: el código del kit no cuenta",
+                  rc == 0 and "Aviso" not in out, out)
+        sha = "3d3c42e5aac5ba805825da76410c181273ba90b1"
+        commit(proy, "heredado", "Lo que traía un proyecto adoptado", {
+            ".github/workflows/ci.yml": "jobs:\n  ci:\n    steps:\n      - uses: actions/checkout@v4\n",
+            "app/__pycache__/main.cpython-311.pyc": b"\x00\x01compilado",
+            "app/main.py": "print('hola')\n", "requirements.txt": "django==5.2\n"})
+        rc, out = run(verif, proy)
+        comprobar("Lo heredado se avisa sin rechazar: la acción sin huella, el compilado y Python sin controles",
+                  rc == 0 and "actions/checkout@v4" in out and "main.cpython-311.pyc" in out
+                  and "ningún flujo de GitHub corre sus pruebas" in out and "las revisa" in out, out)
+
+        def pr(rama, mensaje, archivos=None, borrar=()):
+            run(["git", "checkout", "-q", "heredado"], proy)
+            commit(proy, rama, mensaje, archivos, borrar)
+            return run(verif + ["--base", "heredado", "--etiquetas", ""], proy)
+
+        sin_huella = "jobs:\n  ci:\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n"
+        rc, out = pr("accion-sin-huella", "Agrega una acción", {".github/workflows/ci.yml": sin_huella})
+        comprobar("Un PR que agrega una acción sin su huella se rechaza, y nombra solo la nueva",
+                  rc != 0 and "sin fijar por la huella de su commit: actions/setup-python@v5." in out, out)
+        con_huella = (f"jobs:\n  ci:\n    steps:\n      - uses: actions/checkout@v4\n"
+                      f"      - uses: actions/setup-python@{sha} # v5\n      - uses: ./.github/acciones/propia\n")
+        rc, out = pr("accion-con-huella", "Agrega una acción fijada", {".github/workflows/ci.yml": con_huella})
+        comprobar("Con la acción fijada por su huella (y una acción local), el PR pasa", rc == 0, out)
+        rc, out = pr("compilado", "Agrega un compilado", {"app/otro/__pycache__/x.cpython-311.pyc": b"\x00"})
+        comprobar("Un PR que agrega un compilado se rechaza", rc != 0 and "nadie puede leer" in out
+                  and "app/otro/__pycache__/x.cpython-311.pyc" in out, out)
+        rc, out = pr("sin-compilado", "Saca el compilado", borrar=["app/__pycache__/main.cpython-311.pyc"])
+        comprobar("Un PR que saca un compilado pasa", rc == 0, out)
+        rc, out = pr("codigo-sin-pruebas", "Cambia el código", {"app/main.py": "print('chao')\n"})
+        comprobar("Un PR con código Python que ningún flujo prueba se rechaza",
+                  rc != 0 and "Este cambio trae código sin control: hay código Python" in out, out)
+        pruebas = f"jobs:\n  p:\n    steps:\n      - uses: actions/checkout@{sha} # v7\n      - run: pytest\n"
+        rc, out = pr("codigo-sin-librerias", "Código y pruebas en la CI",
+                     {"app/main.py": "print('chao')\n", ".github/workflows/pruebas.yml": pruebas})
+        comprobar("Con pruebas pero sin revisar las librerías declaradas, el PR con código se rechaza",
+                  rc != 0 and "sin control: el proyecto declara librerías de Python (requirements.txt)" in out
+                  and "sin control: hay código Python" not in out, out)
+        rc, out = pr("codigo-con-control", "Código, pruebas y librerías en la CI",
+                     {"app/main.py": "print('chao')\n",
+                      ".github/workflows/pruebas.yml": pruebas + "      - run: pip-audit -r requirements.txt\n"})
+        comprobar("Con pruebas y revisión de librerías en la CI, el PR con código pasa", rc == 0, out)
+        rc, out = pr("typescript", "Agrega una pantalla", {"web/app.ts": "export const x = 1;\n"})
+        comprobar("También rechaza código TypeScript sin pruebas en la CI",
+                  rc != 0 and "hay código JavaScript o TypeScript (por ejemplo web/app.ts)" in out, out)
+        rc, out = pr("go", "Agrega un servicio", {"cmd/main.go": "package main\n"})
+        comprobar("Código de un lenguaje que el control no conoce: se avisa y no se rechaza",
+                  rc == 0 and "no sabe revisar (go)" in out, out)
+        rc, out = pr("docs", "Ejemplo en la documentación", {"docs/ejemplo.py": "print(1)\n"})
+        comprobar("El código dentro de docs/ no exige controles", rc == 0, out)
+        run(["git", "checkout", "-q", "main"], proy)
 
         # La verificación de la instancia completa, con su cliente y su proyecto, sigue pasando
         rc, out = script(inst, "verificar.py")

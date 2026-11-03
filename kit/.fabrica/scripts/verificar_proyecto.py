@@ -12,10 +12,17 @@ Comprueba que:
 3. Con --base: si los cambios desde la base tocan pruebas/aceptacion/, el PR tenga la etiqueta pruebas-aprobadas.
    Las etiquetas se leen del evento de GitHub (GITHUB_EVENT_PATH) o de --etiquetas.
 4. Con --base: avisa, sin fallar, si el cambio supera las líneas útiles recomendadas.
+5. Seguridad (.fabrica/nucleo/seguridad.md). Lo nuevo entra limpio: con --base, rechaza el cambio que agrega una
+   acción de GitHub sin fijar por su huella, un archivo que nadie puede leer (compilado, binario o comprimido) o código
+   de un lenguaje cuyas pruebas y librerías no revisa ningún flujo de GitHub. Lo heredado se avisa sin fallar.
+   Es un control mínimo: comprueba que los comandos aparezcan en los flujos, no que corran; el resto lo mira el
+   revisor de seguridad.
 """
 import argparse
+import fnmatch
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -27,6 +34,30 @@ LINEAS_UTILES = 400
 NO_CUENTAN = ("package-lock.json", "pnpm-lock.yaml", "yarn.lock", "poetry.lock", "uv.lock", "Cargo.lock", ".min.js")
 FASES = {"descubrimiento", "especificacion", "construccion", "estabilizacion", "operacion", "cerrado"}
 SEMAFOROS = {"verde", "amarillo", "rojo"}
+FLUJOS = ".github/workflows/"
+# Lo que una persona no puede leer ni revisar: se genera en la CI y no se guarda en el repositorio.
+NO_SE_LEEN = re.compile(r"(^|/)__pycache__/|\.(pyc|pyo|exe|dll|so|dylib|class|jar|whl|egg|zip|bin)$", re.I)
+USES = re.compile(r"^\s*(?:-\s*)?uses:\s*['\"]?([^\s'\"#]+)")
+FIJADA = re.compile(r"^\./|@[0-9a-f]{40}$|^docker://.+@sha256:[0-9a-f]{64}$")
+# Cómo se reconoce el código de cada lenguaje, qué comando corre sus pruebas y cuál revisa sus librerías (esto último,
+# solo si el proyecto tiene un manifiesto de dependencias). Un lenguaje nuevo se agrega cuando llega su primer proyecto.
+LENGUAJES = {
+    "Python": {
+        "extensiones": (".py",),
+        "pruebas": ("pytest", "unittest", "tox", "nox"),
+        "manifiestos": ("pyproject.toml", "setup.py", "Pipfile", "requirements*.txt"),
+        "librerias": ("pip-audit", "osv-scanner", "safety"),
+    },
+    "JavaScript o TypeScript": {
+        "extensiones": (".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"),
+        "pruebas": ("npm test", "npm run test", "pnpm test", "pnpm run test", "yarn test", "vitest", "jest",
+                    "node --test"),
+        "manifiestos": ("package.json",),
+        "librerias": ("npm audit", "pnpm audit", "yarn audit", "osv-scanner"),
+    },
+}
+OTROS_LENGUAJES = (".go", ".rs", ".java", ".kt", ".rb", ".php", ".cs", ".swift", ".dart", ".scala", ".c", ".cpp")
+SIN_CODIGO = ("docs/",)  # además de las rutas del kit (NUCLEO.txt), que se prueban en el núcleo
 
 
 def preparar_consola():
@@ -118,6 +149,109 @@ def revisar_cambios(base, explicitas, errores, avisos):
             total += int(partes[0]) + int(partes[1])
     if total > LINEAS_UTILES:
         avisos.append(f"El cambio suma {total} líneas. Sobre {LINEAS_UTILES}, conviene dividirlo (constitución, artículo VIII).")
+    revisar_seguridad_del_cambio(base, errores)
+
+
+def rutas_del_kit():
+    lista = RAIZ / "NUCLEO.txt"
+    if not lista.exists():
+        return ()
+    lineas = lista.read_text(encoding="utf-8").splitlines()
+    return tuple(l.strip() for l in lineas if l.strip() and not l.startswith("#"))
+
+
+def es_codigo_del_proyecto(ruta, kit):
+    del_kit = any(ruta == e or (e.endswith("/") and ruta.startswith(e)) for e in kit)
+    return not del_kit and not ruta.startswith(SIN_CODIGO)
+
+
+def texto_de_los_flujos():
+    carpeta = RAIZ / FLUJOS
+    if not carpeta.is_dir():
+        return ""
+    return "\n".join(p.read_text(encoding="utf-8", errors="replace").lower()
+                     for p in sorted(carpeta.iterdir()) if p.suffix in (".yml", ".yaml") and p.is_file())
+
+
+def menciona(texto, comandos):
+    return any(re.search(rf"(?<![\w-]){re.escape(c)}(?![\w-])", texto) for c in comandos)
+
+
+def sin_huella(lineas):
+    """Las acciones de GitHub que no están fijadas por la huella de su commit, sin repetir (las locales, ./, no
+    cuentan)."""
+    malas = (m.group(1) for m in (USES.match(l) for l in lineas) if m and not FIJADA.search(m.group(1)))
+    return list(dict.fromkeys(malas))
+
+
+def huecos_de_control(rutas, todos, flujos):
+    """Qué le falta a la CI para los lenguajes con código en estas rutas: pruebas, y revisión de librerías si el
+    proyecto tiene un manifiesto de dependencias. Devuelve (problemas, lenguajes que el control no conoce)."""
+    problemas, desconocidos = [], set()
+    for lenguaje, l in LENGUAJES.items():
+        ejemplo = next((r for r in rutas if r.lower().endswith(l["extensiones"])), None)
+        if not ejemplo:
+            continue
+        if not menciona(flujos, l["pruebas"]):
+            problemas.append(f"hay código {lenguaje} (por ejemplo {ejemplo}) y ningún flujo de GitHub corre sus "
+                             f"pruebas ({', '.join(l['pruebas'])})")
+        manifiesto = next((t for t in todos
+                           if any(fnmatch.fnmatch(t.rsplit("/", 1)[-1], m) for m in l["manifiestos"])), None)
+        if manifiesto and not menciona(flujos, l["librerias"]):
+            problemas.append(f"el proyecto declara librerías de {lenguaje} ({manifiesto}) y ningún flujo de GitHub las "
+                             f"revisa ({', '.join(l['librerias'])})")
+    for r in rutas:
+        if r.lower().endswith(OTROS_LENGUAJES):
+            desconocidos.add(r.rsplit(".", 1)[-1])
+    return problemas, sorted(desconocidos)
+
+
+def revisar_seguridad_del_cambio(base, errores):
+    """Lo nuevo entra limpio: lo que este cambio agrega no trae acciones sin huella, archivos ilegibles ni código sin
+    control."""
+    rc, salida = git("-c", "core.quotepath=off", "diff", "--name-only", "--diff-filter=AMR", f"{base}...HEAD")
+    if rc != 0:
+        return
+    nuevos = [l.strip() for l in salida.splitlines() if l.strip()]
+    ilegibles = [r for r in nuevos if NO_SE_LEEN.search(r)]
+    if ilegibles:
+        errores.append(f"Este cambio agrega {len(ilegibles)} archivo(s) que nadie puede leer ni revisar, por ejemplo "
+                       f"{ilegibles[0]}. Sácalos del repositorio y agrégalos al .gitignore: se generan en la CI.")
+    rc, diff = git("diff", "-U0", f"{base}...HEAD", "--", FLUJOS)
+    agregadas = [l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")]
+    malas = sin_huella(agregadas)
+    if malas:
+        errores.append(f"Este cambio agrega acciones de GitHub sin fijar por la huella de su commit: "
+                       f"{', '.join(malas)}. Usa el SHA completo, con la versión en un comentario.")
+    kit = rutas_del_kit()
+    rc, todos = git("-c", "core.quotepath=off", "ls-files")
+    problemas, _ = huecos_de_control([r for r in nuevos if es_codigo_del_proyecto(r, kit)], todos.splitlines(),
+                                     texto_de_los_flujos())
+    for p in problemas:
+        errores.append(f"Este cambio trae código sin control: {p}.")
+
+
+def revisar_seguridad(avisos):
+    """Lo heredado se avisa sin fallar, para que un proyecto adoptado lo corrija con su propio pedido."""
+    rc, salida = git("-c", "core.quotepath=off", "ls-files")
+    if rc != 0:
+        return
+    todos = [l.strip() for l in salida.splitlines() if l.strip()]
+    ilegibles = [r for r in todos if NO_SE_LEEN.search(r)]
+    if ilegibles:
+        avisos.append(f"El repositorio guarda {len(ilegibles)} archivo(s) que nadie puede leer ni revisar, por ejemplo "
+                      f"{ilegibles[0]}.")
+    for flujo in (r for r in todos if r.startswith(FLUJOS) and (RAIZ / r).is_file()):
+        malas = sin_huella((RAIZ / flujo).read_text(encoding="utf-8", errors="replace").splitlines())
+        if malas:
+            avisos.append(f"{flujo} usa acciones sin fijar por su huella: {', '.join(malas)}.")
+    kit = rutas_del_kit()
+    problemas, desconocidos = huecos_de_control([r for r in todos if es_codigo_del_proyecto(r, kit)], todos,
+                                                texto_de_los_flujos())
+    avisos.extend(f"Control incompleto: {p}." for p in problemas)
+    if desconocidos:
+        avisos.append(f"Hay código que este control no sabe revisar ({', '.join(desconocidos)}): la CI debe correr sus "
+                      "pruebas y revisar sus librerías, y el revisor de seguridad lo comprueba.")
 
 
 def main():
@@ -130,6 +264,7 @@ def main():
     errores, avisos = [], []
     revisar_kit(errores)
     revisar_estado(errores)
+    revisar_seguridad(avisos)
     if a.base:
         revisar_cambios(a.base, a.etiquetas, errores, avisos)
     for aviso in avisos:
