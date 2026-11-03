@@ -74,6 +74,9 @@ Integrar un PR es un efecto fuera del espacio de la fábrica (motivo 3), así qu
   `.fabrica/proyecto.json`.
 - **Antes de integrar,** la fábrica vuelve a comprobar que todos los controles estén en verde y que la rama esté al
   día con `main`.
+- **Desde la conversación:** la skill de instancia `bandeja-direccion` trae lo que espera a la Dirección y publica
+  sus respuestas, sus pedidos y las integraciones que autorice, con su cuenta y con una marca que dice de dónde
+  vinieron. Integra un PR solo con un sí para ese PR, y se niega si los controles no están en verde.
 - **En el nivel 2,** los PRs de riesgo bajo con todos los controles en verde se integran sin preguntar. Los demás
   siguen esta regla.
 

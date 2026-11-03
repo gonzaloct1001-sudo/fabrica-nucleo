@@ -5,6 +5,23 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.6.0 · 2026-11-03
+
+La bandeja de la Dirección, para decidir desde la conversación sin entrar a GitHub:
+- **`bandeja.py`** y la skill de instancia `bandeja-direccion`:
+  - **Resumen** de todos los proyectos activos: preguntas sin respuesta, respondidas por aplicar, PRs abiertos, PRs en
+    verde y la hora de la última corrida. Solo cifras, igual que el panel (`nucleo/aislamiento.md`).
+  - **Detalle de un cliente:** sus preguntas con su texto, sus PRs con el estado de los controles y la última entrada
+    de su bitácora. Se abre de a un cliente por conversación.
+  - **Publicar** la respuesta de la Dirección en una pregunta o un PR, con una marca que dice que vino de la bandeja.
+    Se niega en repositorios que no son proyectos de la instancia, en issues cerrados y con el texto vacío.
+  - **Crear un pedido** para el motor, sin etiquetas, para que la próxima corrida lo clasifique.
+  - **Integrar un PR** que la Dirección autorizó, solo con los controles en verde y la rama al día con su rama base
+    (sea `main` o `master`).
+- **`pruebas/probar_bandeja.py`** (21 casos, con un `gh` falso que no toca GitHub), también en la CI. Cada control
+  se comprobó rompiéndolo a propósito: las 10 mutaciones hacen fallar la prueba.
+- `nucleo/autonomia.md` y `nucleo/aislamiento.md` describen la bandeja.
+
 ## 0.5.1 · 2026-11-02
 
 Lo aprendido al adoptar el primer proyecto real:

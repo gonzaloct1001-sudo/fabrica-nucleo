@@ -21,7 +21,9 @@ Cliente            una persona o empresa que contrata, o la propia instancia ("p
 2. **Un proyecto por sesión.** En una sesión local, el agente trabaja en un solo proyecto y no lee carpetas de otro
    cliente. La instancia puede reforzarlo con un hook que bloquee leer fuera del proyecto activo.
 3. **El panel solo lee metadatos.** El panel de seguimiento lee de cada proyecto únicamente `.fabrica/estado.json`
-   (`plantillas/estado.json`). Nunca abre documentos, código ni conversaciones.
+   (`plantillas/estado.json`). Nunca abre documentos, código ni conversaciones. La bandeja de la Dirección
+   (`bandeja-direccion`) sigue la misma regla en su resumen, que muestra solo cifras, y abre el detalle de a un
+   cliente por conversación.
 
 ## Qué puede salir de un proyecto
 
