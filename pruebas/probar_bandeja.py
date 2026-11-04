@@ -18,6 +18,7 @@ Uso: python pruebas/probar_bandeja.py
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -34,7 +35,7 @@ import bandeja  # noqa: E402
 resultados = []
 
 GH_FALSO = r'''
-import json, os, sys
+import json, os, re, sys
 datos = json.load(open(os.environ["GH_FALSO_DATOS"], encoding="utf-8"))
 a = sys.argv[1:]
 def anotar(x):
@@ -42,9 +43,74 @@ def anotar(x):
         f.write(json.dumps(x, ensure_ascii=False) + "\n")
 def campo(nombre):
     return next((v.split("=", 1)[1] for k, v in zip(a, a[1:]) if k == "-f" and v.startswith(nombre + "=")), None)
-def repo():
-    return a[a.index("-R") + 1].split("/", 1)[1]
-if a[0] == "api" and "-f" in a:
+def sha(repo, n, pr):
+    return pr.get("headRefOid") or f"sha-{repo}-{n}"
+def controles_por_sha():
+    r = {}
+    for repo, lista in datos.get("prs", {}).items():
+        for p in lista:
+            r[sha(repo, p["number"], p)] = p.get("statusCheckRollup") or []
+    for ref, p in datos.get("pr_view", {}).items():
+        repo, n = ref.split("#")
+        r[sha(repo, int(n), p)] = p.get("statusCheckRollup") or []
+    return r
+def un_pr(repo, n, p):
+    estado = p.get("state", "OPEN")
+    return {"number": n, "title": p.get("title"), "html_url": p.get("url", f"https://github.com/duena/{repo}/pull/{n}"),
+            "state": "open" if estado == "OPEN" else "closed",
+            "merged_at": "2026-11-03T12:00:00Z" if estado == "MERGED" else None, "draft": p.get("isDraft", False),
+            "labels": [{"name": x} for x in p.get("labels", [])],
+            "mergeable": {"MERGEABLE": True, "CONFLICTING": False}.get(p.get("mergeable")),
+            "mergeable_state": (p.get("mergeStateStatus") or "unknown").lower(),
+            "base": {"ref": p.get("baseRefName", "main"), "repo": {"full_name": f"duena/{repo}"}},
+            "head": {"ref": p.get("headRefName", f"rama-{n}"), "sha": sha(repo, n, p),
+                     "repo": {"full_name": f"duena/{repo}"}}}
+def rest(ruta):
+    """Responde como la API REST de GitHub a partir de los PRs de los datos; None si no conoce la ruta."""
+    m = re.match(r"^repos/duena/([^/]+)/(.+)$", ruta)
+    if not m:
+        return None
+    repo, resto = m.groups()
+    if resto == "pulls?state=open&per_page=100":
+        return [{"number": p["number"], "title": p.get("title"), "html_url": p.get("url"), "draft": p.get("isDraft"),
+                 "labels": [{"name": x} for x in p.get("labels", [])], "head": {"sha": sha(repo, p["number"], p)}}
+                for p in datos.get("prs", {}).get(repo, [])]
+    if resto == "pulls?state=closed&sort=updated&direction=desc&per_page=100":
+        return [{"number": p["number"], "title": p.get("title"), "html_url": p.get("url"),
+                 "merged_at": p.get("mergedAt")}
+                for p in datos.get("integrados", {}).get(repo, [])]
+    m = re.match(r"^pulls/(\d+)(/files\?per_page=100)?$", resto)
+    if m and f"{repo}#{m.group(1)}" in datos.get("pr_view", {}):
+        p = datos["pr_view"][f"{repo}#{m.group(1)}"]
+        if m.group(2):
+            return [{"filename": f["path"], "additions": f["additions"], "deletions": f["deletions"]}
+                    for f in p.get("files", [])]
+        return un_pr(repo, int(m.group(1)), p)
+    m = re.match(r"^(?:commits/([^/]+)/(check-runs\?filter=all&per_page=100|status)"
+                 r"|actions/runs\?head_sha=([^&]+)&per_page=100)$", resto)
+    if m:
+        lista = controles_por_sha().get(m.group(1) or m.group(3), [])
+        if m.group(3):
+            flujos = list(dict.fromkeys(c["workflowName"] for c in lista if c.get("workflowName")))
+            return {"workflow_runs": [{"name": f, "check_suite_id": f} for f in flujos]}
+        if m.group(2) == "status":
+            return {"statuses": [{"context": c["context"], "state": c["state"].lower()} for c in lista if "state" in c]}
+        return {"check_runs": [{"name": c.get("name", f"control-{i}"),
+                                "status": (c.get("status") or "completed").lower(),
+                                "conclusion": (c.get("conclusion") or "").lower() or None,
+                                "started_at": c.get("startedAt"), "check_suite": {"id": c.get("workflowName", "")}}
+                               for i, c in enumerate(lista) if "state" not in c]}
+    return None
+if a[0] == "api" and "-X" in a:
+    metodo, ruta = a[a.index("-X") + 1], next(x for x in a[1:] if x.startswith("repos/"))
+    if metodo == "PUT" and ruta.endswith("/merge"):
+        anotar({"accion": "integrar", "ref": ruta.split("/")[2] + "#" + ruta.split("/")[4], "args": a})
+        print(json.dumps({"merged": True}))
+    elif metodo == "DELETE":
+        anotar({"accion": "borrar-rama", "ruta": ruta})
+    else:
+        sys.stderr.write("gh falso: no sé responder " + " ".join(a)); sys.exit(1)
+elif a[0] == "api" and "-f" in a:
     if a[1].endswith("/comments"):
         anotar({"accion": "comentario", "ruta": a[1], "body": campo("body")})
         print(json.dumps({"html_url": "https://github.com/x/c/1"}))
@@ -59,18 +125,14 @@ elif a[0] == "api" and a[1] in datos.get("secuencias", {}):
     print(json.dumps(serie[min(estado.get(a[1], 0), len(serie) - 1)]))
     estado[a[1]] = estado.get(a[1], 0) + 1
     json.dump(estado, open(ruta_estado, "w", encoding="utf-8"))
-elif a[0] == "api":
-    if a[1] not in datos["api"]:
-        sys.stderr.write("HTTP 404: Not Found"); sys.exit(1)
+elif a[0] == "api" and a[1] in datos["api"]:
     print(json.dumps(datos["api"][a[1]]))
-elif a[:2] == ["pr", "list"]:
-    print(json.dumps(datos["integrados" if "merged" in a else "prs"].get(repo(), [])))
-elif a[:2] == ["pr", "view"]:
-    print(json.dumps(datos["pr_view"][repo() + "#" + a[2]]))
-elif a[:2] == ["pr", "merge"]:
-    anotar({"accion": "integrar", "ref": repo() + "#" + a[2], "args": a})
-    print("merged")
+elif a[0] == "api" and rest(a[1]) is not None:
+    print(json.dumps(rest(a[1])))
+elif a[0] == "api":
+    sys.stderr.write("HTTP 404: Not Found"); sys.exit(1)
 else:
+    # `gh pr` y `gh issue` usan GraphQL, que no corre en la nube: la bandeja no debe llamarlos
     sys.stderr.write("gh falso: no sé responder " + " ".join(a)); sys.exit(1)
 '''
 
@@ -129,6 +191,7 @@ def datos():
             "repos/duena/otro-repo/issues/1": {"state": "open", "labels": [{"name": "espera:direccion"}]},
             f"repos/duena/propio-plataforma/{q}": [],
             f"repos/duena/propio-plataforma/{t}": [],
+            "repos/duena/propio-plataforma/issues?state=closed&since=2026-11-03T03:00:00Z&per_page=100": [],
             f"repos/duena/cliente-b-app/{q}": [
                 {"number": 1, "title": "SECRETO-B: precio pactado", "body": "SECRETO-B en el cuerpo", "comments": 0}],
             f"repos/duena/cliente-b-app/{t}": [],
@@ -160,6 +223,27 @@ def datos():
             "propio-panel#10": {"state": "OPEN", "isDraft": False, "mergeable": "MERGEABLE",
                                 "mergeStateStatus": "BEHIND", "statusCheckRollup": VERDE, "title": "Atrasado",
                                 "baseRefName": "master"},
+            # un control que falló y volvió a correr en verde (por ejemplo, al ponerle una etiqueta al PR)
+            "propio-panel#21": {"state": "OPEN", "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN",
+                                "title": "Con reintento", "headRefName": "fabrica/reintento",
+                                "statusCheckRollup": [
+                                    {"name": "fabrica", "workflowName": "Fábrica", "startedAt": "2026-11-03T10:00:00Z",
+                                     "conclusion": "FAILURE"},
+                                    {"name": "fabrica", "workflowName": "Fábrica", "startedAt": "2026-11-03T10:05:00Z",
+                                     "conclusion": "SUCCESS"},
+                                    {"context": "servicio-externo", "state": "SUCCESS"}]},
+            # el mismo nombre de control en otro flujo, en rojo: un verde posterior del primer flujo no lo tapa
+            "propio-panel#22": {"state": "OPEN", "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN",
+                                "title": "Otro flujo en rojo", "statusCheckRollup": [
+                                    {"name": "fabrica", "workflowName": "Otro", "startedAt": "2026-11-03T09:00:00Z",
+                                     "conclusion": "FAILURE"},
+                                    {"name": "fabrica", "workflowName": "Fábrica", "startedAt": "2026-11-03T10:05:00Z",
+                                     "conclusion": "SUCCESS"}]},
+            # un servicio externo (estado de commit) en rojo, con las corridas en verde
+            "propio-panel#24": {"state": "OPEN", "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN",
+                                "title": "Externo en rojo",
+                                "statusCheckRollup": VERDE + [{"context": "servicio-externo", "state": "FAILURE"}]},
+            "propio-panel#23": {"state": "OPEN", "headRefOid": "sha23", "statusCheckRollup": VERDE},
         },
     }
 
@@ -272,9 +356,37 @@ def main():
         comprobar("No integra un PR con la rama atrasada", rc != 0 and "master" in out and len(registro()) == antes, out)
         rc, out = correr("--integrar", "propio-panel#4")
         hechos = registro()
-        comprobar("Integra un PR en verde y al día",
-                  rc == 0 and hechos[-1]["accion"] == "integrar" and hechos[-1]["ref"] == "propio-panel#4"
-                  and "--merge" in hechos[-1]["args"], out)
+        comprobar("Integra un PR en verde y al día, y borra su rama",
+                  rc == 0 and hechos[-2]["accion"] == "integrar" and hechos[-2]["ref"] == "propio-panel#4"
+                  and "merge_method=merge" in hechos[-2]["args"] and hechos[-1]["accion"] == "borrar-rama"
+                  and hechos[-1]["ruta"] == "repos/duena/propio-panel/git/refs/heads/rama-4", out)
+        rc, out = correr("--integrar", "propio-panel#21")
+        hechos = registro()
+        comprobar("Por REST, un control que volvió a correr cuenta por su última corrida",
+                  rc == 0 and hechos[-2]["ref"] == "propio-panel#21"
+                  and hechos[-1]["ruta"] == "repos/duena/propio-panel/git/refs/heads/fabrica/reintento", out)
+        antes = len(registro())
+        rc, out = correr("--integrar", "propio-panel#22")
+        comprobar("Un control con el mismo nombre en otro flujo no tapa su falla",
+                  rc != 0 and "rojo" in out and len(registro()) == antes, out)
+        rc, out = correr("--integrar", "propio-panel#24")
+        comprobar("Un servicio externo en rojo también detiene la integración",
+                  rc != 0 and "rojo" in out and len(registro()) == antes, out)
+        calculando = datos()
+        p23 = {"number": 23, "title": "Recién abierto", "state": "open", "merged_at": None, "draft": False,
+               "labels": [], "base": {"ref": "main", "repo": {"full_name": "duena/propio-panel"}},
+               "head": {"ref": "rama-23", "sha": "sha23", "repo": {"full_name": "duena/propio-panel"}}}
+        calculando["secuencias"] = {"repos/duena/propio-panel/pulls/23": [
+            dict(p23, mergeable=None, mergeable_state="unknown"), dict(p23, mergeable=True, mergeable_state="clean")]}
+        (tmp / "datos.json").write_text(json.dumps(calculando, ensure_ascii=False), encoding="utf-8")
+        rc, out = correr("--integrar", "propio-panel#23")
+        comprobar("Si GitHub todavía calcula si se puede integrar, vuelve a mirar",
+                  rc == 0 and registro()[-2]["ref"] == "propio-panel#23", out)
+        (tmp / "datos.json").write_text(json.dumps(datos(), ensure_ascii=False), encoding="utf-8")
+        (tmp / "estado.json").unlink(missing_ok=True)
+        fuente = (RAIZ / ".fabrica" / "scripts" / "bandeja.py").read_text(encoding="utf-8")
+        comprobar("La bandeja usa GitHub solo por REST, que también funciona en la nube",
+                  not re.search(r'gh(_json)?\(\s*"(pr|issue)"', fuente))
 
         # Relevos: esperar a que la corrida deje su entrada en la bitácora
         t_b = "repos/duena/cliente-b-app/issues?state=open&per_page=100"
@@ -353,6 +465,31 @@ def main():
                   and "<b>Bloqueos:</b> ninguno" in web, str(horas))
         rc, out = correr("--jornada", "propio-panel", "--fecha", "3-nov")
         comprobar("Rechaza una fecha mal escrita", rc != 0 and "--fecha" in out, out)
+
+        antes = len(registro())
+        rc, out = correr("--diario", "propio", "--desde", "2026-11-03T03:00:00Z", "--salida", str(tmp / "d.html"))
+        web = leer_pagina("d.html")
+        comprobar("El resumen diario trae cada decisión pendiente con lo necesario para decidirla",
+                  rc == 0 and "propio-panel #5 · Pregunta: plazo de entrega" in web and "Responde A o B." in web
+                  and "propio-panel #4 · Iniciativa &lt;script&gt;" in web and "usar <code>semaforo</code>" in web
+                  and "blob/abc123/docs/dise%C3%B1o%20panel.md" in web and "color del semáforo" not in web,
+                  out + web[-3000:])
+        comprobar("El resumen diario separa lo que está en curso y dice cómo responder",
+                  "propio-panel #9: Kit nuevo</a> · controles en rojo" in web
+                  and "propio-plataforma #3: ADR-0001</a> · controles en pendiente" in web
+                  and "sí a propio-panel#5" in web and "<b>2</b><span>esperan tu decisión" in web, web[-3000:])
+        comprobar("El resumen diario cuenta lo que avanzó desde --desde, en la hora de la instancia",
+                  "propio-panel · Corrida: especificar H-001" in web and "noche anterior" not in web
+                  and "<b>1</b><span>PRs integrados" in web and "plan de construcción" in web, web[-3000:])
+        comprobar("El resumen diario lleva su título fijo y marca lo que falta escribir",
+                  "<title>Resumen diario · propio</title>" in web and web.count(bandeja.COMPLETAR) == 3
+                  and "completa 3 sección(es)" in out, out)
+        comprobar("El resumen diario es de un solo cliente y no publica nada",
+                  "SECRETO-B" not in web and "cliente-b" not in web and len(registro()) == antes, web[-2000:])
+        rc, out = correr("--diario", "nadie")
+        comprobar("No arma el resumen de un cliente sin proyectos", rc != 0 and "propio" in out, out)
+        rc, out = correr("--diario", "propio", "--desde", "ayer")
+        comprobar("El resumen diario rechaza una hora que no está en UTC", rc != 0 and "--desde" in out, out)
         propia = inst / "instancia" / "plantillas" / "pagina-direccion.html"
         propia.parent.mkdir(parents=True, exist_ok=True)
         propia.write_text("<html>PLANTILLA PROPIA {{titulo}} {{contenido}}</html>", encoding="utf-8")

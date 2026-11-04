@@ -101,8 +101,10 @@ detienen.
 
 ## Resumen diario
 
-Cada día la Dirección recibe un resumen corto, pensado para leerse en el celular en unos 15 minutos. Tiene cinco
-partes:
+Cada día la Dirección recibe un resumen corto, pensado para leerse en el celular en unos 15 minutos, sin que su
+computador esté encendido. Lo arma la tarea de la mañana de cada cliente (`motor.md`, "La mañana"): una página por
+cliente, siempre en la misma dirección, con cada decisión pendiente y lo necesario para decidirla. La Dirección
+responde en la sesión de esa tarea. Tiene cinco partes:
 
 1. **Para revisar:** PRs listos, cada uno con su enlace a la vista previa y su nivel de riesgo.
 2. **Esperan tu decisión:** preguntas de negocio agrupadas por proyecto, cada una con su enlace.

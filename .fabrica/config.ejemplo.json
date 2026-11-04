@@ -4,7 +4,7 @@
   "rol_humano": "Dirección",
   "idioma": "es",
   "zona_horaria": "UTC",
-  "nucleo_version": "0.9.0",
+  "nucleo_version": "0.10.0",
 
   "pausa": false,
   "nivel_autonomia": 1,
@@ -29,8 +29,10 @@
   },
 
   "resumen_diario": {
+    "_nota": "La tarea de la mañana de cada cliente publica su resumen siempre en la misma página: su dirección va en paginas.<cliente> (nucleo/motor.md, \"La mañana\").",
     "hora": "08:00",
-    "dias": ["lun", "mar", "mie", "jue", "vie"]
+    "dias": ["lun", "mar", "mie", "jue", "vie"],
+    "paginas": {}
   },
 
   "github": {

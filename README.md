@@ -9,7 +9,7 @@ Está pensada para que una sola persona dirija varios clientes y proyectos dedic
 avanza sola, se detiene solo cuando de verdad necesita una decisión humana y entrega cada día un resumen con lo que
 hizo, lo que decidió y lo que espera.
 
-> Estado: **v0.9, en construcción.**
+> Estado: **v0.10, en construcción.**
 > - **v0.1:** los cimientos (constitución, autonomía, áreas, ciclo, calidad, aislamiento, modelos, aprendizaje y
 >   plantillas).
 > - **v0.2:** los agentes de cada área, las skills del ciclo y el kit que recibe cada proyecto.
@@ -22,6 +22,7 @@ hizo, lo que decidió y lo que espera.
 > - **v0.8:** una página visual por decisión y otra al cerrar la jornada: la Dirección ve lo que aprueba.
 > - **v0.9:** seguridad en capas: las cuatro puertas, el equipo rojo, la revisión independiente según el riesgo y una
 >   CI que no deja entrar acciones sin huella, archivos ilegibles ni código sin control.
+> - **v0.10:** el resumen diario de la mañana: la Dirección revisa y aprueba desde el teléfono, sin su computador.
 > - **Próximo:** el panel de seguimiento y el resumen diario, que la propia fábrica construye como su primer piloto.
 
 ## Cómo está organizada
