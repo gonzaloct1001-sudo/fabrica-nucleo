@@ -26,7 +26,7 @@ En la instancia se administra la fábrica:
 | Crear un proyecto con su repositorio y el kit de la fábrica | `nuevo-proyecto` |
 | Traer a la fábrica un proyecto que ya existe, sin perder nada | `adoptar-proyecto` |
 | Recoger lo que aprendieron los proyectos e incorporarlo a la base del rubro o al núcleo | `recoger-aprendizajes` |
-| Ver y resolver desde la conversación lo que espera a la Dirección, con una página por decisión: responder, pedir, integrar, avanzar por relevos y cerrar la jornada | `bandeja-direccion` |
+| Ver y resolver desde la conversación lo que espera a la Dirección, con una página por decisión: responder, pedir, integrar, avanzar por relevos, cerrar la jornada y el resumen diario de la mañana | `bandeja-direccion` |
 
 La base de conocimiento de cada rubro vive en `rubros/<rubro>/` y llega a cada proyecto del rubro con su kit
 (`nucleo/aprendizaje.md`).

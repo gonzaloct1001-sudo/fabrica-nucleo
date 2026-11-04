@@ -5,6 +5,46 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.10.0 · 2026-11-04
+
+La Dirección revisa y aprueba desde el teléfono, con su computador apagado.
+- **`bandeja.py --diario <cliente> [--desde <hora UTC>]`:** el resumen diario de un cliente, que el contrato de
+  autonomía pedía desde el principio. Trae:
+  - lo que avanzó en las últimas 24 horas;
+  - cada decisión pendiente con lo necesario para decidirla: qué se pide, lo que el motor decidió, los documentos y
+    los controles;
+  - lo que está en curso, lo que sigue y cómo responder.
+
+  Se lee de arriba abajo en el teléfono: primero lo más importante, después cada decisión en dos líneas con la
+  respuesta exacta y el detalle plegado; lo demás, plegado al final. Lleva siempre el mismo título, para
+  publicarse cada mañana en la misma página.
+- **La bandeja usa GitHub solo por la API REST.** `--integrar`, `--pagina`, `--jornada` y el resumen ya no usan
+  `gh pr`, que no funciona en la nube, así que corren igual en una sesión en la nube. Al integrar:
+  - vuelve a mirar si GitHub todavía calcula si se puede integrar;
+  - borra la rama del PR, como antes.
+- **`nucleo/motor.md`:**
+  - un ritmo nuevo, "En la mañana";
+  - "Dónde quedamos": GitHub es la única memoria, así que los ritmos se mezclan sin retrabajo;
+  - cómo crear la tarea de la mañana de cada cliente.
+- **Skill `bandeja-direccion`:**
+  - paso 9, "Resumen diario", para la tarea de la mañana;
+  - al cerrar una sesión comprueba que nada quede solo en el computador;
+  - lee los PRs por la API REST.
+- **`.fabrica/config.ejemplo.json`:** `resumen_diario.paginas`, la dirección fija de la página de cada cliente.
+- **`probar_bandeja.py`:** 53 casos, 13 nuevos. El GitHub simulado responde como la API REST y ya no responde
+  `gh pr`. Se comprobó además que detectan 11 fallas provocadas:
+  - sin el nombre del flujo de cada control;
+  - sin los servicios externos;
+  - integrar sin volver a mirar;
+  - no borrar la rama;
+  - un PR integrado leído como cerrado;
+  - ofrecer decidir un PR en rojo;
+  - volver a preguntar lo ya respondido;
+  - sin el filtro de `--desde`;
+  - "lo que sigue" tomado de una corrida que no lo dice;
+  - integrados sin mirar cuándo;
+  - un resumen que mezcla clientes.
+
 ## 0.9.0 · 2026-11-04
 
 Seguridad en capas, y una revisión más independiente cuanto más sensible es el cambio.

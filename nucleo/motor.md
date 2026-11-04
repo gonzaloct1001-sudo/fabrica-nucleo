@@ -45,9 +45,9 @@ activen créditos de uso extra.
 El valor por defecto (1 paso) está en `.fabrica/proyecto.json` de cada proyecto. Un "paso" de construcción ejecuta
 como máximo tres tareas del plan.
 
-## El ritmo: por horario, por relevos o en sesión
+## El ritmo: por horario, por relevos, en sesión o en la mañana
 
-La Dirección elige el ritmo según el tiempo que tenga. Los tres usan la misma corrida y las mismas reglas: solo cambia
+La Dirección elige el ritmo según el tiempo que tenga. Todos usan la misma corrida y las mismas reglas: solo cambia
 quién la dispara y cuándo.
 
 | Ritmo | Cuándo conviene | Cómo avanza |
@@ -55,6 +55,7 @@ quién la dispara y cuándo.
 | **Por horario** | Siempre: es la base, y la Dirección no necesita estar | La tarea programada corre a sus horas, un paso por corrida. Lo que espera a la Dirección se acumula en su bandeja |
 | **Por relevos** | La Dirección tiene un rato y quiere decidir rápido | Desde la bandeja (`bandeja-direccion`), cada decisión despierta en el momento la corrida del proyecto. Cuando termina, la bandeja trae lo nuevo, la Dirección decide y sale el relevo siguiente |
 | **En sesión** | La Dirección tiene un bloque largo | Se abre el asistente en la carpeta del proyecto y el coordinador trabaja en vivo, con las mismas skills y reglas. Las decisiones se toman al momento |
+| **En la mañana** | La Dirección revisa desde el teléfono, con su computador apagado | La tarea de la mañana de cada cliente publica su resumen diario en la misma página de siempre. La Dirección lo lee y responde en la sesión de esa tarea; la bandeja publica e integra desde la nube y, si puede, despierta la corrida del proyecto |
 
 - **Despertar una corrida** es ejecutar ahora la tarea `fabrica · <repositorio>`: desde el asistente, con su
   herramienta de tareas programadas, o con el botón de ejecutar en claude.ai/code/routines. La tarea programada
@@ -71,10 +72,40 @@ quién la dispara y cuándo.
 - **Cada relevo gasta lo mismo que una corrida programada** (tabla de arriba). Los relevos aprovechan el tiempo
   disponible de la Dirección; el horario mantiene el avance cuando no está.
 
+### Dónde quedamos: GitHub es la única memoria
+
+Los ritmos se mezclan sin retrabajo porque todos leen y escriben en el mismo lugar:
+- **Nada queda solo en un computador ni en una conversación.** Una sesión termina con todo en GitHub: las ramas
+  subidas con su PR, y las respuestas, pedidos e integraciones publicados. Lo que no está ahí no existe para el
+  motor ni para la sesión de la mañana.
+- **Cada corrida decide su paso leyendo GitHub** (`.fabrica/motor/corrida.md`, "Lee el estado real"): etiquetas,
+  PRs, la bitácora y el registro de cada plan. Lo que la Dirección ya decidió se aplica, no se vuelve a preguntar, y
+  un paso registrado no se repite.
+- **El resumen diario dice dónde quedamos.** Al empezar una sesión, la bandeja muestra lo mismo que vio la mañana.
+- **Una sesión y una corrida no trabajan a la vez en el mismo proyecto.** Antes de tocar un proyecto en sesión, la
+  última corrida tiene que haber terminado (su entrada en la bitácora), y conviene un bloque fuera de su horario.
+
+### La tarea de la mañana
+
+Una tarea programada por cliente, separada de las del motor:
+
+| Campo | Valor |
+|---|---|
+| Nombre | `fabrica · resumen · <cliente>` |
+| Repositorios | la instancia y los proyectos de ese cliente, ninguno más: así no puede leer otro cliente |
+| Disparador | horario: cada día a `resumen_diario.hora`, en la zona de la instancia, después de las corridas de la noche |
+| Instrucción | `Arma y publica el resumen diario de la fábrica para el cliente <cliente>: sigue la skill bandeja-direccion, paso «Resumen diario».` |
+| Conectores | ninguno |
+
+La primera vez, la página se publica a mano y su dirección queda en `resumen_diario.paginas.<cliente>` de
+`.fabrica/config.json`. Desde ahí, la tarea la actualiza cada mañana en la misma dirección, que la Dirección fija en
+su aplicación.
+
 ## Lo que la nube permite y lo que no
 
 - **GitHub:**
-  - se usa por la API REST (`gh api ...`) o con las herramientas integradas;
+  - se usa por la API REST (`gh api ...`) o con las herramientas integradas. La bandeja de la Dirección usa solo la
+    API REST, así que funciona igual en la nube;
   - `gh issue` y `gh pr` fallan, porque usan GraphQL;
   - una corrida solo alcanza los repositorios asignados a su tarea.
 - **Permisos:** la corrida empieza en modo automático, y un clasificador puede bloquear acciones riesgosas. Si

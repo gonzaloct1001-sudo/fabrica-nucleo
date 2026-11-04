@@ -1,6 +1,6 @@
 ---
 name: bandeja-direccion
-description: Trae a la conversación lo que espera a la Dirección en los proyectos de la instancia (preguntas, PRs listos, lo último de cada corrida), se lo muestra en una página visual con los documentos a la mano y una recomendación, y publica en GitHub sus respuestas, sus pedidos y las integraciones que autorice. Si la Dirección quiere avanzar sin esperar el horario, despierta la corrida del proyecto en el momento y trabaja por relevos. Al cerrar, deja una página con lo que pasó en la jornada. Úsala cuando la Dirección pregunte qué hay pendiente, abra una sesión para operar la fábrica, prefiera decidir desde el chat en vez de GitHub, diga que tiene tiempo para avanzar o pida ver lo que se hizo.
+description: Trae a la conversación lo que espera a la Dirección en los proyectos de la instancia (preguntas, PRs listos, lo último de cada corrida), se lo muestra en una página visual con los documentos a la mano y una recomendación, y publica en GitHub sus respuestas, sus pedidos y las integraciones que autorice. Si la Dirección quiere avanzar sin esperar el horario, despierta la corrida del proyecto en el momento y trabaja por relevos. Al cerrar, deja una página con lo que pasó en la jornada. Úsala cuando la Dirección pregunte qué hay pendiente, abra una sesión para operar la fábrica, prefiera decidir desde el chat en vez de GitHub, diga que tiene tiempo para avanzar o pida ver lo que se hizo. También la usa la tarea de la mañana, que publica el resumen diario de un cliente y recibe sus respuestas desde el teléfono.
 ---
 
 # Bandeja de la Dirección
@@ -25,6 +25,8 @@ sus respuestas (`nucleo/motor.md`, `nucleo/autonomia.md`). El script es `.fabric
   mezcla clientes.
 - **No encadenas aprobaciones rápidas.** Si en una sesión salen varias decisiones seguidas, la Dirección ve el
   resultado de cada una (su página) antes de la siguiente.
+- **GitHub es la única memoria** (`nucleo/motor.md`, "Dónde quedamos"). Al empezar, el resumen dice dónde quedamos.
+  Al terminar, nada queda solo en este computador ni en esta conversación.
 
 ## Pasos
 
@@ -36,7 +38,8 @@ sus respuestas (`nucleo/motor.md`, `nucleo/autonomia.md`). El script es `.fabric
    - **Pregunta:** qué se decide, las opciones con lo que cuesta cada una y tu recomendación. Las que ya tienen
      respuesta ("respondida") no se vuelven a preguntar: la próxima corrida las aplica.
    - **PR:** qué cambia, para quién, el estado de sus controles y si está listo. Para explicarlo puedes leer su
-     descripción y sus archivos con `gh pr view` y `gh pr diff`, solo de este cliente.
+     descripción y sus archivos por la API REST (`gh api repos/<dueño>/<repositorio>/pulls/<n>` y `.../files`),
+     solo de este cliente. `gh pr` no funciona en la nube.
    - **Antes de preguntar, arma la página de la decisión:**
      `python .fabrica/scripts/bandeja.py --pagina <repositorio>#<n> --carpeta <carpeta local del proyecto, si la
      sabes> --salida <archivo .html>`. Trae lo que está en GitHub: qué se pide, lo que el motor decidió por la
@@ -73,7 +76,22 @@ sus respuestas (`nucleo/motor.md`, `nucleo/autonomia.md`). El script es `.fabric
 8. **Cierre de la jornada:** cuando la Dirección termina un rato de trabajo en el que se decidió algo, arma
    `python .fabrica/scripts/bandeja.py --jornada <repositorio> [--fecha <AAAA-MM-DD>] --salida <archivo .html>`,
    completa «Lo más importante» y, si sirven, agrega los bocetos de lo aprobado. Las horas salen en la zona de la
-   instancia (`zona_horaria` de `.fabrica/config.json`). Publícala igual que la de una decisión.
+   instancia (`zona_horaria` de `.fabrica/config.json`). Publícala igual que la de una decisión. Antes de cerrar,
+   comprueba que nada quede solo en este computador: en la instancia y en cada proyecto que tocaste, `git status`
+   limpio y las ramas subidas con su PR.
+9. **Resumen diario, en la tarea de la mañana** (`nucleo/motor.md`, "La tarea de la mañana"). La sesión corre en
+   la nube, sin la Dirección mirando:
+   1. Arma `python .fabrica/scripts/bandeja.py --diario <cliente> --salida <archivo .html>`. Trae lo que avanzó en
+      las últimas 24 horas y cada decisión pendiente con lo necesario para decidirla.
+   2. Completa las secciones «Por completar» en lenguaje simple: lo más importante y, en cada decisión, qué cambia,
+      cómo se ve si cambia algo visible y qué pasa si dice sí o no, con tu recomendación. Para explicarla puedes leer
+      sus documentos.
+   3. Publícala en la dirección de `resumen_diario.paginas.<cliente>` de `.fabrica/config.json`, para que la
+      Dirección la encuentre siempre en el mismo lugar. Si no hay dirección, publica una página nueva y dilo.
+   4. Termina con un mensaje corto: cuántas decisiones esperan, la primera que conviene tomar y el enlace.
+   5. Si la Dirección responde en esta sesión, sigue los pasos 4 a 6: publica sus respuestas, integra lo que
+      apruebe y, si puedes, despierta la corrida del proyecto. Si no puedes despertarla, dile que la aplica la
+      próxima corrida programada.
 
 ## Lo que devuelves
 
