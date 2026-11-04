@@ -85,7 +85,8 @@ sus respuestas (`nucleo/motor.md`, `nucleo/autonomia.md`). El script es `.fabric
       las últimas 24 horas y cada decisión pendiente con lo necesario para decidirla.
    2. Completa las secciones «Por completar» en lenguaje simple: lo más importante y, en cada decisión, qué cambia,
       cómo se ve si cambia algo visible y qué pasa si dice sí o no, con tu recomendación. Para explicarla puedes leer
-      sus documentos.
+      sus documentos. Si el resumen avisa que el proyecto tiene respuestas por aplicar, mira si el PR depende de
+      alguna: si depende, recomienda no aprobarlo todavía, porque la próxima corrida lo rehace con esa respuesta.
    3. Publícala en la dirección de `resumen_diario.paginas.<cliente>` de `.fabrica/config.json`, para que la
       Dirección la encuentre siempre en el mismo lugar. Si no hay dirección, publica una página nueva y dilo.
    4. Termina con un mensaje corto: cuántas decisiones esperan, la primera que conviene tomar y el enlace.

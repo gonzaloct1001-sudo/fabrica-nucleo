@@ -490,6 +490,10 @@ def main():
                   < web.find("Por completar: en dos líneas", primera) < web.find("<details>", primera)
                   < web.find("2. propio-panel #4") and web.find("Para leer con calma") > web.find("2. propio-panel #4")
                   and "<summary>Lo que avanzó</summary>" in web, web[-2500:])
+        bloque_4 = web[web.find("2. propio-panel #4"):web.find("Para leer con calma")]
+        comprobar("Un PR de un proyecto con respuestas por aplicar avisa que puede depender de ellas",
+                  "respuestas por aplicar en este proyecto (#6)" in bloque_4
+                  and "respuestas por aplicar" not in web[:web.find("2. propio-panel #4")], bloque_4[:800])
         comprobar("El resumen diario es de un solo cliente y no publica nada",
                   "SECRETO-B" not in web and "cliente-b" not in web and len(registro()) == antes, web[-2000:])
         rc, out = correr("--diario", "nadie")
