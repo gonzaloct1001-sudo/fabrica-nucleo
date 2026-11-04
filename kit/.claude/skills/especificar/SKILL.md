@@ -32,15 +32,19 @@ La Dirección confirma la iniciativa antes de especificar las historias.
      sigues con otra.**
 4. **El diseño, si la historia tiene interfaz.** El `disenador` define el flujo y los estados de cada pantalla.
 5. **Las pruebas de aceptación:**
-   - **Riesgo alto:** obligatorias.
+   - **Riesgo alto:** obligatorias, y cubren también los casos de abuso de la historia.
    - **Riesgo medio:** recomendables.
    - **Riesgo bajo:** opcionales; bastan los criterios.
 
    Las escribe `qa` en `pruebas/aceptacion/H-NNN/`.
-6. **El PR de especificación.** La historia, el diseño y las pruebas van en un PR "Especificación H-NNN". Si incluye
+6. **El modelo de amenazas,** si la historia toca acceso, permisos, datos personales, pagos o exposición a internet.
+   El `arquitecto` crea o actualiza el modelo del proyecto (`docs/modelo-amenazas.md`, salvo que la constitución del
+   proyecto diga otra ruta) desde `.fabrica/nucleo/plantillas/modelo-amenazas.md`, y `seguridad` lo revisa.
+7. **El PR de especificación.** La historia, el diseño, las pruebas y el modelo de amenazas, si cambió, van en un PR
+   "Especificación H-NNN". Si incluye
    pruebas de aceptación, la Dirección lo aprueba poniendo la etiqueta `pruebas-aprobadas`. La CI no deja pasar
    cambios en `pruebas/aceptacion/` sin esa etiqueta.
-7. **La Definition of Ready.** Revísala punto por punto (`.fabrica/nucleo/ciclo.md`). Si se cumple, la historia pasa
+8. **La Definition of Ready.** Revísala punto por punto (`.fabrica/nucleo/ciclo.md`). Si se cumple, la historia pasa
    a `estado:listo`.
 
 ## Lo que devuelves

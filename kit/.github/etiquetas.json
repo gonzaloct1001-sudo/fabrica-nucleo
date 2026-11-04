@@ -17,5 +17,6 @@
   {"nombre": "tipo:error", "color": "e99695", "descripcion": "Algo no funciona como debería"},
   {"nombre": "tipo:tarea", "color": "bfdadc", "descripcion": "Trabajo técnico sin cambio visible"},
   {"nombre": "tipo:investigacion", "color": "bfdadc", "descripcion": "Averiguar algo antes de decidir"},
-  {"nombre": "pruebas-aprobadas", "color": "0e8a16", "descripcion": "La Dirección aprueba cambios en pruebas/aceptacion/"}
+  {"nombre": "pruebas-aprobadas", "color": "0e8a16", "descripcion": "La Dirección aprueba cambios en pruebas/aceptacion/"},
+  {"nombre": "revision:externa", "color": "c5def5", "descripcion": "Toca lo sensible: pide la revisión de una segunda IA"}
 ]

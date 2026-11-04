@@ -74,18 +74,24 @@ ensuciaría y la corrección no tendría revisión.
 1. **Verificación con evidencia.** Corre en ese momento la batería completa y la compilación, y lee la salida.
 2. **QA** (nivel medio): las pruebas de aceptación y la matriz de verificación.
 3. **Seguridad** (nivel alto), si el riesgo es medio o alto. Sin su `APRUEBA`, no hay PR.
-4. **Revisión final de la rama.** El `revisor` en modo rama final, **con modelo de nivel alto declarado**. Recibe el
+4. **Equipo rojo** (nivel alto), si el riesgo es alto. Ataca la copia local. Cada hallazgo se confirma con una prueba
+   que falla y todos los confirmados van juntos a una sola tanda de corrección. Lo que no se reproduce queda en el
+   registro como descartado, con su motivo.
+5. **Revisión final de la rama.** El `revisor` en modo rama final, **con modelo de nivel alto declarado**. Recibe el
    diff completo desde `main` y la lista de hallazgos diferidos. Si encuentra problemas, se lanza una sola tanda de
    corrección con todos juntos y una revisión acotada de esa tanda. No hay segunda tanda.
-5. **Consistencia final.** El revisor compara el código con la historia. Lo que falte se vuelve una tarea nueva.
-6. **El PR.** Sube la rama y abre el PR con la plantilla del proyecto. En la nube, ábrelo con las herramientas de
+6. **Consistencia final.** El revisor compara el código con la historia. Lo que falte se vuelve una tarea nueva.
+7. **El PR.** Sube la rama y abre el PR con la plantilla del proyecto. En la nube, ábrelo con las herramientas de
    GitHub integradas o con `gh api -X POST repos/{dueño}/{repo}/pulls`, porque `gh pr` no funciona ahí. Debe incluir:
    - la evidencia de pruebas: comandos y salida;
    - el enlace a la vista previa, si existe;
    - el riesgo;
    - la sección **"Decisiones que tomé por ti"**, con todas las líneas `Decisión:` del registro, textuales;
-   - los hallazgos estacionados, cada uno con su justificación.
-7. **Quién integra.** Pasa la historia a `estado:construido` y pregunta quién integra, según "Quién integra cada
+   - los hallazgos estacionados, cada uno con su justificación;
+   - los del equipo rojo, corregidos o descartados;
+   - la etiqueta `revision:externa` si el cambio toca acceso, permisos, datos personales, pagos o infraestructura
+     (`.fabrica/nucleo/calidad.md`, "Revisión independiente en escalones").
+8. **Quién integra.** Pasa la historia a `estado:construido` y pregunta quién integra, según "Quién integra cada
    PR" en `.fabrica/nucleo/autonomia.md`.
    - **Por defecto integra la Dirección.**
    - **Tú integras solo en dos casos:** con un "intégralo" explícito para ese PR, o en el nivel 2, si el riesgo es

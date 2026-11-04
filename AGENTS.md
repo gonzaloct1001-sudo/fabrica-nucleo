@@ -46,6 +46,7 @@ Consulta el resto del núcleo solo cuando la tarea lo pida:
 | Necesitas | Lee |
 |---|---|
 | Revisar, probar o dar algo por terminado | `nucleo/calidad.md` |
+| Proteger un proyecto: amenazas, piezas de terceros, revisión independiente y antes de datos reales | `nucleo/seguridad.md` |
 | Elegir modelo para un rol | `nucleo/modelos.md` |
 | Saber qué área se encarga de algo | `nucleo/areas.md` |
 | Cerrar un proyecto o proponer una mejora al núcleo | `nucleo/aprendizaje.md` |

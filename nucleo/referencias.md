@@ -10,3 +10,11 @@ desarrollo con agentes de IA, revisados en cuarentena el 2026-10-29. No se copi�
 | Superpowers | github.com/obra/superpowers | Planes como decisiones en tareas cortas; un agente nuevo por tarea; revisión doble; ciclo de corrección con tope; evidencia antes de afirmar; registro de decisiones tomadas sin el humano; modelo explícito por rol |
 
 Los tres tienen licencia MIT.
+
+Para la seguridad (`seguridad.md`), la fábrica usa como lista de verificación dos estándares públicos, sin copiar su
+texto:
+
+| Estándar | Publicado por | Para qué |
+|---|---|---|
+| ASVS (Application Security Verification Standard), nivel 2 | OWASP | Qué debe cumplir una aplicación con datos personales: autenticación, sesiones, permisos, validación de entradas, datos, errores y registros |
+| Top 10 para aplicaciones con modelos de lenguaje | OWASP | Los riesgos de trabajar con IA, empezando por la inyección de instrucciones |

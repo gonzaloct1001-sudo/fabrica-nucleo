@@ -29,6 +29,14 @@ Como **<rol de quien la usa>**, quiero **<qué>**, para **<resultado que le impo
 - ¿Qué pasa cuando <límite: cero, vacío, máximo, duplicado>?
 - ¿Cómo responde ante <error: sin conexión, dato inválido, permiso faltante>?
 
+## Casos de abuso
+
+Obligatorios si el riesgo es alto: lo que intentaría alguien con malas intenciones. Cada caso pasa a las pruebas de
+aceptación.
+
+- **Dado** <un usuario sin permiso, un bot u otra empresa>, **cuando** <intenta …>, **entonces** <el sistema lo
+  impide>.
+
 ## Requisitos
 
 - **R1:** El sistema DEBE <capacidad concreta>. *(fuente: …)*

@@ -17,6 +17,7 @@ Cada rol usa el modelo menos costoso que hace bien su trabajo. Los niveles son g
 | `analista` | Alto | Medio | Una mala especificación cuesta más que cualquier modelo |
 | `arquitecto` | Alto | Alto | |
 | `seguridad` | Alto | Alto | |
+| `equipo-rojo` | Alto | Alto | Atacar bien exige el mismo nivel que defender |
 | `desarrollador` | Medio | Medio | Bajo si el plan trae el código y toca uno o dos archivos; un nivel más en las rondas 4 y 5 de corrección |
 | `revisor` (por tarea) | Medio | Medio | El nivel medio es el mínimo para revisar |
 | `revisor` (final de rama) | Alto | Alto | |

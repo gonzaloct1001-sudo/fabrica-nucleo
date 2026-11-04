@@ -43,7 +43,7 @@ de ruta aunque sea pequeño.
 | **Analizar** | revisor | Historia, plan y tareas | Informe de consistencia, sin cambios | Sin contradicciones ni requisitos sin tarea | Nada |
 | **Construir** | desarrollador | Plan analizado | Código, pruebas y commits | Primero una prueba que falla; todas en verde al final | Nada (si pregunta algo de negocio, la especificación quedó mal) |
 | **Revisar** | revisor | Diff de cada tarea | Dos veredictos: cumplimiento y calidad | Sin hallazgos críticos ni importantes abiertos | Nada |
-| **Verificar** | qa y seguridad | Rama completa | Matriz de casos y veredicto de seguridad | Definition of Done | Si el comportamiento es el que espera la operación |
+| **Verificar** | qa, seguridad y, en riesgo alto, equipo-rojo | Rama completa | Matriz de casos, veredicto de seguridad y hallazgos del equipo rojo | Definition of Done | Si el comportamiento es el que espera la operación |
 | **Entregar** | coordinador | Rama verificada | PR con vista previa | Controles de GitHub en verde | El merge, según el nivel de autonomía |
 | **Aprender** | documentador | Historia o épica cerrada | Estado, bitácora y retrospectiva | Aprendizajes separados entre proyecto y núcleo | Qué mejora pasa al núcleo |
 
@@ -81,7 +81,9 @@ estaba. La Dirección decide si lo aplica.
 - [ ] Datos personales identificados y declarados.
 - [ ] Riesgo asignado (bajo, medio o alto).
 - [ ] Dependencias resueltas o declaradas.
-- [ ] Pruebas de aceptación aprobadas por la Dirección cuando el riesgo es alto.
+- [ ] Pruebas de aceptación aprobadas por la Dirección cuando el riesgo es alto, con sus casos de abuso.
+- [ ] Modelo de amenazas del proyecto al día cuando la historia toca acceso, permisos, datos personales, pagos o
+  exposición a internet (`seguridad.md`).
 
 ## Definition of Done (para cerrar)
 
@@ -89,6 +91,8 @@ estaba. La Dirección decide si lo aplica.
 - [ ] Cobertura del dominio tocado de al menos 80 %.
 - [ ] Revisión sin hallazgos críticos ni importantes abiertos.
 - [ ] Veredicto de seguridad aprobado cuando el riesgo es medio o alto.
+- [ ] Hallazgos del equipo rojo reproducidos y corregidos, o descartados con su motivo, cuando el riesgo es alto.
+- [ ] Controles automáticos de seguridad en verde: pruebas, librerías y claves filtradas.
 - [ ] Contratos (API) y documentación al día.
 - [ ] Registro de decisiones entregado en el resumen.
 - [ ] `estado.json` del proyecto actualizado.

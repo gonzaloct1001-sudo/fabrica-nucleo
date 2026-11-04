@@ -5,6 +5,43 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.9.0 · 2026-11-04
+
+Seguridad en capas, y una revisión más independiente cuanto más sensible es el cambio.
+- **Constitución 1.1.0, artículo XIII "Seguridad en capas":** principio nuevo, que aprueba la Dirección.
+- **`nucleo/seguridad.md`:** las cuatro puertas (las cuentas de la Dirección, los agentes, las piezas de terceros y la
+  aplicación), qué puede pasar en cada una y cómo se cierra. También lo que se exige antes de guardar datos reales y
+  qué hacer si pasa algo.
+- **`nucleo/calidad.md`, "Revisión independiente en escalones":**
+  1. controles automáticos en cada PR;
+  2. agentes independientes y, en riesgo alto, el equipo rojo;
+  3. una segunda IA de otro proveedor, solo en lo sensible (etiqueta `revision:externa`);
+  4. una prueba de intrusión hecha por profesionales antes de los datos reales.
+
+  Los hallazgos del equipo rojo y de la segunda IA se reproducen antes de corregir.
+- **Rol nuevo `equipo-rojo`** (nivel alto): ataca la copia local con datos sintéticos, sin tocar el código, las pruebas
+  ni los controles. Cada hallazgo trae cómo reproducirlo. La skill `construir` lo llama en riesgo alto.
+- **Casos de abuso y modelo de amenazas:**
+  - la plantilla de historia trae "Casos de abuso", obligatorios en riesgo alto; pasan a las pruebas de aceptación;
+  - plantilla nueva `nucleo/plantillas/modelo-amenazas.md`. La skill `especificar` lo crea o lo actualiza cuando una
+    historia toca acceso, permisos, datos personales, pagos o exposición a internet;
+  - la Definition of Ready y la Definition of Done los exigen.
+- **`verificar_proyecto.py`, en la CI de cada proyecto: lo nuevo entra limpio.** Rechaza el PR que agrega:
+  - una acción de GitHub sin fijar por su huella;
+  - un archivo que nadie puede leer (compilado, binario o comprimido);
+  - código Python, JavaScript o TypeScript cuyas pruebas y librerías no revisa ningún flujo de GitHub.
+
+  Lo heredado se avisa sin bloquear, para que un proyecto adoptado lo corrija con su propio pedido.
+- **Contrato de autonomía:** nunca sin la Dirección darle a un agente claves de producción, ni mostrar el código o los
+  datos de un proyecto a un proveedor nuevo, como una segunda IA.
+- **Motor y agentes:**
+  - la corrida no usa claves de producción, y nada del proyecto sale de GitHub;
+  - el revisor de seguridad comprueba además que cada dependencia exista con ese nombre exacto, las acciones fijadas
+    por su huella, los archivos ilegibles, los casos de abuso, OWASP ASVS nivel 2 y el modelo de amenazas.
+- **Referencias:** OWASP ASVS y el Top 10 de OWASP para aplicaciones con modelos de lenguaje, como listas de
+  verificación.
+- **`probar_kit.py`:** 72 casos, 12 nuevos. Se comprobó además que detectan 12 fallas provocadas en el control nuevo.
+
 ## 0.8.0 · 2026-11-03
 
 La Dirección ve lo que aprueba: una página visual por decisión y otra al cerrar la jornada.

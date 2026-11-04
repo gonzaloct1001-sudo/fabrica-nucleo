@@ -15,6 +15,8 @@ persona.
 | Cuándo pedir una revisión adicional | | Agregar una dependencia nueva al producto |
 | | | Tratar datos personales nuevos |
 | | | Cambiar la constitución, un ADR vigente o las pruebas de aceptación aprobadas |
+| | | Darle a un agente claves de producción |
+| | | Mostrar el código o los datos de un proyecto a un proveedor nuevo, como una segunda IA |
 | | | Cualquier acción irreversible o destructiva |
 
 ## Cuándo se detiene una corrida
