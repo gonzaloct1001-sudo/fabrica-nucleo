@@ -15,7 +15,9 @@ La Dirección revisa y aprueba desde el teléfono, con su computador apagado.
     los controles;
   - lo que está en curso, lo que sigue y cómo responder.
 
-  Lleva siempre el mismo título, para publicarse cada mañana en la misma página.
+  Se lee de arriba abajo en el teléfono: primero lo más importante, después cada decisión en dos líneas con la
+  respuesta exacta y el detalle plegado; lo demás, plegado al final. Lleva siempre el mismo título, para
+  publicarse cada mañana en la misma página.
 - **La bandeja usa GitHub solo por la API REST.** `--integrar`, `--pagina`, `--jornada` y el resumen ya no usan
   `gh pr`, que no funciona en la nube, así que corren igual en una sesión en la nube. Al integrar:
   - vuelve a mirar si GitHub todavía calcula si se puede integrar;
@@ -29,7 +31,7 @@ La Dirección revisa y aprueba desde el teléfono, con su computador apagado.
   - al cerrar una sesión comprueba que nada quede solo en el computador;
   - lee los PRs por la API REST.
 - **`.fabrica/config.ejemplo.json`:** `resumen_diario.paginas`, la dirección fija de la página de cada cliente.
-- **`probar_bandeja.py`:** 52 casos, 12 nuevos. El GitHub simulado responde como la API REST y ya no responde
+- **`probar_bandeja.py`:** 53 casos, 13 nuevos. El GitHub simulado responde como la API REST y ya no responde
   `gh pr`. Se comprobó además que detectan 11 fallas provocadas:
   - sin el nombre del flujo de cada control;
   - sin los servicios externos;

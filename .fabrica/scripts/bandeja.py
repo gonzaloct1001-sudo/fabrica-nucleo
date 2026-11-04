@@ -604,39 +604,44 @@ def diario(propietario, cliente, repos, desde, salida, tz):
     hoy = datetime.now(tz).strftime("%Y-%m-%d %H:%M")
     hechos = (f"<span><b>{e(cliente)}</b> · {len(repos)} proyecto(s)</span><span>{hoy}</span>"
               f"<span>desde {inicio.astimezone(tz).strftime('%Y-%m-%d %H:%M')}</span><span>horas en {e(tz)}</span>")
+    # Se lee de arriba abajo en el teléfono: primero qué decidir y qué responder; el detalle, plegado, para quien quiera
     partes = [f'<header class="top"><span class="eyebrow">Resumen diario</span><h1>Lo que espera tu decisión</h1>'
               f'<div class="facts">{hechos}</div></header>',
-              cifras([(len(por_decidir), "esperan tu decisión"), (n_integrados, "PRs integrados"),
-                      (n_corridas, "corridas del motor"), (len(tomadas), "decisiones que tomó la fábrica")]),
               seccion("Lo más importante", completar("en dos o tres líneas, lo que cambió y qué conviene decidir "
                                                      "primero."))]
     if por_decidir:
         ref = e(f"{por_decidir[0][0]}#{por_decidir[0][1]}")
-        partes.append(seccion("Cómo respondes", f"<p>En la sesión de este resumen, en la app de Claude (Code), con una "
-                                                f"línea por decisión. Por ejemplo: «sí a {ref}», o «{ref}: no, cambia "
-                                                "esto». Cada respuesta se publica en GitHub con tu cuenta, y la "
-                                                "corrida del proyecto la toma desde ahí.</p>"))
-        for repo, numero in por_decidir:
+        bloques = []
+        for i, (repo, numero) in enumerate(por_decidir, 1):
             d = decision(propietario, repo, numero, "")
-            cuerpo = (f'<div class="facts">{d["hechos"]}</div>{d["pide"]}'
-                      + completar("en simple, cómo se ve si cambia algo visible, y qué pasa si dices sí o no, con tu "
-                                  "recomendación.")
-                      + f"<h3>Lo que la fábrica decidió por ti</h3>{d['decisiones']}"
-                      + (f"<h3>Documentos</h3>{d['documentos']}<h3>Controles</h3>{d['controles']}" if d["es_pr"]
-                         else ""))
-            partes.append(seccion(f"{repo} #{numero} · {d['titulo']}", cuerpo))
+            detalle_html = (f'<div class="facts">{d["hechos"]}</div>{d["pide"]}'
+                            f"<h3>Lo que la fábrica decidió por ti</h3>{d['decisiones']}"
+                            + (f"<h3>Documentos</h3>{d['documentos']}<h3>Controles</h3>{d['controles']}"
+                               if d["es_pr"] else ""))
+            bloques.append(f'<div class="decidir"><h3>{i}. {e(repo)} #{numero} · {e(d["titulo"])}</h3>'
+                           + completar("en dos líneas, qué decides y tu recomendación, con la respuesta exacta (por "
+                                       f"ejemplo «sí a {repo}#{numero}» o «{repo}#{numero}: A»).")
+                           + f"<details><summary>Ver el detalle</summary>{detalle_html}</details></div>")
+        partes.append(seccion(f"Para decidir ({len(por_decidir)})",
+                              f"<p>Responde en la sesión de esta mañana, en la app de Claude (Code), con una línea por "
+                              f"decisión: por ejemplo «sí a {ref}». Se publica en GitHub con tu cuenta.</p>"
+                              + "".join(bloques)))
     else:
         partes.append(seccion("Nada espera tu decisión",
                               "<p>Los motores siguen solos con lo que no depende de ti.</p>"))
-    partes.append(seccion("Lo que avanzó", en_orden(avance, tz, "%d-%m %H:%M") if avance
-                          else "<p>No hubo corridas, integraciones ni cierres en este lapso.</p>"))
-    partes.append(seccion("Lo que la fábrica decidió por ti", tarjetas_decisiones(tomadas)))
+    plegados = [("Lo que avanzó", en_orden(avance, tz, "%d-%m %H:%M") if avance
+                 else "<p>No hubo corridas, integraciones ni cierres en este lapso.</p>"),
+                ("Lo que la fábrica decidió por ti", tarjetas_decisiones(tomadas))]
     if en_curso:
-        partes.append(seccion("En curso, sin decisión pendiente", f"<ul>{''.join(en_curso)}</ul>"))
-    partes += [seccion("Lo que sigue", f"<ul>{''.join(sigue_html)}</ul>" if sigue_html else
-                       "<p>Las corridas todavía no dejaron escrito lo que sigue.</p>"),
-               seccion("Uso del plan", '<p>El consumo se ve en '
-                                       '<a href="https://claude.ai/settings/usage">claude.ai/settings/usage</a>.</p>'),
+        plegados.append(("En curso, sin decisión pendiente", f"<ul>{''.join(en_curso)}</ul>"))
+    plegados += [("Lo que sigue", f"<ul>{''.join(sigue_html)}</ul>" if sigue_html else
+                  "<p>Las corridas todavía no dejaron escrito lo que sigue.</p>"),
+                 ("Uso del plan", '<p>El consumo se ve en '
+                                  '<a href="https://claude.ai/settings/usage">claude.ai/settings/usage</a>.</p>')]
+    partes += [cifras([(len(por_decidir), "esperan tu decisión"), (n_integrados, "PRs integrados"),
+                       (n_corridas, "corridas del motor"), (len(tomadas), "decisiones que tomó la fábrica")]),
+               seccion("Para leer con calma", "".join(f"<details><summary>{html.escape(t)}</summary>{c}</details>"
+                                                      for t, c in plegados)),
                pie(tz)]
     salida = salida or Path(tempfile.gettempdir()) / "fabrica-paginas" / f"diario-{cliente}.html"
     return armar(f"Resumen diario · {cliente}", f"Lo que avanzó y lo que espera la decisión de la Dirección en los "

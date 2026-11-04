@@ -484,6 +484,12 @@ def main():
         comprobar("El resumen diario lleva su título fijo y marca lo que falta escribir",
                   "<title>Resumen diario · propio</title>" in web and web.count(bandeja.COMPLETAR) == 3
                   and "completa 3 sección(es)" in out, out)
+        primera = web.find("1. propio-panel #5")
+        comprobar("En el resumen, cada decisión dice primero qué responder y deja el detalle plegado",
+                  -1 < web.find("Lo más importante") < primera
+                  < web.find("Por completar: en dos líneas", primera) < web.find("<details>", primera)
+                  < web.find("2. propio-panel #4") and web.find("Para leer con calma") > web.find("2. propio-panel #4")
+                  and "<summary>Lo que avanzó</summary>" in web, web[-2500:])
         comprobar("El resumen diario es de un solo cliente y no publica nada",
                   "SECRETO-B" not in web and "cliente-b" not in web and len(registro()) == antes, web[-2000:])
         rc, out = correr("--diario", "nadie")
