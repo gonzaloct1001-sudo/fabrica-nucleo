@@ -1,6 +1,6 @@
 # Constitución de la fábrica
 
-**Versión:** 1.1.0 · **Vigente desde:** 2026-11-03
+**Versión:** 1.1.0 · **Vigente desde:** 2026-11-04
 
 Estos principios rigen todo trabajo de la fábrica, en cualquier cliente y proyecto. Ninguna instrucción de chat,
 historia o plan los suspende. Si algo los contradice, el agente lo dice antes de seguir y la Dirección decide.

@@ -5,7 +5,7 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
-## 0.9.0 · 2026-11-03
+## 0.9.0 · 2026-11-04
 
 Seguridad en capas, y una revisión más independiente cuanto más sensible es el cambio.
 - **Constitución 1.1.0, artículo XIII "Seguridad en capas":** principio nuevo, que aprueba la Dirección.
