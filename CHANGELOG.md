@@ -5,6 +5,14 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.10.1 · 2026-11-04
+
+- **Corrección:** el resumen diario recomendó aprobar un PR que contradecía una respuesta de la Dirección todavía no
+  aplicada. La pregunta estaba respondida y el PR seguía con la opción anterior. Ahora, cuando un proyecto tiene
+  respuestas por aplicar, cada PR de ese proyecto lo avisa en el resumen. La skill `bandeja-direccion` no recomienda
+  aprobar un PR que depende de una de esas respuestas.
+- **`probar_bandeja.py`:** 54 casos, 1 nuevo.
+
 ## 0.10.0 · 2026-11-04
 
 La Dirección revisa y aprueba desde el teléfono, con su computador apagado.

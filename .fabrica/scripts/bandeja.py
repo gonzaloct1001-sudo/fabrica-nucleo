@@ -573,7 +573,7 @@ def diario(propietario, cliente, repos, desde, salida, tz):
     para publicarla cada mañana en la misma dirección."""
     inicio, fin = instante(desde), datetime.now(timezone.utc)
     por_decidir, avance, en_curso, sigue_html = [], [], [], []
-    tomadas = []
+    tomadas, por_aplicar = [], {}
     n_corridas = n_integrados = n_cerrados = 0
     for repo in repos:
         d = leer(propietario, repo)
@@ -583,6 +583,8 @@ def diario(propietario, cliente, repos, desde, salida, tz):
         tomadas += [t for t in a["tomadas"] if t not in tomadas]
         avance += [(t, f"{repo} · {que}", det, url) for t, que, det, url in a["eventos"]]
         por_decidir += [(repo, p["number"]) for p in d["preguntas"] if not p.get("comments")]
+        # respuestas de la Dirección que la corrida todavía no aplicó: un PR del proyecto puede depender de ellas
+        por_aplicar[repo] = [p["number"] for p in d["preguntas"] if p.get("comments")]
         for p in d["prs"]:
             ci = estado_ci(p.get("statusCheckRollup"))
             if ci == "verde" and not p.get("isDraft"):
@@ -618,7 +620,11 @@ def diario(propietario, cliente, repos, desde, salida, tz):
                             f"<h3>Lo que la fábrica decidió por ti</h3>{d['decisiones']}"
                             + (f"<h3>Documentos</h3>{d['documentos']}<h3>Controles</h3>{d['controles']}"
                                if d["es_pr"] else ""))
-            bloques.append(f'<div class="decidir"><h3>{i}. {e(repo)} #{numero} · {e(d["titulo"])}</h3>'
+            pendientes = ", ".join(f"#{n}" for n in por_aplicar.get(repo, []))
+            aviso = (f'<p><span class="estado mal">ojo</span> Tienes respuestas por aplicar en este proyecto '
+                     f"({pendientes}). Si este PR depende de alguna, no lo apruebes todavía: la próxima corrida las "
+                     "aplica y el PR vuelve con ellas.</p>" if d["es_pr"] and pendientes else "")
+            bloques.append(f'<div class="decidir"><h3>{i}. {e(repo)} #{numero} · {e(d["titulo"])}</h3>{aviso}'
                            + completar("en dos líneas, qué decides y tu recomendación, con la respuesta exacta (por "
                                        f"ejemplo «sí a {repo}#{numero}» o «{repo}#{numero}: A»).")
                            + f"<details><summary>Ver el detalle</summary>{detalle_html}</details></div>")
