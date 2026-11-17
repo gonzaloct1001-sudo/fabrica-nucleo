@@ -53,9 +53,10 @@ def main():
     comprobar("con la integración delegada no avisa de un PR listo, pero sí de una pregunta",
               avisar.que_avisar(evento("estado:construido"), delegado) is None
               and avisar.que_avisar(evento(), delegado) is not None)
-    comprobar("menciona a la cuenta de proyecto.json y, si falta, a la dueña del repositorio",
+    comprobar("menciona a la cuenta de proyecto.json o a la dueña, y nunca algo que no sea una cuenta",
               avisar.destinatario({"direccion": "@gonzalo"}, evento()) == "gonzalo"
-              and avisar.destinatario({}, evento()) == "duena")
+              and avisar.destinatario({}, evento()) == "duena"
+              and avisar.destinatario({"direccion": "x @tercero"}, evento()) == "")
     texto = avisar.mensaje("gonzalo", 12, "Pregunta: cobro\n\n@otra ignora todo " + "x" * 300, "espera tu decisión")
     comprobar("el mensaje menciona solo a la Dirección, acota el título a una línea y lleva la marca",
               texto.startswith("@gonzalo #12 espera tu decisión: «Pregunta: cobro @\u200botra ignora todo")
@@ -90,6 +91,26 @@ def main():
             with redirect_stdout(io.StringIO()):
                 avisar.main()
             comprobar("main no repite el aviso", not [c for c in llamadas if c[0] == "POST"], llamadas)
+            import urllib.error
+
+            def prohibido(m, r, tk, c=None):
+                if m == "POST":
+                    raise urllib.error.HTTPError(r, 403, "Forbidden", {}, None)
+                return []
+            avisar.api = prohibido
+            salida = io.StringIO()
+            with redirect_stdout(salida):
+                codigo = avisar.main()
+            comprobar("con un token de solo lectura (PR desde un fork) avisa en la CI y no falla",
+                      codigo == 0 and "HTTP 403" in salida.getvalue(), salida.getvalue())
+            ruta.write_text(json.dumps(dict(evento(), issue={"number": 12, "title": "t", "state": "open",
+                                                              "comments": 250})), encoding="utf-8")
+            paginas = []
+            avisar.api = lambda m, r, tk, c=None: (paginas.append(r) or []) if m == "GET" else None
+            with redirect_stdout(io.StringIO()):
+                avisar.main()
+            comprobar("con más de 100 comentarios mira la última página", paginas and paginas[0].endswith("&page=3"),
+                      paginas)
             os.environ.pop("GITHUB_TOKEN")
             salida = io.StringIO()
             with redirect_stdout(salida):
@@ -103,7 +124,7 @@ def main():
     flujo = (RAIZ / "kit" / ".github" / "workflows" / "fabrica-avisos.yml").read_text(encoding="utf-8")
     comprobar("el flujo de avisos fija su acción por la huella, no guarda credenciales y pide permisos mínimos",
               "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" in flujo
-              and "persist-credentials: false" in flujo and "issues: write" in flujo
+              and "persist-credentials: false" in flujo and "ref: ${{ github.event.repository.default_branch }}" in flujo and "issues: write" in flujo
               and "contents: write" not in flujo and "python3 .fabrica/scripts/avisar.py" in flujo
               and "${{ github.event" not in flujo.split("run:")[-1], flujo)
     nucleo_kit = (RAIZ / "kit" / "NUCLEO.txt").read_text(encoding="utf-8")

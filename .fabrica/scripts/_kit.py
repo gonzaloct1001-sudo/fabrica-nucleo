@@ -132,14 +132,16 @@ def _tiene_id_de_historia(archivo):
 
 
 def detectar_rutas(raiz):
-    """En un proyecto que ya existe, dónde guarda sus historias y sus planes, si no usa las carpetas de la fábrica.
+    """En un proyecto que ya existe, dónde guarda sus historias, sus planes, su siguiente acción y sus notas para
+    sesiones, si no usa las rutas de la fábrica.
 
     Historias: la carpeta con más archivos .md cuya cabecera tiene un `id: X-NNN`. Planes: la que tiene más archivos
-    `*-plan.md`. Devuelve solo las rutas distintas de las de la fábrica.
+    `*-plan.md`. Siguiente acción y notas: el archivo con ese nombre, si no está en docs/. Devuelve solo las rutas
+    distintas de las de la fábrica.
     """
     import os
     raiz = Path(raiz)
-    historias, planes = {}, {}
+    historias, planes, archivos_por_nombre = {}, {}, {}
     for actual, carpetas, archivos in os.walk(raiz):
         carpetas[:] = sorted(c for c in carpetas if c not in NO_BUSCAR)  # no recorre node_modules ni .git
         rel = Path(actual).relative_to(raiz)
@@ -149,11 +151,16 @@ def detectar_rutas(raiz):
         for nombre in archivos:
             if not nombre.endswith(".md"):
                 continue
+            if nombre in ("siguiente-accion.md", "notas-para-sesiones.md"):
+                archivos_por_nombre.setdefault(nombre, []).append(f"{carpeta}/{nombre}")
             if nombre.endswith("-plan.md"):
                 planes[carpeta] = planes.get(carpeta, 0) + 1
             elif _tiene_id_de_historia(Path(actual) / nombre):
                 historias[carpeta] = historias.get(carpeta, 0) + 1
     rutas = {}
+    for clave, nombre in (("siguiente_accion", "siguiente-accion.md"), ("notas", "notas-para-sesiones.md")):
+        if not (raiz / "docs" / nombre).exists() and nombre in archivos_por_nombre:
+            rutas[clave] = sorted(archivos_por_nombre[nombre])[0]
     for clave, cuentas, defecto in (("historias", historias, "docs/historias"), ("planes", planes, "docs/planes")):
         if cuentas:
             mejor = max(sorted(cuentas), key=lambda c: cuentas[c])
@@ -177,6 +184,16 @@ def _script_de_estado(raiz_instancia):
     return modulo
 
 
+def _tope_de_instancia(raiz_instancia):
+    """El tope de historias en curso de `.fabrica/config.json` de la instancia, o 1."""
+    try:
+        config = json.loads((Path(raiz_instancia) / ".fabrica" / "config.json").read_text(encoding="utf-8"))
+        tope = config.get("topes", {}).get("historias_en_curso_por_proyecto", 1)
+    except (OSError, ValueError, AttributeError):
+        return 1
+    return tope if isinstance(tope, int) and tope > 0 else 1
+
+
 def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombre, propietario, version,
                       fase="descubrimiento", adoptado=False, rutas=None):
     """Crea los archivos propios iniciales que le falten al proyecto, sin pisar ninguno que ya exista.
@@ -188,7 +205,9 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
     datos = {"version_formato": 1, "cliente": cliente, "negocio": negocio, "proyecto": proyecto, "nombre": nombre,
              "repositorio": repo, "nucleo": version, "creado": hoy, "pausa": False,
              "direccion": propietario,  # cuenta de GitHub cuyo "intégralo" autoriza un merge (nucleo/autonomia.md)
-             "motor": {"pasos_por_corrida": 1},  # nucleo/motor.md
+             "motor": {"pasos_por_corrida": 1, "corridas_por_dia": 6},  # nucleo/motor.md
+             # topes del proyecto (verificar_proyecto.py): los de la instancia, si los fija
+             "topes": {"historias_en_curso": _tope_de_instancia(raiz_instancia), "lineas_siguiente_accion": 40},
              # dónde viven las historias y los planes; un proyecto adoptado puede usar las suyas (estado.py)
              "rutas": {"historias": "docs/historias", "planes": "docs/planes",
                        "siguiente_accion": "docs/siguiente-accion.md", "notas": "docs/notas-para-sesiones.md",
@@ -209,6 +228,9 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
     estado["historias"] = {**estado.get("historias", {}),
                            **_script_de_estado(raiz_instancia).cifras_de_historias(destino, {
                                "historias": datos["rutas"]["historias"], "planes": datos["rutas"]["planes"]})}
+    # Un proyecto nuevo nace con la coherencia del estado exigida; uno adoptado, en modo aviso, hasta que corra
+    # `estado.py --escribir` en su propio PR (lo nuevo nace apagado: nucleo/actualizaciones.md).
+    estado["cifras_generadas"] = not adoptado
     _crear(destino, ".fabrica/estado.json", json.dumps(estado, ensure_ascii=False, indent=2) + "\n", creados)
 
     constitucion = (raiz_instancia / "nucleo" / "plantillas" / "constitucion-proyecto.md").read_text(encoding="utf-8")

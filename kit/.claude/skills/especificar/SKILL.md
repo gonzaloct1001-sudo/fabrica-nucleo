@@ -46,7 +46,9 @@ La Dirección confirma la iniciativa antes de especificar las historias.
    etiqueta (`autonomia.pruebas_aprobadas: "fabrica"`), la pones tú solo cuando las pruebas traducen reglas ya
    decididas o agregan casos, y el `revisor` confirma en el PR que ningún criterio se quitó ni se debilitó. La CI no deja pasar
    cambios en `pruebas/aceptacion/` sin esa etiqueta.
-8. **La Definition of Ready.** Revísala punto por punto (`.fabrica/nucleo/ciclo.md`). Si se cumple, la historia pasa
+8. **El estado.** Al crear una historia o cambiar su estado, corre `python .fabrica/scripts/estado.py --escribir` y
+   sube `.fabrica/estado.json` en el mismo PR: la CI rechaza un estado que no coincide con las historias.
+9. **La Definition of Ready.** Revísala punto por punto (`.fabrica/nucleo/ciclo.md`). Si se cumple, la historia pasa
    a `estado:listo`.
 
 ## Lo que devuelves

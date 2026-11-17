@@ -133,6 +133,10 @@ def revisar_estado(errores):
         if estado.get("semaforo") and estado["semaforo"] not in SEMAFOROS:
             errores.append(f".fabrica/estado.json: semáforo '{estado['semaforo']}' no es válido.")
     if proyecto:
+        motor = proyecto.get("motor") if isinstance(proyecto.get("motor"), dict) else {}
+        for clave in ("pasos_por_corrida", "corridas_por_dia"):
+            if clave in motor and not (isinstance(motor[clave], int) and motor[clave] > 0):
+                errores.append(f".fabrica/proyecto.json: 'motor.{clave}' debe ser un número entero mayor que 0.")
         revisar_rutas(proyecto, errores)
         revisar_autonomia(proyecto, errores)
     if proyecto and estado:
@@ -216,7 +220,7 @@ def cambia_la_constitucion(base, cambiados):
     return previa != actual
 
 
-def revisar_coherencia(errores, avisos):
+def revisar_coherencia(errores, avisos, cambiados=None):
     """El estado no se escribe a mano: sus cifras salen del disco (B2), y los topes se cumplen (B2 y B3)."""
     proyecto = _estado.leer_json(RAIZ / ".fabrica/proyecto.json")
     estado = _estado.leer_json(RAIZ / ".fabrica/estado.json")
@@ -233,12 +237,20 @@ def revisar_coherencia(errores, avisos):
     guardadas = estado.get("historias") if isinstance(estado.get("historias"), dict) else {}
     distintas = [f"{clave} {guardadas.get(clave)} (en el disco, {valor})" for clave, valor in en_disco.items()
                  if guardadas.get(clave) != valor]
+    # Un proyecto que todavía no generó su estado con el script (anterior al núcleo 0.12) solo recibe avisos: lo
+    # nuevo nace apagado y se enciende al correr `estado.py --escribir` por primera vez.
+    # Además, solo se exige en un PR que toca historias o estado.json: un PR ajeno (por ejemplo, de Dependabot) no
+    # queda en rojo por una incoherencia que dejaron dos PRs concurrentes. Ese caso se avisa y lo arregla el siguiente
+    # PR que toque historias, o uno que solo corra `estado.py --escribir`.
+    toca = cambiados is not None and any(
+        c == ".fabrica/estado.json" or c.startswith(rutas["historias"].rstrip("/") + "/") for c in cambiados)
+    exigir = errores if estado.get("cifras_generadas") and toca else avisos
     if distintas:
-        errores.append("Las cifras de .fabrica/estado.json no coinciden con las historias: " + ", ".join(distintas)
-                       + ". Rehazlas con `python .fabrica/scripts/estado.py --escribir` en este mismo PR.")
+        exigir.append("Las cifras de .fabrica/estado.json no coinciden con las historias: " + ", ".join(distintas)
+                      + ". Rehazlas con `python .fabrica/scripts/estado.py --escribir` en este mismo PR.")
     if en_disco["en_curso"] > topes["historias_en_curso"]:
-        errores.append(f"Hay {en_disco['en_curso']} historias en construcción y el tope es {topes['historias_en_curso']}"
-                       " (.fabrica/nucleo/ciclo.md, «Regla del ciclo corto»).")
+        exigir.append(f"Hay {en_disco['en_curso']} historias en construcción y el tope es {topes['historias_en_curso']}"
+                      " (.fabrica/nucleo/ciclo.md, «Regla del ciclo corto»).")
     rel = proyecto.get("rutas", {}).get("siguiente_accion") if isinstance(proyecto.get("rutas"), dict) else None
     rel = rel.strip() if _estado.ruta_segura(RAIZ, rel) else RUTA_SIGUIENTE_ACCION
     siguiente = RAIZ / rel
@@ -258,6 +270,11 @@ def etiquetas_del_pr(explicitas):
         evento = json.loads(Path(ruta).read_text(encoding="utf-8"))
         return {e.get("name", "") for e in (evento.get("pull_request") or {}).get("labels", [])}
     return set()
+
+
+def cambiados_desde(base):
+    rc, salida = git("diff", "--name-only", f"{base}...HEAD")
+    return [l.strip() for l in salida.splitlines() if l.strip()] if rc == 0 else []
 
 
 def revisar_cambios(base, explicitas, errores, avisos):
@@ -407,7 +424,7 @@ def main():
     errores, avisos = [], []
     revisar_kit(errores)
     revisar_estado(errores)
-    revisar_coherencia(errores, avisos)
+    revisar_coherencia(errores, avisos, cambiados_desde(a.base) if a.base else None)
     revisar_seguridad(avisos)
     if a.base:
         revisar_cambios(a.base, a.etiquetas, errores, avisos)

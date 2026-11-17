@@ -108,7 +108,9 @@ su aplicación.
 La tarea del motor puede sumar, en su página de claude.ai/code/routines, un **disparador de GitHub** además del
 horario: el evento *Pull request · closed* del repositorio del proyecto. Así, cuando la Dirección integra un PR, la
 corrida siguiente parte en el momento y no a la hora fijada.
-- **Solo ese evento.** Los eventos de issues no sirven: la propia corrida etiqueta issues y se despertaría a sí misma.
+- **Solo ese evento,** y si el formulario lo permite, filtrado a los PRs integrados. Los eventos de issues no sirven: la
+  propia corrida etiqueta issues y se despertaría a sí misma. Por la misma razón, la corrida no cierra PRs sin
+  integrar.
 - **Con tope:** cada proyecto fija `motor.corridas_por_dia` en `.fabrica/proyecto.json` (por defecto, 6). Una corrida
   que encuentra ese número de entradas de hoy en la bitácora anota "tope diario" y termina sin trabajar.
 - Los eventos de GitHub tienen además un tope por hora de la plataforma: lo que pasa de ese tope se pierde, y el
@@ -139,8 +141,8 @@ Para ver las historias por columna desde GitHub móvil, la Dirección arma una v
 - **Identidad:** todo lo que hace la corrida aparece en GitHub con la cuenta de la Dirección. Por eso GitHub no le
   notifica sus propias preguntas ni la bitácora. Para recibir avisos hace falta un mensaje creado por otra identidad.
   Desde la 0.12, el kit trae el flujo `.github/workflows/fabrica-avisos.yml`: cuando un issue o un PR recibe
-  `espera:direccion` o `estado:construido`, comenta como `github-actions` y menciona a la Dirección. Además
-  (por ejemplo, un bot de GitHub Actions). Ese es el trabajo del panel y del resumen diario de la instancia.
+  `espera:direccion` o `estado:construido`, comenta como `github-actions` y menciona a la Dirección. El panel y el resumen
+  diario de la instancia completan los avisos.
 
 ## Diagnosticar una corrida
 

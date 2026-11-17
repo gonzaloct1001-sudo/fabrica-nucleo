@@ -58,6 +58,16 @@ def main():
         if v:
             texto = ficha.read_text(encoding="utf-8")
             ficha.write_text(re.sub(r'("nucleo"\s*:\s*")[^"]*(")', rf"\g<1>{v}\g<2>", texto, count=1), encoding="utf-8")
+        # Desde el núcleo 0.11 el kit lee dónde están las historias y los planes. Un proyecto anterior que las guarda
+        # en otra carpeta las recibe detectadas, una sola vez; después son suyas y la actualización no las toca.
+        datos_ahora = json.loads(ficha.read_text(encoding="utf-8"))
+        if "rutas" not in datos_ahora:
+            detectadas = _kit.detectar_rutas(proyecto)
+            if detectadas:
+                datos_ahora["rutas"] = detectadas
+                ficha.write_text(json.dumps(datos_ahora, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                print("Rutas propias registradas en .fabrica/proyecto.json: "
+                      + ", ".join(f"{k} = {v}" for k, v in detectadas.items()))
 
     with tempfile.TemporaryDirectory(prefix="fabrica-kit-") as tmp:
         fuente = Path(tmp) / "kit"

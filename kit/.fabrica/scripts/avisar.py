@@ -17,12 +17,15 @@ Uso en la CI: python3 .fabrica/scripts/avisar.py   (lee GITHUB_EVENT_PATH, GITHU
 """
 import json
 import os
+import re
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 MARCA = "<!-- fabrica:aviso -->"
+CUENTA = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")  # forma de una cuenta de GitHub
 AVISOS = {
     "espera:direccion": "espera tu decisión",
     "estado:construido": "tiene su PR listo: falta decidir quién lo integra",
@@ -42,7 +45,8 @@ def destinatario(proyecto, evento):
     cuenta = proyecto.get("direccion") if isinstance(proyecto.get("direccion"), str) else ""
     if not cuenta:
         cuenta = ((evento.get("repository") or {}).get("owner") or {}).get("login", "")
-    return cuenta.strip().lstrip("@")
+    cuenta = cuenta.strip().lstrip("@")
+    return cuenta if CUENTA.match(cuenta) else ""
 
 
 def asunto(evento):
@@ -103,12 +107,19 @@ def main():
         print("Falta GITHUB_TOKEN o GITHUB_REPOSITORY: este script corre en GitHub Actions.")
         return 1
     numero, titulo, _ = asunto(evento)
-    comentarios = api("GET", f"repos/{repo}/issues/{numero}/comments?per_page=100", token) or []
-    if ya_avisado(comentarios):
-        print(f"#{numero} ya tiene el aviso como último comentario: no se repite.")
+    total = (evento.get("issue") or evento.get("pull_request") or {}).get("comments") or 0
+    pagina = max(1, -(-int(total) // 100))  # la última página: ahí está el último comentario
+    try:
+        comentarios = api("GET", f"repos/{repo}/issues/{numero}/comments?per_page=100&page={pagina}", token) or []
+        if ya_avisado(comentarios):
+            print(f"#{numero} ya tiene el aviso como último comentario: no se repite.")
+            return 0
+        api("POST", f"repos/{repo}/issues/{numero}/comments", token,
+            {"body": mensaje(destinatario(proyecto, evento), numero, titulo, texto)})
+    except urllib.error.HTTPError as error:
+        # Un PR desde un fork recibe un token de solo lectura: no hay aviso, pero tampoco una falla en la CI
+        print(f"::warning::No se pudo dejar el aviso en #{numero} (HTTP {error.code}).")
         return 0
-    api("POST", f"repos/{repo}/issues/{numero}/comments", token,
-        {"body": mensaje(destinatario(proyecto, evento), numero, titulo, texto)})
     print(f"Aviso dejado en #{numero}.")
     return 0
 

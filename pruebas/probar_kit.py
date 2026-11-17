@@ -231,37 +231,77 @@ def main():
         comprobar("estado.py y la verificación no dejan rastros en el proyecto", sucio.strip() == "", sucio)
 
         # Núcleo 0.12: el estado sale del script y la CI lo exige coherente (B1, B2), con topes (B3)
+        datos_n = json.loads(original)
+        comprobar("Un proyecto nuevo nace con el motor, los topes y la coherencia del estado exigida",
+                  datos_n["motor"].get("corridas_por_dia") == 6 and datos_n["topes"]["historias_en_curso"] == 1
+                  and json.loads(leer(proy / ".fabrica/estado.json")).get("cifras_generadas") is True, original)
+        _, main_antes = run(["git", "rev-parse", "HEAD"], proy)
+        run(["git", "checkout", "-q", "-b", "historia-nueva"], proy)
         historia = proy / "docs" / "historias" / "H-001-vender.md"
         historia.write_text("---\nid: H-001\nestado: en-curso\n---\n# Vender\n", encoding="utf-8")
-        rc, out = run(verif, proy)
-        comprobar("Un estado que no coincide con las historias se rechaza y dice cómo rehacerlo",
+        run(["git", "add", "-A"], proy)
+        run(["git", "commit", "-qm", "Historia sin estado al día"], proy)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
+        comprobar("Un PR que toca historias con el estado desfasado se rechaza y dice cómo rehacerlo",
                   rc != 0 and "estado.py --escribir" in out and "en_curso 0 (en el disco, 1)" in out, out)
         rc_e, out_e = run([sys.executable, ".fabrica/scripts/estado.py", "--escribir", "--sin-red"], proy)
-        rc, out = run(verif, proy)
-        comprobar("Tras estado.py --escribir, la verificación pasa", rc_e == 0 and rc == 0, out_e + out)
+        run(["git", "commit", "-qam", "Estado al día"], proy)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
+        comprobar("Tras estado.py --escribir, el PR pasa", rc_e == 0 and rc == 0, out_e + out)
         (proy / "docs" / "historias" / "H-002-cobrar.md").write_text("---\nid: H-002\nestado: en-curso\n---\n",
                                                                     encoding="utf-8")
         run([sys.executable, ".fabrica/scripts/estado.py", "--escribir", "--sin-red"], proy)
-        rc, out = run(verif, proy)
+        run(["git", "add", "-A"], proy)
+        run(["git", "commit", "-qm", "Segunda historia en curso"], proy)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
         comprobar("Dos historias en construcción superan el tope y se rechaza", rc != 0 and "tope es 1" in out, out)
+        run(["git", "checkout", "-q", "main"], proy)
+        run(["git", "merge", "-q", "--ff-only", "historia-nueva"], proy)
+        (proy / "docs" / "historias" / "H-002-cobrar.md").write_text("---\nid: H-002\nestado: listo\n---\n",
+                                                                    encoding="utf-8")
+        run(["git", "commit", "-qam", "Integrado sin rehacer el estado (dos PRs concurrentes)"], proy)
+        run(["git", "checkout", "-q", "-b", "dependencias"], proy)
+        (proy / "requisitos-ci.txt").write_text("ruff==0.17.4\n", encoding="utf-8")
+        run(["git", "add", "-A"], proy)
+        run(["git", "commit", "-qm", "Actualiza una dependencia"], proy)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
+        comprobar("Un PR que no toca historias no queda en rojo por un estado desfasado en la principal: solo avisa",
+                  rc == 0 and "Aviso: Las cifras" in out, out)
+        rc, out = run(verif, proy)
+        comprobar("Sin base (push a la principal), un estado desfasado solo se avisa", rc == 0 and "Aviso:" in out, out)
+        run(["git", "checkout", "-q", "main"], proy)
+        run(["git", "branch", "-q", "-D", "dependencias", "historia-nueva"], proy)
+        run(["git", "reset", "-q", "--hard", main_antes.strip()], proy)
         siguiente = proy / "docs" / "siguiente-accion.md"
         siguiente_original = siguiente.read_text(encoding="utf-8")
         siguiente.write_text(siguiente_original + "\n".join(f"- hecho {i}" for i in range(50)) + "\n", encoding="utf-8")
-        (proy / "docs" / "historias" / "H-002-cobrar.md").unlink()
-        run([sys.executable, ".fabrica/scripts/estado.py", "--escribir", "--sin-red"], proy)
         rc, out = run(verif, proy)
-        comprobar("Una siguiente acción sobre su tope se avisa sin rechazar", rc == 0 and "Aviso:" in out and "tope es 40"
-                  in out, out)
+        comprobar("Una siguiente acción sobre su tope se avisa sin rechazar",
+                  rc == 0 and "Aviso:" in out and "tope es 40" in out, out)
         rc, out = con_proyecto(topes={"modo": "bloquear"})
         comprobar("Con topes.modo bloquear, se rechaza", rc != 0 and "tope es 40" in out, out)
         rc, out = con_proyecto(topes={"lineas_siguiente_accion": 200})
         comprobar("Un tope propio del proyecto se respeta", rc == 0 and "tope es" not in out, out)
+        rc, out = con_proyecto(motor={"pasos_por_corrida": 1, "corridas_por_dia": 0})
+        comprobar("Un tope de corridas por día inválido se rechaza", rc != 0 and "corridas_por_dia" in out, out)
         ficha_p.write_text(original, encoding="utf-8")
         siguiente.write_text(siguiente_original, encoding="utf-8")
-        historia.unlink()
-        run(["git", "checkout", "-q", "--", ".fabrica/estado.json"], proy)
         rc, out = run(verif, proy)
-        comprobar("El proyecto vuelve a quedar limpio", rc == 0, out)
+        rc_s, sucio = run(["git", "status", "--porcelain"], proy)
+        comprobar("El proyecto vuelve a quedar limpio", rc == 0 and sucio.strip() == "", out + sucio)
+        estado_p = proy / ".fabrica" / "estado.json"
+        estado_original = estado_p.read_text(encoding="utf-8")
+        anterior = json.loads(estado_original)
+        anterior.pop("cifras_generadas", None)
+        anterior["historias"]["total"] = 8
+        estado_p.write_text(json.dumps(anterior, ensure_ascii=False, indent=2), encoding="utf-8")
+        run(["git", "checkout", "-q", "-b", "anterior"], proy)
+        run(["git", "commit", "-qam", "Estado escrito a mano, como antes de la 0.12"], proy)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
+        comprobar("En un proyecto anterior a la 0.12, un estado desfasado solo se avisa, aunque el PR lo toque",
+                  rc == 0 and "Aviso:" in out and "estado.py --escribir" in out, out)
+        run(["git", "checkout", "-q", "main"], proy)
+        run(["git", "branch", "-q", "-D", "anterior"], proy)
         flujo = leer(proy / ".github/workflows/fabrica.yml")
         etiquetas = leer(proy / ".github/etiquetas.json")
         comprobar("El flujo de la fábrica corre en main y en master, y el kit trae el de avisos y la etiqueta de pausa",
@@ -481,7 +521,10 @@ def main():
                          ".github/workflows/ci.yml": "# CI propia\n", "docs/01-descubrimiento/venta.md": "notas\n",
                          ".gitignore": "node_modules/\n.env\n", "src/app.txt": "código\n",
                          "docs/02-requerimientos/historias/H-001-vender.md": "---\nid: H-001\nestado: hecho\n---\n# Vender\n",
-                         "docs/02-requerimientos/historias/H-002-cobrar.md": "---\nid: H-002\nestado: borrador\n---\n"}
+                         "docs/02-requerimientos/historias/H-002-cobrar.md": "---\nid: H-002\nestado: borrador\n---\n",
+                         "docs/05-plan/siguiente-accion.md": "# Siguiente acción\n",
+                         "docs/02-requerimientos/historias/H-003-a.md": "---\nid: H-003\nestado: en-curso\n---\n",
+                         "docs/02-requerimientos/historias/H-004-b.md": "---\nid: H-004\nestado: en-curso\n---\n"}
         for rel, texto in propios_viejo.items():
             (viejo / rel).parent.mkdir(parents=True, exist_ok=True)
             (viejo / rel).write_text(texto, encoding="utf-8")
@@ -541,10 +584,20 @@ def main():
         comprobar("El PR de la adopción no pide constitucion-aprobada", rc_b == 0 and rc == 0, out)
         comprobar("La adopción registra dónde guarda el proyecto sus historias",
                   rutas_v.get("historias") == "docs/02-requerimientos/historias"
-                  and rutas_v.get("planes") == "docs/planes", json.dumps(rutas_v))
+                  and rutas_v.get("planes") == "docs/planes"
+                  and rutas_v.get("siguiente_accion") == "docs/05-plan/siguiente-accion.md", json.dumps(rutas_v))
         rc, out = script(inst, *adoptar, "--aplicar")
         comprobar("No adopta dos veces el mismo proyecto", rc != 0 and "ya es un proyecto de la fábrica" in out, out)
         rc, out = script(inst, "actualizar_kit.py", str(viejo), "--aplicar")
+        ficha_v = viejo / ".fabrica" / "proyecto.json"
+        datos_v = json.loads(ficha_v.read_text(encoding="utf-8"))
+        datos_v.pop("rutas")
+        ficha_v.write_text(json.dumps(datos_v, ensure_ascii=False, indent=2), encoding="utf-8")
+        run(["git", "commit", "-qam", "Proyecto anterior a la 0.11, sin rutas"], viejo)
+        rc, out = script(inst, "actualizar_kit.py", str(viejo), "--aplicar")
+        rutas_v = json.loads(ficha_v.read_text(encoding="utf-8")).get("rutas", {})
+        comprobar("La actualización registra las rutas de un proyecto anterior que guarda sus historias en otra carpeta",
+                  rc == 0 and rutas_v.get("historias") == "docs/02-requerimientos/historias", out[-600:])
         comprobar("El proyecto adoptado se actualiza como cualquier otro y conserva lo propio",
                   rc == 0 and (viejo / ".claude/agents/dev-movil.md").exists()
                   and (viejo / ".claude/skills/propia/SKILL.md").exists(), out)

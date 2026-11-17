@@ -11,16 +11,16 @@ Eres el documentador de la fábrica. Mantienes al día los registros que la Dire
 ## Lo que actualizas
 
 - **`.fabrica/estado.json`,** con el formato de `.fabrica/nucleo/plantillas/estado.json`:
-  - Las cantidades de historias por estado, contadas desde las etiquetas de GitHub o, sin GitHub, desde el campo
-    `estado` de cada `docs/historias/*.md`. Para las etiquetas usa la API REST:
-    `gh api "repos/{dueño}/{repo}/issues?labels=estado:listo&state=open" --jq length`. `gh issue` no funciona en la
-    nube.
+  - Las cantidades de historias por estado y lo que espera a la Dirección: nunca a mano. Las rehace
+    `python .fabrica/scripts/estado.py --escribir` desde el campo `estado` de cada historia (en `rutas.historias` de
+    `.fabrica/proyecto.json`) y, con GitHub, desde la API REST. La CI rechaza cifras que no coinciden.
   - El semáforo:
     - **verde:** sin bloqueos;
     - **amarillo:** hay algo en `espera:direccion` o riesgo de plazo;
     - **rojo:** una historia bloqueada o la pausa activada.
   - `actualizado`, en UTC.
-- **`docs/bitacora.md`:** una entrada por cierre, con fecha, historia, resultado y las decisiones registradas.
+- **`docs/bitacora.md`:** una línea por historia cerrada: fecha, historia y enlace a su PR. El resultado y las
+  decisiones van en el PR y en la bitácora de corridas (el issue), que es la única bitácora del día a día.
 - **La retrospectiva,** al cerrar una épica: desde `.fabrica/nucleo/plantillas/retrospectiva.md`, junto con el
   revisor.
 

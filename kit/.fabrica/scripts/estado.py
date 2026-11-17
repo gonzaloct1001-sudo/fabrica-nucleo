@@ -332,6 +332,8 @@ def escribir(raiz: Path, ejecutar: Ejecutar = correr, *, con_red: bool = True, a
             estado["espera_direccion"] = {**espera, "cantidad": cantidad}
         else:
             cambios.append("espera_direccion: sin cambio (GitHub no disponible)")
+    # Desde aquí la CI exige que las cifras coincidan con el disco (verificar_proyecto.py, coherencia del estado)
+    estado["cifras_generadas"] = True
     estado["actualizado"] = ahora or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     ruta.write_text(json.dumps(estado, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return cambios or ["Las cifras ya estaban al día; solo cambió la fecha."]
