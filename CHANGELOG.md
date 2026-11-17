@@ -42,9 +42,10 @@ Lo que inventó el primer proyecto real y sirve a todos pasa al kit (D6 de la re
   `principios-opcionales.md`. La constitución del proyecto suma "Autonomía en este proyecto" y apunta a los principios
   opcionales, que solo rigen si se copian.
 - **`actualizaciones.md`:** cómo se retira una pieza propia de un proyecto cuando su versión oficial llega con el kit.
-- **Pruebas:** `probar_estado.py`, 26 casos nuevos, en la CI del núcleo. `probar_kit.py`: 89 casos, 17 nuevos.
+- **Pruebas:** `probar_estado.py`, 26 casos nuevos, en la CI del núcleo. `probar_kit.py`: 91 casos, 19 nuevos.
 - **Revisión independiente:** la revisión de la rama encontró 7 hallazgos importantes (sobre todo, límites de la
-  delegación) y 6 menores; todos se corrigieron en una sola tanda.
+  delegación) y 6 menores; todos se corrigieron en una sola tanda. La revisión acotada de esa tanda encontró que el
+  PR de una adopción quedaba pidiendo `constitucion-aprobada`; se corrigió, con su prueba.
 
 ## 0.10.1 · 2026-11-04
 

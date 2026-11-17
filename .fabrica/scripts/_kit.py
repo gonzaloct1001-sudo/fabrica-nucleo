@@ -111,8 +111,24 @@ def _crear(destino, rel, texto, creados):
         creados.append(rel)
 
 
-CABECERA_DE_HISTORIA = re.compile(r"\A---\s*\n(?:.*\n)*?id:\s*[A-Z]+-\d+", re.M)
+ID_DE_HISTORIA = re.compile(r"^id:\s*[A-Z]+-\d+\s*(#.*)?$")
 NO_BUSCAR = {".git", ".fabrica", ".claude", ".github", "node_modules", ".venv", "__pycache__"}
+
+
+def _tiene_id_de_historia(archivo):
+    """Si la cabecera `---` del archivo, y solo ella, tiene un `id: X-NNN`."""
+    try:
+        lineas = archivo.read_text(encoding="utf-8", errors="replace").splitlines()[:40]
+    except OSError:
+        return False
+    if not lineas or lineas[0].strip() != "---":
+        return False
+    for linea in lineas[1:]:
+        if linea.strip() == "---":
+            return False
+        if ID_DE_HISTORIA.match(linea.strip()):
+            return True
+    return False
 
 
 def detectar_rutas(raiz):
@@ -121,22 +137,22 @@ def detectar_rutas(raiz):
     Historias: la carpeta con más archivos .md cuya cabecera tiene un `id: X-NNN`. Planes: la que tiene más archivos
     `*-plan.md`. Devuelve solo las rutas distintas de las de la fábrica.
     """
+    import os
     raiz = Path(raiz)
     historias, planes = {}, {}
-    for archivo in raiz.rglob("*.md"):
-        rel = archivo.relative_to(raiz)
-        if set(rel.parts) & NO_BUSCAR or len(rel.parts) < 2:
+    for actual, carpetas, archivos in os.walk(raiz):
+        carpetas[:] = sorted(c for c in carpetas if c not in NO_BUSCAR)  # no recorre node_modules ni .git
+        rel = Path(actual).relative_to(raiz)
+        if not rel.parts:
             continue
-        carpeta = rel.parent.as_posix()
-        if archivo.name.endswith("-plan.md"):
-            planes[carpeta] = planes.get(carpeta, 0) + 1
-            continue
-        try:
-            inicio = archivo.read_text(encoding="utf-8", errors="replace")[:600]
-        except OSError:
-            continue
-        if CABECERA_DE_HISTORIA.match(inicio):
-            historias[carpeta] = historias.get(carpeta, 0) + 1
+        carpeta = rel.as_posix()
+        for nombre in archivos:
+            if not nombre.endswith(".md"):
+                continue
+            if nombre.endswith("-plan.md"):
+                planes[carpeta] = planes.get(carpeta, 0) + 1
+            elif _tiene_id_de_historia(Path(actual) / nombre):
+                historias[carpeta] = historias.get(carpeta, 0) + 1
     rutas = {}
     for clave, cuentas, defecto in (("historias", historias, "docs/historias"), ("planes", planes, "docs/planes")):
         if cuentas:

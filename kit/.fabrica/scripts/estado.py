@@ -188,7 +188,10 @@ def _autonomia(proyecto: dict) -> str:
     """La autonomía delegada al proyecto (nucleo/autonomia.md, "Delegación por proyecto"), en pocas palabras."""
     autonomia = proyecto.get("autonomia") if isinstance(proyecto.get("autonomia"), dict) else {}
     delegado = [clave for clave in ("integra", "pruebas_aprobadas", "cierra_historias") if autonomia.get(clave) == "fabrica"]
-    return "autonomía delegada: " + ", ".join(delegado) if delegado else "autonomía: decide la Dirección"
+    if not delegado:
+        return "autonomía: decide la Dirección"
+    tope = f" hasta riesgo {autonomia.get('riesgo_maximo', 'bajo')}" if "integra" in delegado else ""
+    return "autonomía delegada: " + ", ".join(delegado) + tope
 
 
 def estado_local(raiz: Path, ejecutar: Ejecutar) -> List[str]:

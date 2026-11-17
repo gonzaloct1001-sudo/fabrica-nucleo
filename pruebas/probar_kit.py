@@ -202,6 +202,15 @@ def main():
             "## Autonomía en este proyecto\n",
             "## Autonomía en este proyecto\n\n- La fábrica integra sola · decidido el 2026-11-17\n", 1), encoding="utf-8")
         rc, out = con_proyecto(autonomia=dict(delega, cierra_historias="fabrica"))
+        constitucion_p.write_text(const_original.replace(
+            "## Autonomía en este proyecto\n", "## Autonomía en este proyecto\n\n- La fábrica no integra nada\n", 1),
+            encoding="utf-8")
+        rc, out = con_proyecto(autonomia=delega)
+        comprobar("Una línea que niega la delegación no la declara", rc != 0 and "integra" in out, out)
+        constitucion_p.write_text(const_original.replace(
+            "## Autonomía en este proyecto\n",
+            "## Autonomía en este proyecto\n\n- La fábrica integra sola · decidido el 2026-11-17\n", 1), encoding="utf-8")
+        rc, out = con_proyecto(autonomia=dict(delega, cierra_historias="fabrica"))
         comprobar("Cada decisión delegada debe estar nombrada en la constitución",
                   rc != 0 and "cierra_historias" in out and "integra," not in out, out)
         rc, out = con_proyecto(autonomia=dict(delega, riesgo_maximo="total"))
@@ -489,6 +498,9 @@ def main():
         rc, out = run(verif, viejo)
         comprobar("El proyecto adoptado pasa su verificación", rc == 0, out)
         rutas_v = json.loads((viejo / ".fabrica/proyecto.json").read_text(encoding="utf-8")).get("rutas", {})
+        rc_b, _ = run(["git", "rev-parse", "HEAD~1"], viejo)
+        rc, out = run(verif + ["--base", "HEAD~1", "--etiquetas", ""], viejo)
+        comprobar("El PR de la adopción no pide constitucion-aprobada", rc_b == 0 and rc == 0, out)
         comprobar("La adopción registra dónde guarda el proyecto sus historias",
                   rutas_v.get("historias") == "docs/02-requerimientos/historias"
                   and rutas_v.get("planes") == "docs/planes", json.dumps(rutas_v))

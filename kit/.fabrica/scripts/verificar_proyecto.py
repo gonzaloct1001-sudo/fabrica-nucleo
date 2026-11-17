@@ -177,7 +177,8 @@ def revisar_autonomia(proyecto, errores):
         texto = constitucion.read_text(encoding="utf-8") if constitucion.exists() else ""
         seccion = re.search(r"^## Autonomía en este proyecto[ \t]*\n(.*?)(?=^## |\Z)", texto, re.M | re.S)
         lineas = [l for l in seccion.group(1).splitlines()
-                  if l.strip().startswith(("- ", "* ")) and "<" not in l] if seccion else []
+                  if l.strip().startswith(("- ", "* ")) and "<" not in l
+                  and not re.search(r"\b(no|nunca|ni)\b", l, re.I)] if seccion else []
         sin_declarar = [clave for clave in delegado
                         if not any(re.search(DECLARACION[clave], l, re.I) for l in lineas)]
         if sin_declarar:
@@ -187,17 +188,26 @@ def revisar_autonomia(proyecto, errores):
 
 
 def cambia_la_constitucion(base, cambiados):
-    """Si el cambio toca la constitución del proyecto o la autonomía declarada en proyecto.json."""
+    """Si el cambio toca la constitución del proyecto o la autonomía declarada en proyecto.json.
+
+    No cuenta cuando la base todavía no era un proyecto de la fábrica (la adopción o la creación del proyecto): ahí
+    no había nada que proteger, y la constitución y la delegación nacen con ese PR.
+    """
+    rc, antes = git("show", f"{base}:.fabrica/proyecto.json")
+    if rc != 0:
+        return False
     if "docs/constitucion.md" in cambiados:
         return True
     if ".fabrica/proyecto.json" not in cambiados:
         return False
-    rc, antes = git("show", f"{base}:.fabrica/proyecto.json")
     try:
-        previa = json.loads(antes).get("autonomia") if rc == 0 else None
-    except ValueError:
+        previa = json.loads(antes).get("autonomia")
+    except (ValueError, AttributeError):
         previa = None
-    actual = json.loads((RAIZ / ".fabrica" / "proyecto.json").read_text(encoding="utf-8")).get("autonomia")
+    try:
+        actual = json.loads((RAIZ / ".fabrica" / "proyecto.json").read_text(encoding="utf-8")).get("autonomia")
+    except (OSError, ValueError, AttributeError):
+        return True  # proyecto.json roto: revisar_estado ya lo informa, y no se integra sin la Dirección
     return previa != actual
 
 

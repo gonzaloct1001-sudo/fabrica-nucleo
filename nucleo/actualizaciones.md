@@ -87,7 +87,8 @@ comandos de sesión y la construcción en sesión). La actualización que trae l
   mismo. Lo que la propia hacía de más se queda como `local-` o se propone al núcleo.
 - **Lo que el proyecto declaraba en su constitución,** y ahora el kit lee de `.fabrica/proyecto.json` (las rutas, la
   autonomía delegada), se copia a `proyecto.json` en ese PR. La constitución sigue siendo la fuente: lo escrito ahí
-  manda.
+  manda. Si el PR copia la autonomía, necesita la etiqueta `constitucion-aprobada` (la crea
+  `.fabrica/scripts/crear_etiquetas.py`), que pone la Dirección, y lo integra ella.
 - **Una versión a la vez,** con la tarea programada del proyecto pausada mientras se integra.
 
 ## Adoptar un proyecto que ya existe
