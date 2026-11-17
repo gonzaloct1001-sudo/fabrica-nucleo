@@ -42,7 +42,9 @@ La Dirección confirma la iniciativa antes de especificar las historias.
    proyecto diga otra ruta) desde `.fabrica/nucleo/plantillas/modelo-amenazas.md`, y `seguridad` lo revisa.
 7. **El PR de especificación.** La historia, el diseño, las pruebas y el modelo de amenazas, si cambió, van en un PR
    "Especificación H-NNN". Si incluye
-   pruebas de aceptación, la Dirección lo aprueba poniendo la etiqueta `pruebas-aprobadas`. La CI no deja pasar
+   pruebas de aceptación, la Dirección lo aprueba poniendo la etiqueta `pruebas-aprobadas`. Si el proyecto delegó esa
+   etiqueta (`autonomia.pruebas_aprobadas: "fabrica"`), la pones tú solo cuando las pruebas traducen reglas ya
+   decididas o agregan casos, y el `revisor` confirma en el PR que ningún criterio se quitó ni se debilitó. La CI no deja pasar
    cambios en `pruebas/aceptacion/` sin esa etiqueta.
 8. **La Definition of Ready.** Revísala punto por punto (`.fabrica/nucleo/ciclo.md`). Si se cumple, la historia pasa
    a `estado:listo`.

@@ -5,6 +5,34 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.11.0 · 2026-11-17
+
+Lo que inventó el primer proyecto real y sirve a todos pasa al kit (D6 de la revisión del 2026-11-17).
+- **Constitución 1.2.0, artículo IV:** se precisa la opción "lo desconocido se vuelve configurable". La regla que puede
+  variar de un cliente a otro se construye como parámetro `propuesto` del catálogo y la historia no se detiene; nada
+  `propuesto` llega a datos reales sin que la Dirección confirme el catálogo. Ley, dinero que se cobra, promesas al
+  cliente y datos personales nuevos siguen deteniendo la historia. Aprobado por la Dirección el 2026-11-17.
+- **`autonomia.md`, "Delegación por proyecto":** la Dirección puede delegar en un proyecto tres decisiones (integrar,
+  poner `pruebas-aprobadas` cuando solo traducen reglas decididas y marcar `hecho`), por escrito en la constitución del
+  proyecto y en `autonomia` de `.fabrica/proyecto.json`. Producción, datos reales, gasto y lo irreversible nunca se
+  delegan.
+- **Kit:**
+  - `.fabrica/scripts/estado.py`: el estado del proyecto en unas 20 líneas, con `--sin-red` y `--peso`. Lee las rutas
+    de `rutas` en `proyecto.json` y muestra la autonomía delegada y la marca de sesión en vivo;
+  - comandos `/inicio-sesion` y `/fin-sesion` (`.claude/commands/`, ahora parte del kit). `/fin-sesion` nunca sube a
+    la rama principal: crea una rama `fabrica/sesion-<fecha>` y abre su PR;
+  - skill `construir-en-sesion`: la sesión principal programa con la prueba primero y la revisión es por tramo;
+  - la corrida lee `autonomia` y `rutas`, integra según la delegación y no retoma una historia en sesión en vivo;
+  - `construir`, `cerrar`, `especificar` y `AGENTS.md` aplican la delegación;
+  - `verificar_proyecto.py` valida `rutas` y `autonomia`, y rechaza una delegación que la constitución del proyecto no
+    declara.
+- **Proyectos nuevos:** `proyecto.json` nace con `rutas` y `autonomia` (todo en `"direccion"`), y el proyecto con
+  `docs/siguiente-accion.md` y `docs/notas-para-sesiones.md`.
+- **Plantillas nuevas:** `notas-para-sesiones.md`, `siguiente-accion.md` y `catalogo-parametros.md`. La constitución
+  del proyecto suma "Principios opcionales de la fábrica" y "Autonomía en este proyecto".
+- **`actualizaciones.md`:** cómo se retira una pieza propia de un proyecto cuando su versión oficial llega con el kit.
+- **Pruebas:** `probar_estado.py`, 23 casos nuevos, en la CI del núcleo. `probar_kit.py`: 79 casos, 7 nuevos.
+
 ## 0.10.1 · 2026-11-04
 
 - **Corrección:** el resumen diario recomendó aprobar un PR que contradecía una respuesta de la Dirección todavía no

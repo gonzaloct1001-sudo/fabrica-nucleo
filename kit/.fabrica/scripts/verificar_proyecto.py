@@ -9,6 +9,8 @@ Uso:
 Comprueba que:
 1. Existan las rutas de NUCLEO.txt y los archivos del proyecto (.fabrica/proyecto.json y .fabrica/estado.json).
 2. proyecto.json y estado.json sean JSON válidos, con sus campos y los mismos identificadores.
+   En proyecto.json, `rutas` (si está) solo tiene rutas dentro del proyecto, y `autonomia` (si está) solo delega lo
+   delegable; si delega algo a la fábrica, docs/constitucion.md lo declara en «## Autonomía en este proyecto».
 3. Con --base: si los cambios desde la base tocan pruebas/aceptacion/, el PR tenga la etiqueta pruebas-aprobadas.
    Las etiquetas se leen del evento de GitHub (GITHUB_EVENT_PATH) o de --etiquetas.
 4. Con --base: avisa, sin fallar, si el cambio supera las líneas útiles recomendadas.
@@ -34,6 +36,8 @@ LINEAS_UTILES = 400
 NO_CUENTAN = ("package-lock.json", "pnpm-lock.yaml", "yarn.lock", "poetry.lock", "uv.lock", "Cargo.lock", ".min.js")
 FASES = {"descubrimiento", "especificacion", "construccion", "estabilizacion", "operacion", "cerrado"}
 SEMAFOROS = {"verde", "amarillo", "rojo"}
+RUTAS = ("historias", "planes", "siguiente_accion", "notas")  # .fabrica/proyecto.json, campo "rutas"
+DELEGABLES = ("integra", "pruebas_aprobadas", "cierra_historias")  # nucleo/autonomia.md, "Delegación por proyecto"
 FLUJOS = ".github/workflows/"
 # Lo que una persona no puede leer ni revisar: se genera en la CI y no se guarda en el repositorio.
 NO_SE_LEEN = re.compile(r"(^|/)__pycache__/|\.(pyc|pyo|exe|dll|so|dylib|class|jar|whl|egg|zip|bin)$", re.I)
@@ -114,10 +118,56 @@ def revisar_estado(errores):
             errores.append(f".fabrica/estado.json: fase '{estado['fase']}' no es válida ({', '.join(sorted(FASES))}).")
         if estado.get("semaforo") and estado["semaforo"] not in SEMAFOROS:
             errores.append(f".fabrica/estado.json: semáforo '{estado['semaforo']}' no es válido.")
+    if proyecto:
+        revisar_rutas(proyecto, errores)
+        revisar_autonomia(proyecto, errores)
     if proyecto and estado:
         for campo in ("cliente", "negocio", "proyecto"):
             if proyecto.get(campo) != estado.get(campo):
                 errores.append(f"'{campo}' no coincide entre proyecto.json y estado.json.")
+
+
+def revisar_rutas(proyecto, errores):
+    """`rutas` es opcional; si está, cada ruta es relativa al proyecto y no sale de él."""
+    rutas = proyecto.get("rutas")
+    if rutas is None:
+        return
+    if not isinstance(rutas, dict):
+        errores.append(".fabrica/proyecto.json: 'rutas' debe ser un objeto.")
+        return
+    for clave, valor in rutas.items():
+        if clave not in RUTAS:
+            errores.append(f".fabrica/proyecto.json: 'rutas.{clave}' no existe ({', '.join(RUTAS)}).")
+        elif not isinstance(valor, str) or not valor.strip() or Path(valor).is_absolute() or ".." in Path(valor).parts:
+            errores.append(f".fabrica/proyecto.json: 'rutas.{clave}' debe ser una ruta dentro del proyecto.")
+
+
+def revisar_autonomia(proyecto, errores):
+    """`autonomia` es opcional. Si delega algo a la fábrica, la constitución del proyecto debe declararlo
+    (.fabrica/nucleo/autonomia.md, "Delegación por proyecto")."""
+    autonomia = proyecto.get("autonomia")
+    if autonomia is None:
+        return
+    if not isinstance(autonomia, dict):
+        errores.append(".fabrica/proyecto.json: 'autonomia' debe ser un objeto.")
+        return
+    delegado = []
+    for clave, valor in autonomia.items():
+        if clave not in DELEGABLES:
+            errores.append(f".fabrica/proyecto.json: 'autonomia.{clave}' no se puede delegar ({', '.join(DELEGABLES)}).")
+        elif valor not in ("direccion", "fabrica"):
+            errores.append(f".fabrica/proyecto.json: 'autonomia.{clave}' debe ser \"direccion\" o \"fabrica\".")
+        elif valor == "fabrica":
+            delegado.append(clave)
+    if delegado:
+        constitucion = RAIZ / "docs" / "constitucion.md"
+        texto = constitucion.read_text(encoding="utf-8") if constitucion.exists() else ""
+        seccion = re.search(r"^## Autonomía en este proyecto[ \t]*\n(.*?)(?=^## |\Z)", texto, re.M | re.S)
+        declarada = seccion and any(l.strip().startswith(("- ", "* ")) and "<" not in l
+                                    for l in seccion.group(1).splitlines())
+        if not declarada:
+            errores.append(f".fabrica/proyecto.json delega a la fábrica {', '.join(delegado)}, pero docs/constitucion.md "
+                           "no lo declara: falta la decisión de la Dirección en «## Autonomía en este proyecto».")
 
 
 def etiquetas_del_pr(explicitas):

@@ -78,6 +78,18 @@ deja un commit local. Subirlo e integrarlo sigue la regla de "Quién integra cad
 La base del rubro viaja igual: si cambió `rubros/<rubro>/` en la instancia, la siguiente actualización del kit la lleva
 a cada proyecto de ese rubro, aunque el núcleo no haya cambiado de versión.
 
+### Cuando una pieza propia del proyecto pasa al núcleo
+
+A veces un proyecto inventa algo que después sube al núcleo (por ejemplo, en la 0.11, el script de estado, los
+comandos de sesión y la construcción en sesión). La actualización que trae la versión oficial no pelea con la propia:
+- **Se actualiza en una rama, nunca en la principal,** y llega como un PR con la CI completa en verde.
+- **La pieza propia se retira en ese mismo PR,** con una prueba o una comparación que muestre que la del kit hace lo
+  mismo. Lo que la propia hacía de más se queda como `local-` o se propone al núcleo.
+- **Lo que el proyecto declaraba en su constitución,** y ahora el kit lee de `.fabrica/proyecto.json` (las rutas, la
+  autonomía delegada), se copia a `proyecto.json` en ese PR. La constitución sigue siendo la fuente: lo escrito ahí
+  manda.
+- **Una versión a la vez,** con la tarea programada del proyecto pausada mientras se integra.
+
 ## Adoptar un proyecto que ya existe
 
 Un proyecto que llega con su propio repositorio (con historia, documentos o código) entra a la fábrica sin perder

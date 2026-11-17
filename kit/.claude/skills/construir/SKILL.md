@@ -94,9 +94,10 @@ ensuciaría y la corrección no tendría revisión.
 8. **Quién integra.** Pasa la historia a `estado:construido` y pregunta quién integra, según "Quién integra cada
    PR" en `.fabrica/nucleo/autonomia.md`.
    - **Por defecto integra la Dirección.**
-   - **Tú integras solo en dos casos:** con un "intégralo" explícito para ese PR, o en el nivel 2, si el riesgo es
-     bajo y todos los controles están en verde.
-   - **Antes de integrar,** vuelve a comprobar los controles y que la rama esté al día con `main`.
+   - **Tú integras solo en tres casos:** con un "intégralo" explícito para ese PR; en el nivel 2, si el riesgo es
+     bajo y todos los controles están en verde; o si el proyecto delegó la integración (`autonomia.integra:
+     "fabrica"` en `.fabrica/proyecto.json`) y el PR cumple las condiciones de "Delegación por proyecto".
+   - **Antes de integrar,** vuelve a comprobar los controles y que la rama esté al día con la principal.
 
 ## Cuándo te detienes
 

@@ -83,6 +83,39 @@ Integrar un PR es un efecto fuera del espacio de la fábrica (motivo 3), así qu
   aprobar algo que no puede ver.
 - **En el nivel 2,** los PRs de riesgo bajo con todos los controles en verde se integran sin preguntar. Los demás
   siguen esta regla.
+- **Con `integra: "fabrica"` en el proyecto,** rige "Delegación por proyecto", más abajo.
+
+## Delegación por proyecto
+
+La Dirección puede delegar en un proyecto tres decisiones que por defecto son suyas. Lo hace por escrito, en la
+sección "Autonomía en este proyecto" de su constitución, y la fábrica la lee de `autonomia` en
+`.fabrica/proyecto.json`:
+
+| Campo | Por defecto | Con `"fabrica"`, la fábrica… |
+|---|---|---|
+| `integra` | `"direccion"` | integra sola cualquier PR que cumpla las condiciones de abajo, sin pedir un "intégralo" |
+| `pruebas_aprobadas` | `"direccion"` | pone la etiqueta `pruebas-aprobadas` cuando las pruebas solo traducen reglas que la Dirección ya decidió o agregan casos, y el `revisor` confirma en el PR que ningún criterio se quitó ni se debilitó |
+| `cierra_historias` | `"direccion"` | marca una historia como `hecho` al cerrarla, si la Definition of Done se cumple con su evidencia |
+
+**Condiciones para integrar con `integra: "fabrica"`, todas comprobadas en ese momento:**
+- el PR no toca nada de "Nunca sin la Dirección", ni de las decisiones reservadas de la constitución del proyecto, o
+  lo que toca ya lo decidió la Dirección por escrito (en la historia, en un issue o en la conversación);
+- todos los controles de la CI están en verde y la rama está al día con la principal;
+- el `revisor` aprobó; en riesgo medio o alto, además, `seguridad` no deja hallazgos altos abiertos, y en riesgo
+  alto también pasó el `equipo-rojo`.
+
+**Lo que nunca se delega,** declare lo que declare el proyecto:
+- producción, datos reales, gasto y lo irreversible;
+- quitar o debilitar una prueba aprobada que fija una regla de negocio;
+- cambiar la constitución o `NUCLEO.txt`.
+
+**Cada uso de la delegación queda a la vista:** la integración, la etiqueta o el cierre van a la bitácora y a
+"Decisiones que tomé por ti", con su enlace.
+
+**Riesgo aceptado.** La fábrica opera con la cuenta de la Dirección. Con la delegación, ningún control técnico
+distingue su firma de la de la Dirección. Lo acotan la CI, el revisor independiente, el registro de cada uso y que
+todo merge se puede revertir con un PR. Por eso `verificar_proyecto.py` rechaza una delegación que la constitución del
+proyecto no declara.
 
 ## Topes
 

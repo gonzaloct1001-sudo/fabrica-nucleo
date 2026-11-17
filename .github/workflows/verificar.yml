@@ -27,5 +27,8 @@ jobs:
       - name: Probar clientes, proyectos y el kit
         run: python3 pruebas/probar_kit.py
 
+      - name: Probar el estado de los proyectos
+        run: python3 pruebas/probar_estado.py
+
       - name: Probar la bandeja de la Dirección
         run: python3 pruebas/probar_bandeja.py

@@ -122,7 +122,9 @@ def main():
                      ".fabrica/nucleo/plantillas/historia.md", ".fabrica/proyecto.json", ".fabrica/estado.json",
                      ".fabrica/nucleo-instalado.csv", "docs/constitucion.md", "docs/bitacora.md",
                      "pruebas/aceptacion/.gitkeep", ".gitignore", ".gitattributes", ".fabrica/motor/corrida.md",
-                     ".fabrica/rubro/conocimiento.md"]
+                     ".fabrica/rubro/conocimiento.md", ".fabrica/scripts/estado.py", ".claude/commands/inicio-sesion.md",
+                     ".claude/commands/fin-sesion.md", ".claude/skills/construir-en-sesion/SKILL.md",
+                     "docs/siguiente-accion.md", "docs/notas-para-sesiones.md"]
         faltan = [e for e in esperados if not (proy / e).exists()]
         comprobar("El proyecto trae el kit completo", not faltan, f"faltan: {faltan}")
         comprobar("La copia del método es idéntica al núcleo",
@@ -164,6 +166,41 @@ def main():
         verif = [sys.executable, ".fabrica/scripts/verificar_proyecto.py"]
         rc, out = run(verif, proy)
         comprobar("La verificación del proyecto pasa en limpio", rc == 0, out)
+        comprobar("proyecto.json nace con las rutas de la fábrica y sin delegar nada",
+                  datos.get("rutas", {}).get("historias") == "docs/historias"
+                  and set(datos.get("autonomia", {}).values()) == {"direccion"}, json.dumps(datos, ensure_ascii=False))
+        rc, out = run([sys.executable, ".fabrica/scripts/estado.py", "--sin-red"], proy)
+        comprobar("estado.py resume el proyecto recién creado",
+                  rc == 0 and "Plataforma de reparto" in out and "autonomía: decide la Dirección" in out, out)
+        ficha_p = proy / ".fabrica" / "proyecto.json"
+        original = ficha_p.read_text(encoding="utf-8")
+
+        def con_proyecto(**cambios):
+            d = json.loads(original)
+            d.update(cambios)
+            ficha_p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+            return run(verif, proy)
+
+        delega = {"integra": "fabrica", "pruebas_aprobadas": "direccion", "cierra_historias": "direccion"}
+        rc, out = con_proyecto(autonomia=delega)
+        comprobar("Delegar la integración sin que la constitución lo declare se rechaza",
+                  rc != 0 and "Autonomía en este proyecto" in out, out)
+        constitucion_p = proy / "docs" / "constitucion.md"
+        const_original = constitucion_p.read_text(encoding="utf-8")
+        constitucion_p.write_text(const_original.replace(
+            "## Autonomía en este proyecto\n",
+            "## Autonomía en este proyecto\n\n- La fábrica integra sola los PRs que cumplen las condiciones · "
+            "decidido el 2026-11-17\n", 1), encoding="utf-8")
+        rc, out = con_proyecto(autonomia=delega)
+        comprobar("Con la delegación declarada en la constitución, se acepta", rc == 0, out)
+        constitucion_p.write_text(const_original, encoding="utf-8")
+        rc, out = con_proyecto(autonomia={"integra": "siempre"})
+        comprobar("Un valor de autonomía inválido se rechaza", rc != 0 and "autonomia.integra" in out, out)
+        rc, out = con_proyecto(autonomia={"produccion": "fabrica"})
+        comprobar("Lo que no se puede delegar se rechaza", rc != 0 and "no se puede delegar" in out, out)
+        rc, out = con_proyecto(rutas={"historias": "../otro-cliente/docs"})
+        comprobar("Una ruta que sale del proyecto se rechaza", rc != 0 and "rutas.historias" in out, out)
+        ficha_p.write_text(original, encoding="utf-8")
         run(["git", "checkout", "-q", "-b", "cambio-codigo"], proy)
         (proy / "src").mkdir()
         (proy / "src" / "modulo.txt").write_text("código\n", encoding="utf-8")

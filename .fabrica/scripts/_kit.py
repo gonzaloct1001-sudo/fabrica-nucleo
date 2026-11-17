@@ -122,7 +122,12 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
     datos = {"version_formato": 1, "cliente": cliente, "negocio": negocio, "proyecto": proyecto, "nombre": nombre,
              "repositorio": repo, "nucleo": version, "creado": hoy, "pausa": False,
              "direccion": propietario,  # cuenta de GitHub cuyo "intégralo" autoriza un merge (nucleo/autonomia.md)
-             "motor": {"pasos_por_corrida": 1}}  # nucleo/motor.md
+             "motor": {"pasos_por_corrida": 1},  # nucleo/motor.md
+             # dónde viven las historias y los planes; un proyecto adoptado puede usar las suyas (estado.py)
+             "rutas": {"historias": "docs/historias", "planes": "docs/planes",
+                       "siguiente_accion": "docs/siguiente-accion.md", "notas": "docs/notas-para-sesiones.md"},
+             # decisiones de la Dirección que el proyecto delegó (nucleo/autonomia.md, "Delegación por proyecto")
+             "autonomia": {"integra": "direccion", "pruebas_aprobadas": "direccion", "cierra_historias": "direccion"}}
     _crear(destino, ".fabrica/proyecto.json", json.dumps(datos, ensure_ascii=False, indent=2) + "\n", creados)
 
     estado = json.loads((raiz_instancia / "nucleo" / "plantillas" / "estado.json").read_text(encoding="utf-8"))
@@ -139,6 +144,12 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
     _crear(destino, "docs/constitucion.md", constitucion.replace("<AAAA-MM-DD>", hoy, 1), creados)
     origen = "adoptado por" if adoptado else "creado desde"
     _crear(destino, "docs/bitacora.md", f"# Bitácora\n\n## {hoy}\n\n- Proyecto {origen} la fábrica (núcleo {version}).\n",
+           creados)
+    plantillas = raiz_instancia / "nucleo" / "plantillas"
+    siguiente = (plantillas / "siguiente-accion.md").read_text(encoding="utf-8")
+    _crear(destino, "docs/siguiente-accion.md", siguiente.replace("<fase>", fase, 1).replace("<AAAA-MM-DD>", hoy, 1),
+           creados)
+    _crear(destino, "docs/notas-para-sesiones.md", (plantillas / "notas-para-sesiones.md").read_text(encoding="utf-8"),
            creados)
     for carpeta in CARPETAS:
         if not (destino / carpeta).is_dir() or not any((destino / carpeta).iterdir()):
