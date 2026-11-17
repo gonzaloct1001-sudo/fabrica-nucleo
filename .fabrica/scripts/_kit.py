@@ -162,6 +162,21 @@ def detectar_rutas(raiz):
     return rutas
 
 
+def _script_de_estado(raiz_instancia):
+    """El script de estado del kit de la instancia, cargado como módulo (sin dejar __pycache__ en el kit)."""
+    import importlib.util
+    import sys
+    ruta = Path(raiz_instancia) / "kit" / ".fabrica" / "scripts" / "estado.py"
+    spec = importlib.util.spec_from_file_location("fabrica_estado_kit", ruta)
+    modulo = importlib.util.module_from_spec(spec)
+    antes, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(modulo)
+    finally:
+        sys.dont_write_bytecode = antes
+    return modulo
+
+
 def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombre, propietario, version,
                       fase="descubrimiento", adoptado=False, rutas=None):
     """Crea los archivos propios iniciales que le falten al proyecto, sin pisar ninguno que ya exista.
@@ -189,6 +204,11 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
                    "actualizado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
     estado["espera_direccion"]["enlace"] = (
         f"https://github.com/{propietario}/{repo}/issues?q=label%3Aespera%3Adireccion" if propietario else "")
+    # Las cifras de historias salen del disco con el mismo script que las verifica (núcleo 0.12): así un proyecto
+    # adoptado que ya tiene historias nace con su estado coherente.
+    estado["historias"] = {**estado.get("historias", {}),
+                           **_script_de_estado(raiz_instancia).cifras_de_historias(destino, {
+                               "historias": datos["rutas"]["historias"], "planes": datos["rutas"]["planes"]})}
     _crear(destino, ".fabrica/estado.json", json.dumps(estado, ensure_ascii=False, indent=2) + "\n", creados)
 
     constitucion = (raiz_instancia / "nucleo" / "plantillas" / "constitucion-proyecto.md").read_text(encoding="utf-8")

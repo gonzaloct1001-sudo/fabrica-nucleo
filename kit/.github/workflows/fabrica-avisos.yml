@@ -1,0 +1,31 @@
+name: Fábrica · avisos
+
+# Avisa a la Dirección con otra identidad (github-actions) cuando un issue o un PR la espera: la fábrica trabaja con la
+# cuenta de la Dirección y GitHub no le notifica lo propio (.fabrica/nucleo/motor.md, "Lo que la nube permite").
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  avisar:
+    if: github.event.label.name == 'espera:direccion' || github.event.label.name == 'estado:construido'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Avisar a la Dirección
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .fabrica/scripts/avisar.py

@@ -5,8 +5,12 @@ Uso, desde la raíz del proyecto:
     python .fabrica/scripts/estado.py            estado completo; consulta GitHub con `gh api` (solo REST)
     python .fabrica/scripts/estado.py --sin-red  solo lo que está en el disco
     python .fabrica/scripts/estado.py --peso     los documentos que más pesan cuando un agente los lee
+    python .fabrica/scripts/estado.py --escribir [--sin-red]
+                                                 rehace las cifras de .fabrica/estado.json (núcleo 0.12)
 
-Solo lee: no cambia ningún archivo ni escribe en GitHub. Usa la biblioteca estándar, `git` y, si está, `gh`.
+Solo lee, salvo con --escribir: entonces cambia únicamente las cifras de .fabrica/estado.json (las historias por
+estado, lo que espera a la Dirección y la fecha), y conserva los campos de criterio (fase, semáforo, próxima entrega y
+riesgo principal). Nunca escribe en GitHub. Usa la biblioteca estándar, `git` y, si está, `gh`.
 
 Las rutas de las historias y de los planes salen de `rutas` en `.fabrica/proyecto.json`; sin ese campo, se usan
 `docs/historias` y `docs/planes`. Nació en un proyecto de la fábrica y pasó al kit en el núcleo 0.11.
@@ -29,6 +33,10 @@ RUTAS_POR_DEFECTO = {"historias": "docs/historias", "planes": "docs/planes"}
 EN_CURSO = ("listo", "en-curso", "en-construccion", "en-revision")
 CONTEXTO_FIJO = ("AGENTS.md", "CLAUDE.md")
 TITULO_BITACORA = "Bitácora de corridas"
+ETIQUETA_PAUSA = "motor:pausa"  # en la bitácora de corridas: detiene el motor desde el teléfono (nucleo/motor.md)
+# Cómo se cuenta cada estado de una historia en las cifras de estado.json (B1). El resto solo suma al total.
+CIFRAS = {"hecho": "hechas", "en-curso": "en_curso", "en-construccion": "en_curso", "en-revision": "en_revision",
+          "bloqueado": "bloqueadas"}
 API = "repos/{owner}/{repo}"
 ANCHO = 150
 MAXIMO_POR_LISTA = 8
@@ -184,6 +192,20 @@ def _historias(raiz: Path, rutas: Dict[str, str]) -> List[str]:
     return [f"Historias en curso en el disco: {len(en_curso)} (las demás: {resto})", *en_curso]
 
 
+def cifras_de_historias(raiz: Path, rutas: Dict[str, str]) -> Dict[str, int]:
+    """Las historias del disco por estado, con las claves de `historias` en estado.json."""
+    cuentas = {"total": 0, "hechas": 0, "en_curso": 0, "en_revision": 0, "bloqueadas": 0}
+    for ruta in sorted((raiz / rutas["historias"]).glob("*.md")):
+        cabecera = leer_cabecera(leer(ruta))
+        if not cabecera.get("id"):
+            continue
+        cuentas["total"] += 1
+        clave = CIFRAS.get(cabecera.get("estado", ""))
+        if clave:
+            cuentas[clave] += 1
+    return cuentas
+
+
 def _autonomia(proyecto: dict) -> str:
     """La autonomía delegada al proyecto (nucleo/autonomia.md, "Delegación por proyecto"), en pocas palabras."""
     autonomia = proyecto.get("autonomia") if isinstance(proyecto.get("autonomia"), dict) else {}
@@ -262,6 +284,7 @@ def estado_github(raiz: Path, ejecutar: Ejecutar) -> List[str]:
     ]
     propios = sorted((uno for uno in asuntos if "pull_request" not in uno), key=lambda uno: uno["number"])
     esperan = sum(1 for uno in propios if "espera:direccion" in _etiquetas(uno))
+    pausa = [f"MOTOR EN PAUSA: la bitácora de corridas tiene la etiqueta {ETIQUETA_PAUSA}"] if motor_en_pausa(propios) else []
     preguntas = sum(1 for uno in propios if str(uno.get("title", "")).startswith("Pregunta:"))
     lineas_de_asunto = [
         f"  #{uno['number']}  {','.join(_etiquetas(uno, 'estado:', 'espera:'))}  {uno.get('title', '')}"
@@ -269,12 +292,49 @@ def estado_github(raiz: Path, ejecutar: Ejecutar) -> List[str]:
         if _etiquetas(uno, "estado:", "espera:")
     ]
     return [
+        *pausa,
         f"PR abiertos: {len(prs)}",
         *_acotar(lineas_de_pr),
         f"Issues abiertos: {len(propios)} | esperan a la Dirección: {esperan} | preguntas: {preguntas}",
         *_acotar(lineas_de_asunto),
         *_bitacora(propios, raiz, ejecutar),
     ]
+
+
+def motor_en_pausa(asuntos: List[dict]) -> bool:
+    """Si la bitácora de corridas tiene la etiqueta de pausa (C4)."""
+    return any(str(uno.get("title", "")).startswith(TITULO_BITACORA) and ETIQUETA_PAUSA in _etiquetas(uno)
+               for uno in asuntos)
+
+
+def escribir(raiz: Path, ejecutar: Ejecutar = correr, *, con_red: bool = True, ahora: Optional[str] = None) -> List[str]:
+    """Rehace las cifras de .fabrica/estado.json y devuelve qué cambió. Conserva los campos de criterio."""
+    from datetime import datetime, timezone
+
+    ruta = raiz / ".fabrica/estado.json"
+    estado = leer_json(ruta)
+    if not estado:
+        return [f"No se puede escribir: falta {ruta.relative_to(raiz).as_posix()} o no es un JSON válido."]
+    proyecto = leer_json(raiz / ".fabrica/proyecto.json")
+    cambios = []
+    nuevas = cifras_de_historias(raiz, rutas_del_proyecto(proyecto, raiz))
+    antes = estado.get("historias") if isinstance(estado.get("historias"), dict) else {}
+    if any(antes.get(clave) != valor for clave, valor in nuevas.items()):
+        cambios.append(f"historias: {json.dumps(antes, ensure_ascii=False)} -> {json.dumps(nuevas, ensure_ascii=False)}")
+    estado["historias"] = {**antes, **nuevas}
+    if con_red:
+        asuntos = _api("issues?state=open&labels=espera:direccion&per_page=100", raiz, ejecutar)
+        if isinstance(asuntos, list):
+            cantidad = sum(1 for uno in asuntos if "pull_request" not in uno)
+            espera = estado.get("espera_direccion") if isinstance(estado.get("espera_direccion"), dict) else {}
+            if espera.get("cantidad") != cantidad:
+                cambios.append(f"espera_direccion: {espera.get('cantidad')} -> {cantidad}")
+            estado["espera_direccion"] = {**espera, "cantidad": cantidad}
+        else:
+            cambios.append("espera_direccion: sin cambio (GitHub no disponible)")
+    estado["actualizado"] = ahora or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ruta.write_text(json.dumps(estado, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return cambios or ["Las cifras ya estaban al día; solo cambió la fecha."]
 
 
 def reunir(raiz: Path, ejecutar: Ejecutar = correr, *, con_red: bool = True) -> List[str]:
@@ -306,11 +366,18 @@ def main(argumentos: Optional[List[str]] = None, raiz: Path = RAIZ) -> int:
     analizador = argparse.ArgumentParser(description="Estado del proyecto en pocas líneas. Solo lee.")
     analizador.add_argument("--sin-red", action="store_true", help="no consulta GitHub: solo lo que está en el disco")
     analizador.add_argument("--peso", action="store_true", help="lista los documentos que más pesan al leerlos")
+    analizador.add_argument("--escribir", action="store_true",
+                            help="rehace las cifras de .fabrica/estado.json desde el disco (y GitHub, si hay red)")
     opciones = analizador.parse_args(argumentos)
     if hasattr(sys.stdout, "reconfigure"):
         # Con la salida redirigida, Windows usaría su página de códigos y rompería los acentos.
         sys.stdout.reconfigure(errors="replace", **({} if sys.stdout.isatty() else {"encoding": "utf-8"}))
-    lineas = peso(raiz) if opciones.peso else reunir(raiz, con_red=not opciones.sin_red)
+    if opciones.escribir:
+        lineas = escribir(raiz, con_red=not opciones.sin_red)
+    elif opciones.peso:
+        lineas = peso(raiz)
+    else:
+        lineas = reunir(raiz, con_red=not opciones.sin_red)
     print("\n".join(lineas))
     return 0
 

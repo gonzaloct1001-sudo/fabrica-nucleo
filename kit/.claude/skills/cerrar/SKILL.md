@@ -10,7 +10,10 @@ description: Cierra una historia integrada o una épica terminada. Verifica la D
 1. **Comprueba la Definition of Done** (`.fabrica/nucleo/ciclo.md`), punto por punto y con su evidencia: CI en
    verde, revisión limpia, seguridad (si correspondía), contratos y documentación al día, y decisiones entregadas.
    Si falta algo, no cierres: crea la tarea que falta y avísalo.
-2. **El `documentador`** (nivel bajo) actualiza `.fabrica/estado.json` y agrega la entrada en `docs/bitacora.md`.
+2. **El `documentador`** (nivel bajo) corre `python .fabrica/scripts/estado.py --escribir`, que rehace las cifras de
+   `.fabrica/estado.json` (nadie las edita a mano), revisa los campos de criterio (fase, semáforo, próxima entrega y
+   riesgo principal) y agrega una línea a `docs/bitacora.md`: la historia cerrada, su PR y su fecha. Nada más va ahí;
+   el día a día está en la bitácora de corridas (issue).
 3. **Solo una persona marca una historia como `hecho`,** salvo que el proyecto lo haya delegado
    (`autonomia.cierra_historias: "fabrica"` en `.fabrica/proyecto.json`): entonces la marcas tú, si la Definition of
    Done se cumple con su evidencia, y lo anotas en "Decisiones que tomé por ti". Sin delegación, si la Dirección

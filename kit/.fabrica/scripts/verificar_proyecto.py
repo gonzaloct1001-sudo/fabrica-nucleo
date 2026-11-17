@@ -11,6 +11,9 @@ Comprueba que:
 2. proyecto.json y estado.json sean JSON válidos, con sus campos y los mismos identificadores.
    En proyecto.json, `rutas` (si está) solo tiene rutas dentro del proyecto, y `autonomia` (si está) solo delega lo
    delegable; si delega algo a la fábrica, docs/constitucion.md lo declara en «## Autonomía en este proyecto».
+   Coherencia del estado (núcleo 0.12): las cifras de historias de estado.json coinciden con el disco (si no, se
+   rehacen con `python .fabrica/scripts/estado.py --escribir`), no hay más historias en construcción que el tope, y la
+   siguiente acción no pasa de su tope de líneas (avisa; con `topes.modo: "bloquear"`, rechaza).
 3. Con --base: si los cambios desde la base tocan pruebas/aceptacion/, el PR tenga la etiqueta pruebas-aprobadas.
    Las etiquetas se leen del evento de GitHub (GITHUB_EVENT_PATH) o de --etiquetas.
 4. Con --base: avisa, sin fallar, si el cambio supera las líneas útiles recomendadas.
@@ -32,7 +35,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.dont_write_bytecode = True  # sin __pycache__: la verificación no deja rastros en el proyecto
-import estado as _estado  # noqa: E402  (el script de estado del kit: las mismas reglas de rutas)
+import estado as _estado  # noqa: E402  (el script de estado del kit: mismas rutas y mismas cuentas)
 ETIQUETA_PRUEBAS = "pruebas-aprobadas"
 ETIQUETA_CONSTITUCION = "constitucion-aprobada"
 # Lo que puede acompañar a un cambio de pruebas de aceptación en un PR de especificación (constitución, art. II)
@@ -46,7 +49,9 @@ RUTAS = ("historias", "planes", "siguiente_accion", "notas")  # .fabrica/proyect
 DELEGABLES = ("integra", "pruebas_aprobadas", "cierra_historias")
 RIESGOS = ("bajo", "medio", "alto")
 # Cómo se reconoce, en la constitución del proyecto, la línea que declara cada delegación
-DECLARACION = {"integra": r"integr", "pruebas_aprobadas": r"pruebas[-_ ]aprobadas", "cierra_historias": r"\bhecho\b"}  # nucleo/autonomia.md, "Delegación por proyecto"
+DECLARACION = {"integra": r"integr", "pruebas_aprobadas": r"pruebas[-_ ]aprobadas", "cierra_historias": r"\bhecho\b"}
+TOPES = {"historias_en_curso": 1, "lineas_siguiente_accion": 40}  # por defecto; cada proyecto los ajusta en "topes"
+RUTA_SIGUIENTE_ACCION = "docs/siguiente-accion.md"
 FLUJOS = ".github/workflows/"
 # Lo que una persona no puede leer ni revisar: se genera en la CI y no se guarda en el repositorio.
 NO_SE_LEEN = re.compile(r"(^|/)__pycache__/|\.(pyc|pyo|exe|dll|so|dylib|class|jar|whl|egg|zip|bin)$", re.I)
@@ -211,6 +216,40 @@ def cambia_la_constitucion(base, cambiados):
     return previa != actual
 
 
+def revisar_coherencia(errores, avisos):
+    """El estado no se escribe a mano: sus cifras salen del disco (B2), y los topes se cumplen (B2 y B3)."""
+    proyecto = _estado.leer_json(RAIZ / ".fabrica/proyecto.json")
+    estado = _estado.leer_json(RAIZ / ".fabrica/estado.json")
+    if not proyecto or not estado:
+        return
+    topes = dict(TOPES)
+    propios = proyecto.get("topes") if isinstance(proyecto.get("topes"), dict) else {}
+    for clave in TOPES:
+        if isinstance(propios.get(clave), int) and propios[clave] > 0:
+            topes[clave] = propios[clave]
+    bloquear = propios.get("modo") == "bloquear"
+    rutas = _estado.rutas_del_proyecto(proyecto, RAIZ)
+    en_disco = _estado.cifras_de_historias(RAIZ, rutas)
+    guardadas = estado.get("historias") if isinstance(estado.get("historias"), dict) else {}
+    distintas = [f"{clave} {guardadas.get(clave)} (en el disco, {valor})" for clave, valor in en_disco.items()
+                 if guardadas.get(clave) != valor]
+    if distintas:
+        errores.append("Las cifras de .fabrica/estado.json no coinciden con las historias: " + ", ".join(distintas)
+                       + ". Rehazlas con `python .fabrica/scripts/estado.py --escribir` en este mismo PR.")
+    if en_disco["en_curso"] > topes["historias_en_curso"]:
+        errores.append(f"Hay {en_disco['en_curso']} historias en construcción y el tope es {topes['historias_en_curso']}"
+                       " (.fabrica/nucleo/ciclo.md, «Regla del ciclo corto»).")
+    rel = proyecto.get("rutas", {}).get("siguiente_accion") if isinstance(proyecto.get("rutas"), dict) else None
+    rel = rel.strip() if _estado.ruta_segura(RAIZ, rel) else RUTA_SIGUIENTE_ACCION
+    siguiente = RAIZ / rel
+    if siguiente.is_file():
+        lineas = len(siguiente.read_text(encoding="utf-8", errors="replace").splitlines())
+        if lineas > topes["lineas_siguiente_accion"]:
+            mensaje = (f"{rel} tiene {lineas} líneas y el tope es {topes['lineas_siguiente_accion']}: deja una sola "
+                       "acción arriba y lleva lo hecho a la bitácora.")
+            (errores if bloquear else avisos).append(mensaje)
+
+
 def etiquetas_del_pr(explicitas):
     if explicitas is not None:
         return {e.strip() for e in explicitas.split(",") if e.strip()}
@@ -368,6 +407,7 @@ def main():
     errores, avisos = [], []
     revisar_kit(errores)
     revisar_estado(errores)
+    revisar_coherencia(errores, avisos)
     revisar_seguridad(avisos)
     if a.base:
         revisar_cambios(a.base, a.etiquetas, errores, avisos)

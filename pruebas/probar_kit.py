@@ -230,6 +230,44 @@ def main():
         rc_s, sucio = run(["git", "status", "--porcelain", "--ignored"], proy)
         comprobar("estado.py y la verificación no dejan rastros en el proyecto", sucio.strip() == "", sucio)
 
+        # Núcleo 0.12: el estado sale del script y la CI lo exige coherente (B1, B2), con topes (B3)
+        historia = proy / "docs" / "historias" / "H-001-vender.md"
+        historia.write_text("---\nid: H-001\nestado: en-curso\n---\n# Vender\n", encoding="utf-8")
+        rc, out = run(verif, proy)
+        comprobar("Un estado que no coincide con las historias se rechaza y dice cómo rehacerlo",
+                  rc != 0 and "estado.py --escribir" in out and "en_curso 0 (en el disco, 1)" in out, out)
+        rc_e, out_e = run([sys.executable, ".fabrica/scripts/estado.py", "--escribir", "--sin-red"], proy)
+        rc, out = run(verif, proy)
+        comprobar("Tras estado.py --escribir, la verificación pasa", rc_e == 0 and rc == 0, out_e + out)
+        (proy / "docs" / "historias" / "H-002-cobrar.md").write_text("---\nid: H-002\nestado: en-curso\n---\n",
+                                                                    encoding="utf-8")
+        run([sys.executable, ".fabrica/scripts/estado.py", "--escribir", "--sin-red"], proy)
+        rc, out = run(verif, proy)
+        comprobar("Dos historias en construcción superan el tope y se rechaza", rc != 0 and "tope es 1" in out, out)
+        siguiente = proy / "docs" / "siguiente-accion.md"
+        siguiente_original = siguiente.read_text(encoding="utf-8")
+        siguiente.write_text(siguiente_original + "\n".join(f"- hecho {i}" for i in range(50)) + "\n", encoding="utf-8")
+        (proy / "docs" / "historias" / "H-002-cobrar.md").unlink()
+        run([sys.executable, ".fabrica/scripts/estado.py", "--escribir", "--sin-red"], proy)
+        rc, out = run(verif, proy)
+        comprobar("Una siguiente acción sobre su tope se avisa sin rechazar", rc == 0 and "Aviso:" in out and "tope es 40"
+                  in out, out)
+        rc, out = con_proyecto(topes={"modo": "bloquear"})
+        comprobar("Con topes.modo bloquear, se rechaza", rc != 0 and "tope es 40" in out, out)
+        rc, out = con_proyecto(topes={"lineas_siguiente_accion": 200})
+        comprobar("Un tope propio del proyecto se respeta", rc == 0 and "tope es" not in out, out)
+        ficha_p.write_text(original, encoding="utf-8")
+        siguiente.write_text(siguiente_original, encoding="utf-8")
+        historia.unlink()
+        run(["git", "checkout", "-q", "--", ".fabrica/estado.json"], proy)
+        rc, out = run(verif, proy)
+        comprobar("El proyecto vuelve a quedar limpio", rc == 0, out)
+        flujo = leer(proy / ".github/workflows/fabrica.yml")
+        etiquetas = leer(proy / ".github/etiquetas.json")
+        comprobar("El flujo de la fábrica corre en main y en master, y el kit trae el de avisos y la etiqueta de pausa",
+                  "branches: [main, master]" in flujo and (proy / ".github/workflows/fabrica-avisos.yml").exists()
+                  and '"motor:pausa"' in etiquetas and '"constitucion-aprobada"' in etiquetas, flujo)
+
         # La constitución y la delegación solo cambian con el sí de la Dirección
         run(["git", "checkout", "-q", "-b", "cambia-autonomia"], proy)
         d = json.loads(original)

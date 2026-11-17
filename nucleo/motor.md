@@ -27,6 +27,7 @@ En claude.ai/code/routines, o con `/schedule` desde una sesión abierta en el pr
 | Instrucción | `Ejecuta una corrida de la fábrica: lee y sigue .fabrica/motor/corrida.md.` |
 | Conectores | ninguno (quita los que se agregan por defecto) |
 | Ambiente | el predeterminado; basta con su acceso de red "Trusted" |
+| Avisos | push al teléfono, encendido: así la Dirección sabe que la corrida terminó |
 
 Requisito: la aplicación de Claude para GitHub instalada en el repositorio del proyecto, con acceso solo a los
 repositorios que la fábrica usa.
@@ -96,10 +97,32 @@ Una tarea programada por cliente, separada de las del motor:
 | Disparador | horario: cada día a `resumen_diario.hora`, en la zona de la instancia, después de las corridas de la noche |
 | Instrucción | `Arma y publica el resumen diario de la fábrica para el cliente <cliente>: sigue la skill bandeja-direccion, paso «Resumen diario».` |
 | Conectores | ninguno |
+| Avisos | push al teléfono, encendido |
 
 La primera vez, la página se publica a mano y su dirección queda en `resumen_diario.paginas.<cliente>` de
 `.fabrica/config.json`. Desde ahí, la tarea la actualiza cada mañana en la misma dirección, que la Dirección fija en
 su aplicación.
+
+### Que una respuesta despierte la corrida (opcional)
+
+La tarea del motor puede sumar, en su página de claude.ai/code/routines, un **disparador de GitHub** además del
+horario: el evento *Pull request · closed* del repositorio del proyecto. Así, cuando la Dirección integra un PR, la
+corrida siguiente parte en el momento y no a la hora fijada.
+- **Solo ese evento.** Los eventos de issues no sirven: la propia corrida etiqueta issues y se despertaría a sí misma.
+- **Con tope:** cada proyecto fija `motor.corridas_por_dia` en `.fabrica/proyecto.json` (por defecto, 6). Una corrida
+  que encuentra ese número de entradas de hoy en la bitácora anota "tope diario" y termina sin trabajar.
+- Los eventos de GitHub tienen además un tope por hora de la plataforma: lo que pasa de ese tope se pierde, y el
+  horario lo recoge después.
+
+### Tablero por estados (opcional)
+
+Para ver las historias por columna desde GitHub móvil, la Dirección arma una vez un tablero de GitHub Projects:
+1. En el repositorio, pestaña **Projects** → **Link a project** → **New project** → plantilla **Board**.
+2. En **Settings** del tablero, agrega el campo **Status** con las columnas del ciclo: borrador, listo, en-curso,
+   en-revision, construido, hecho y bloqueado.
+3. En **Workflows**, activa **Auto-add to project** con el filtro `is:issue label:estado:*`.
+4. Las tarjetas se mueven a mano o con la vista **Table** agrupada por etiqueta. La fábrica no escribe en el tablero:
+   Projects usa GraphQL, que en la nube no funciona. Las etiquetas `estado:*` siguen siendo la fuente.
 
 ## Lo que la nube permite y lo que no
 
@@ -114,7 +137,9 @@ su aplicación.
 - **Ramas:** la nube puede subir cambios a cualquier rama, la principal incluida. La regla de no subir a la rama
   principal está en la corrida. En un repositorio público o en planes de pago, conviene además una protección de rama en GitHub.
 - **Identidad:** todo lo que hace la corrida aparece en GitHub con la cuenta de la Dirección. Por eso GitHub no le
-  notifica sus propias preguntas ni la bitácora. Para recibir avisos hace falta un mensaje creado por otra identidad
+  notifica sus propias preguntas ni la bitácora. Para recibir avisos hace falta un mensaje creado por otra identidad.
+  Desde la 0.12, el kit trae el flujo `.github/workflows/fabrica-avisos.yml`: cuando un issue o un PR recibe
+  `espera:direccion` o `estado:construido`, comenta como `github-actions` y menciona a la Dirección. Además
   (por ejemplo, un bot de GitHub Actions). Ese es el trabajo del panel y del resumen diario de la instancia.
 
 ## Diagnosticar una corrida
@@ -135,5 +160,7 @@ Una corrida que termina en menos de diez segundos casi siempre es un problema de
 
 ## Detener el motor
 
-- **Un proyecto:** `"pausa": true` en `.fabrica/proyecto.json`, mediante un PR. La siguiente corrida lo respeta.
+- **Un proyecto, desde el teléfono:** la etiqueta `motor:pausa` en el issue "Bitácora de corridas de la fábrica".
+  La siguiente corrida la ve primero, anota "En pausa" y termina. Para reanudar, se quita la etiqueta.
+- **Un proyecto, de forma permanente:** `"pausa": true` en `.fabrica/proyecto.json`, mediante un PR.
 - **Todos los proyectos:** apagar las tareas en claude.ai/code/routines.
