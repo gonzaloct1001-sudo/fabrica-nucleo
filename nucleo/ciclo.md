@@ -61,7 +61,8 @@ borrador → listo → en-curso → en-revision → construido → hecho
 - **en-curso:** una corrida la está construyendo. Solo una por proyecto a la vez.
 - **en-revision:** construida; pasa por revisión y verificación.
 - **construido:** PR abierto con todos los controles en verde. Espera a la Dirección.
-- **hecho:** integrada. **Solo una persona marca "hecho".**
+- **hecho:** integrada. **Solo una persona marca "hecho",** salvo que el proyecto haya delegado el cierre
+  (`autonomia.md`, "Delegación por proyecto").
 - **bloqueado:** detenida. El motivo sale de esta lista:
   - `falta-regla-de-negocio` (además lleva `espera:direccion`);
   - `intencion-poco-clara`;

@@ -133,6 +133,10 @@ def main():
                               "docs/bitacora.md", "README.md", ".env.example", ".gitignore")
                   if r.lower() not in existentes]
         out += lista("Archivos propios que se crean", faltan)
+        rutas = _kit.detectar_rutas(raiz)
+        if rutas:
+            out += lista("Rutas propias que se registran en .fabrica/proyecto.json (rutas)",
+                         [f"{clave}: {valor}" for clave, valor in rutas.items()])
         out.append("- No se tocan: el código, docs/ (salvo lo que falte), la CI propia ni el README existente.")
         if not a.aplicar:
             out += ["", "Vista previa: nada cambió. Para adoptar, repite el comando con --aplicar."]
@@ -156,7 +160,7 @@ def main():
             shutil.copy2(fuente / rel, raiz / rel)
         creados, gitignore_previo = _kit.preparar_proyecto(RAIZ, raiz, a.cliente, a.negocio, a.proyecto,
                                                            a.nombre or a.proyecto, propietario, version,
-                                                           fase=a.fase, adoptado=True)
+                                                           fase=a.fase, adoptado=True, rutas=rutas)
         _nucleo.escribir_manifiesto(raiz, kit)
 
         def revertir():

@@ -36,7 +36,7 @@ leída. El informe de un agente es una afirmación; el diff y la salida de las p
 Si falta una regla de negocio, se marca `[ACLARAR: …]`, esa historia se detiene en `espera:direccion` y el trabajo
 sigue con otra. Las ambigüedades técnicas sí se deciden y se registran (`autonomia.md`).
 
-Un proyecto puede adoptar la opción **"lo desconocido se vuelve configurable"** (`plantillas/constitucion-proyecto.md`):
+Un proyecto puede adoptar la opción **"lo desconocido se vuelve configurable"** (`plantillas/principios-opcionales.md`):
 la regla que puede variar de un cliente a otro se construye como un parámetro con un valor por defecto marcado
 `propuesto`, anotado en el catálogo de parámetros del proyecto, y la historia no se detiene. No es inventar: ningún
 valor `propuesto` llega a datos reales sin que la Dirección confirme el catálogo. Lo que es ley o norma, el dinero que

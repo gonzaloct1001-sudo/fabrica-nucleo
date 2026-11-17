@@ -48,7 +48,8 @@ la Dirección, así que cada acción debe poder explicarse sola.
    sistema bloquea la integración, no insistas: anótalo en la bitácora y sigue.
 3. **Una construcción interrumpida:** retómala desde el registro de su plan, con la skill `construir`. Si el registro
    dice "En construcción en una sesión en vivo", no es tuya: sigue con el paso siguiente.
-4. **Una historia en `estado:listo` con plan analizado:** constrúyela con la skill `construir`. En una corrida, como
+4. **Una historia en `estado:listo` con plan analizado** y sin la marca de sesión en vivo en su Registro:
+   constrúyela con la skill `construir`. En una corrida, como
    máximo tres tareas del plan: el registro guarda dónde quedaste.
 5. **Una historia en `estado:listo` sin plan:** la skill `planificar`.
 6. **Una decisión estructural pendiente:** la skill `decidir`.
@@ -60,8 +61,8 @@ Si no hay nada que hacer, el paso es solo la bitácora.
 
 ## 3. Cómo trabajas
 
-- **Nunca subes cambios a `main`.** Todo va en una rama propia (`h-NNN-<slug>`, o `fabrica/<tarea>` si no es una
-  historia) y llega a `main` por un PR.
+- **Nunca subes cambios a la rama principal** (`main` o `master`). Todo va en una rama propia (`h-NNN-<slug>`, o
+  `fabrica/<tarea>` si no es una historia) y llega a la principal por un PR.
 - **Abres o actualizas el PR,** con la plantilla del proyecto y sus etiquetas. Los PRs de especificación también
   pasan por revisión.
 - **No integras nada sin un "intégralo" de la cuenta de la Dirección,** salvo que el proyecto lo haya delegado

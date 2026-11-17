@@ -24,8 +24,8 @@ propone al núcleo (`.fabrica/nucleo/aprendizaje.md`).
 
 ## Sesión en vivo y rutina programada
 
-- **Para construir en vivo sin que la rutina retome la misma historia,** se agrega al Registro de su plan, en la rama
-  principal, la línea "En construcción en una sesión en vivo." La corrida programada elige otro paso mientras exista.
+- **Para construir en vivo sin que la rutina retome la misma historia,** se agrega al Registro de su plan, con un PR
+  chico que se integra antes de empezar, la línea "En construcción en una sesión en vivo." La corrida programada elige otro paso mientras exista.
   Al terminar, se reemplaza por el estado real.
 
 ## Con la Dirección

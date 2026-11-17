@@ -17,7 +17,7 @@ Ejecuta, en orden:
      `.gitignore`, avisa y detente;
    - un dato personal nuevo (identificación, dirección, teléfono, ubicación, audio o imagen) está declarado en el
      registro de tratamiento del proyecto. Si no, avisa antes del commit.
-5. Si estás en la rama principal, crea una rama `fabrica/sesion-<AAAA-MM-DD>` antes del commit: nada se sube
+5. Si estás en la rama principal, crea una rama `fabrica/sesion-<AAAA-MM-DD>-<hhmm>` antes del commit: nada se sube
    directo a la principal (`.fabrica/motor/corrida.md`, "Cómo trabajas").
 6. `git add -A` y `git commit` con un mensaje Conventional Commits en español (`feat:`, `fix:`, `docs:`, `chore:`),
    con la línea de coautoría que indique el entorno.

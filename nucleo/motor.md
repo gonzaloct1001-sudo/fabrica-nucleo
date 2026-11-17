@@ -111,8 +111,8 @@ su aplicación.
 - **Permisos:** la corrida empieza en modo automático, y un clasificador puede bloquear acciones riesgosas. Si
   bloquea una acción, la corrida lo anota y sigue con otra cosa. Si una acción queda esperando permiso, la Dirección
   la responde desde la sesión de la corrida, en claude.ai/code o en la app.
-- **Ramas:** la nube puede subir cambios a cualquier rama, `main` incluida. La regla de no subir a `main` está en la
-  corrida. En un repositorio público o en planes de pago, conviene además una protección de rama en GitHub.
+- **Ramas:** la nube puede subir cambios a cualquier rama, la principal incluida. La regla de no subir a la rama
+  principal está en la corrida. En un repositorio público o en planes de pago, conviene además una protección de rama en GitHub.
 - **Identidad:** todo lo que hace la corrida aparece en GitHub con la cuenta de la Dirección. Por eso GitHub no le
   notifica sus propias preguntas ni la bitácora. Para recibir avisos hace falta un mensaje creado por otra identidad
   (por ejemplo, un bot de GitHub Actions). Ese es el trabajo del panel y del resumen diario de la instancia.

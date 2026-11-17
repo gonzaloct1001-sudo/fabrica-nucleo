@@ -152,6 +152,18 @@ def main():
     comprobar("una ruta que sale del proyecto se ignora",
               estado.rutas_del_proyecto({"rutas": {"historias": "../otro/historias", "planes": "/etc"}})
               == estado.RUTAS_POR_DEFECTO)
+    with tempfile.TemporaryDirectory() as tmp:
+        comprobar("rutas con unidad de Windows, absolutas o con .. no son seguras",
+                  not any(estado.ruta_segura(Path(tmp), r) for r in ("C:/x", "C:x", "/etc", "a/../../b", "", None))
+                  and estado.ruta_segura(Path(tmp), "docs/02-requerimientos/historias"))
+    mixto = "### Tarea 1: a\n### Tarea 2: b\n### Tarea 3: c\n### Tarea 4: d\n### Tarea 5: e\n\nTareas 1-3, 5: completas\n"
+    comprobar("avance del plan con rangos y sueltas mezclados", estado.avance_del_plan(mixto) == (4, 5, "4: d"),
+              estado.avance_del_plan(mixto))
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / ".fabrica").mkdir()
+        (Path(tmp) / ".fabrica/proyecto.json").write_text("{}", encoding="utf-8")
+        texto = "\n".join(estado.reunir(Path(tmp), falso(GIT), con_red=False))
+        comprobar("sin carpeta de historias lo dice y sugiere rutas.historias", "rutas.historias" in texto, texto)
     comprobar("sin rutas, las de la fábrica", estado.rutas_del_proyecto({}) == {"historias": "docs/historias",
                                                                                 "planes": "docs/planes"})
 

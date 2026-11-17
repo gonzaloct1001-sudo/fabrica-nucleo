@@ -12,10 +12,16 @@ Lo que inventó el primer proyecto real y sirve a todos pasa al kit (D6 de la re
   variar de un cliente a otro se construye como parámetro `propuesto` del catálogo y la historia no se detiene; nada
   `propuesto` llega a datos reales sin que la Dirección confirme el catálogo. Ley, dinero que se cobra, promesas al
   cliente y datos personales nuevos siguen deteniendo la historia. Aprobado por la Dirección el 2026-11-17.
-- **`autonomia.md`, "Delegación por proyecto":** la Dirección puede delegar en un proyecto tres decisiones (integrar,
-  poner `pruebas-aprobadas` cuando solo traducen reglas decididas y marcar `hecho`), por escrito en la constitución del
-  proyecto y en `autonomia` de `.fabrica/proyecto.json`. Producción, datos reales, gasto y lo irreversible nunca se
-  delegan.
+- **`autonomia.md`, "Delegación por proyecto":** la Dirección puede delegar en un proyecto tres decisiones, por
+  escrito en la constitución del proyecto (una línea que nombre cada una) y en `autonomia` de `.fabrica/proyecto.json`:
+  - integrar, hasta el riesgo de `riesgo_maximo` (por defecto, bajo), con la CI en verde y las revisiones que
+    correspondan;
+  - poner `pruebas-aprobadas`, solo en un PR de especificación y nunca quien implementa;
+  - marcar `hecho`.
+
+  Producción, datos reales, gasto, lo irreversible y cambiar la constitución o la propia delegación nunca se delegan.
+  `ciclo.md`, `calidad.md`, el agente `qa`, las etiquetas y las skills lo mencionan donde antes decían "solo la
+  Dirección".
 - **Kit:**
   - `.fabrica/scripts/estado.py`: el estado del proyecto en unas 20 líneas, con `--sin-red` y `--peso`. Lee las rutas
     de `rutas` en `proyecto.json` y muestra la autonomía delegada y la marca de sesión en vivo;
@@ -24,14 +30,21 @@ Lo que inventó el primer proyecto real y sirve a todos pasa al kit (D6 de la re
   - skill `construir-en-sesion`: la sesión principal programa con la prueba primero y la revisión es por tramo;
   - la corrida lee `autonomia` y `rutas`, integra según la delegación y no retoma una historia en sesión en vivo;
   - `construir`, `cerrar`, `especificar` y `AGENTS.md` aplican la delegación;
-  - `verificar_proyecto.py` valida `rutas` y `autonomia`, y rechaza una delegación que la constitución del proyecto no
-    declara.
+  - `verificar_proyecto.py` valida `rutas` (dentro del proyecto, también en Windows y tras resolver enlaces) y
+    `autonomia`, y rechaza: una delegación que la constitución del proyecto no nombra; un PR que mezcla pruebas
+    aprobadas con código; y un PR que cambia la constitución o la autonomía sin la etiqueta `constitucion-aprobada`,
+    que pone solo la Dirección;
+  - la adopción de un proyecto detecta dónde guarda sus historias y sus planes, y lo registra en `rutas`;
+  - el texto del kit dice "rama principal" donde decía `main`.
 - **Proyectos nuevos:** `proyecto.json` nace con `rutas` y `autonomia` (todo en `"direccion"`), y el proyecto con
   `docs/siguiente-accion.md` y `docs/notas-para-sesiones.md`.
-- **Plantillas nuevas:** `notas-para-sesiones.md`, `siguiente-accion.md` y `catalogo-parametros.md`. La constitución
-  del proyecto suma "Principios opcionales de la fábrica" y "Autonomía en este proyecto".
+- **Plantillas nuevas:** `notas-para-sesiones.md`, `siguiente-accion.md`, `catalogo-parametros.md` y
+  `principios-opcionales.md`. La constitución del proyecto suma "Autonomía en este proyecto" y apunta a los principios
+  opcionales, que solo rigen si se copian.
 - **`actualizaciones.md`:** cómo se retira una pieza propia de un proyecto cuando su versión oficial llega con el kit.
-- **Pruebas:** `probar_estado.py`, 23 casos nuevos, en la CI del núcleo. `probar_kit.py`: 79 casos, 7 nuevos.
+- **Pruebas:** `probar_estado.py`, 26 casos nuevos, en la CI del núcleo. `probar_kit.py`: 89 casos, 17 nuevos.
+- **Revisión independiente:** la revisión de la rama encontró 7 hallazgos importantes (sobre todo, límites de la
+  delegación) y 6 menores; todos se corrigieron en una sola tanda.
 
 ## 0.10.1 · 2026-11-04
 

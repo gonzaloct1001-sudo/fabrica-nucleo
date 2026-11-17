@@ -4,7 +4,7 @@
   {"nombre": "estado:en-curso", "color": "1d76db", "descripcion": "Una corrida la está construyendo"},
   {"nombre": "estado:en-revision", "color": "5319e7", "descripcion": "Construida; en revisión y verificación"},
   {"nombre": "estado:construido", "color": "fbca04", "descripcion": "PR listo; espera a la Dirección"},
-  {"nombre": "estado:hecho", "color": "0b5d1e", "descripcion": "Integrada. Solo una persona la marca"},
+  {"nombre": "estado:hecho", "color": "0b5d1e", "descripcion": "Integrada. La marca la Dirección, salvo delegación"},
   {"nombre": "estado:bloqueado", "color": "b60205", "descripcion": "Detenida; el motivo está en un comentario"},
   {"nombre": "espera:direccion", "color": "d93f0b", "descripcion": "Necesita una decisión de la Dirección"},
   {"nombre": "riesgo:bajo", "color": "c2e0c6", "descripcion": "No toca dinero, datos personales ni permisos"},
@@ -17,6 +17,7 @@
   {"nombre": "tipo:error", "color": "e99695", "descripcion": "Algo no funciona como debería"},
   {"nombre": "tipo:tarea", "color": "bfdadc", "descripcion": "Trabajo técnico sin cambio visible"},
   {"nombre": "tipo:investigacion", "color": "bfdadc", "descripcion": "Averiguar algo antes de decidir"},
-  {"nombre": "pruebas-aprobadas", "color": "0e8a16", "descripcion": "La Dirección aprueba cambios en pruebas/aceptacion/"},
-  {"nombre": "revision:externa", "color": "c5def5", "descripcion": "Toca lo sensible: pide la revisión de una segunda IA"}
+  {"nombre": "pruebas-aprobadas", "color": "0e8a16", "descripcion": "Aprueba cambios en pruebas/aceptacion/: la Dirección, salvo delegación"},
+  {"nombre": "revision:externa", "color": "c5def5", "descripcion": "Toca lo sensible: pide la revisión de una segunda IA"},
+  {"nombre": "constitucion-aprobada", "color": "0e8a16", "descripcion": "La Dirección aprueba un cambio en la constitución o en la autonomía del proyecto"}
 ]

@@ -64,7 +64,8 @@ En la nube, usa GitHub por la API REST (`gh api repos/{dueño}/{repo}/...`) o co
 - **Duda técnica:** la decides y la registras. **Duda de negocio** (dinero, stock, datos personales, lo que se le
   promete al cliente): esa historia queda en `espera:direccion` y sigues con otra.
 - **Nada está terminado** sin el comando de verificación corrido en ese momento y su salida leída.
-- **`pruebas/aceptacion/` solo cambia** en un PR con la etiqueta `pruebas-aprobadas`, que pone la Dirección.
+- **`pruebas/aceptacion/` solo cambia** en un PR de especificación con la etiqueta `pruebas-aprobadas`, que pone la
+  Dirección, salvo delegación. Quien implementa nunca la pone.
 - **Al dejar un PR listo, pregunta quién lo integra.** Por defecto, la Dirección. Tú lo integras solo con un
   "intégralo" explícito para ese PR, o si el proyecto delegó la integración en `autonomia` de
   `.fabrica/proyecto.json` y el PR cumple sus condiciones (`.fabrica/nucleo/autonomia.md`, "Delegación por proyecto").

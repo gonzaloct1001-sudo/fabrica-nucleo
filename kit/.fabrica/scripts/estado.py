@@ -20,11 +20,12 @@ import subprocess
 import sys
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Callable, Dict, List, Optional, Tuple
 
 RAIZ = Path(__file__).resolve().parents[2]
 RUTAS_POR_DEFECTO = {"historias": "docs/historias", "planes": "docs/planes"}
+# `en-construccion` no está en el ciclo: lo usaban proyectos anteriores al kit y se acepta como `en-curso`.
 EN_CURSO = ("listo", "en-curso", "en-construccion", "en-revision")
 CONTEXTO_FIJO = ("AGENTS.md", "CLAUDE.md")
 TITULO_BITACORA = "Bitácora de corridas"
@@ -63,16 +64,30 @@ def leer_json(ruta: Path) -> dict:
     return dato if isinstance(dato, dict) else {}
 
 
-def rutas_del_proyecto(proyecto: dict) -> Dict[str, str]:
+def ruta_segura(raiz: Path, valor: object) -> bool:
+    """Si `valor` es una ruta relativa que queda dentro de `raiz`, en Linux y en Windows, también tras resolver enlaces."""
+    if not isinstance(valor, str) or not valor.strip():
+        return False
+    texto = valor.strip()
+    if PurePosixPath(texto).is_absolute() or PureWindowsPath(texto).anchor or ".." in PureWindowsPath(texto).parts:
+        return False
+    try:
+        (Path(raiz) / texto).resolve().relative_to(Path(raiz).resolve())
+    except (ValueError, OSError):
+        return False
+    return True
+
+
+def rutas_del_proyecto(proyecto: dict, raiz: Path = RAIZ) -> Dict[str, str]:
     """Las rutas de historias y planes: las de `rutas` en proyecto.json, o las de la fábrica.
 
-    Una ruta absoluta o que sale del proyecto (con ..) se ignora: el script nunca lee fuera del repositorio.
+    Una ruta que sale del proyecto se ignora (`ruta_segura`): el script nunca lee fuera del repositorio.
     """
     propias = proyecto.get("rutas") if isinstance(proyecto.get("rutas"), dict) else {}
     rutas = dict(RUTAS_POR_DEFECTO)
     for clave in RUTAS_POR_DEFECTO:
         valor = propias.get(clave)
-        if isinstance(valor, str) and valor.strip() and not Path(valor).is_absolute() and ".." not in Path(valor).parts:
+        if ruta_segura(raiz, valor):
             rutas[clave] = valor.strip().rstrip("/")
     return rutas
 
@@ -96,10 +111,8 @@ def avance_del_plan(texto: str) -> Tuple[int, int, Optional[str]]:
     titulos = {int(numero): titulo.strip() for numero, titulo in TITULO_DE_TAREA.findall(texto)}
     completas = set()
     for lista in TAREAS_COMPLETAS.findall(texto):
-        numeros = [int(numero) for numero in re.findall(r"\d+", lista)]
-        if len(numeros) == 2 and re.search(r"\d\s*(a|-)\s*\d", lista):
-            numeros = list(range(numeros[0], numeros[1] + 1))
-        completas.update(numeros)
+        for desde, hasta in re.findall(r"(\d+)(?:\s*(?:a|-)\s*(\d+))?", lista):
+            completas.update(range(int(desde), int(hasta or desde) + 1))
     pendientes = sorted(set(titulos) - completas)
     siguiente = f"{pendientes[0]}: {titulos[pendientes[0]]}" if pendientes else None
     return len(set(titulos) & completas), len(titulos), siguiente
@@ -144,6 +157,9 @@ def _rama(raiz: Path, ejecutar: Ejecutar) -> str:
 
 
 def _historias(raiz: Path, rutas: Dict[str, str]) -> List[str]:
+    if not (raiz / rutas["historias"]).is_dir():
+        return [f"Historias: no existe {rutas['historias']}/. Si el proyecto las guarda en otra carpeta, ponla en "
+                "`rutas.historias` de .fabrica/proyecto.json."]
     en_curso: List[str] = []
     demas: Counter = Counter()
     for ruta in sorted((raiz / rutas["historias"]).glob("*.md")):
@@ -188,7 +204,7 @@ def estado_local(raiz: Path, ejecutar: Ejecutar) -> List[str]:
         f"Motor: {pasos} paso(s) por corrida | {pausa} | {_autonomia(proyecto)}"
         + f" | estado.json del {str(estado.get('actualizado', '?'))[:10]}",
         _rama(raiz, ejecutar),
-        *_historias(raiz, rutas_del_proyecto(proyecto)),
+        *_historias(raiz, rutas_del_proyecto(proyecto, raiz)),
     ]
 
 

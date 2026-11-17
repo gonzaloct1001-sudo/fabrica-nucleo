@@ -194,13 +194,50 @@ def main():
         rc, out = con_proyecto(autonomia=delega)
         comprobar("Con la delegación declarada en la constitución, se acepta", rc == 0, out)
         constitucion_p.write_text(const_original, encoding="utf-8")
+        constitucion_p.write_text(const_original.replace(
+            "## Autonomía en este proyecto\n", "## Autonomía en este proyecto\n\n- Ninguna.\n", 1), encoding="utf-8")
+        rc, out = con_proyecto(autonomia=delega)
+        comprobar("Una línea que no nombra la delegación no la declara", rc != 0 and "integra" in out, out)
+        constitucion_p.write_text(const_original.replace(
+            "## Autonomía en este proyecto\n",
+            "## Autonomía en este proyecto\n\n- La fábrica integra sola · decidido el 2026-11-17\n", 1), encoding="utf-8")
+        rc, out = con_proyecto(autonomia=dict(delega, cierra_historias="fabrica"))
+        comprobar("Cada decisión delegada debe estar nombrada en la constitución",
+                  rc != 0 and "cierra_historias" in out and "integra," not in out, out)
+        rc, out = con_proyecto(autonomia=dict(delega, riesgo_maximo="total"))
+        comprobar("Un riesgo máximo inválido se rechaza", rc != 0 and "riesgo_maximo" in out, out)
+        rc, out = con_proyecto(autonomia=dict(delega, riesgo_maximo="alto"))
+        comprobar("Con el riesgo máximo válido y la delegación nombrada, se acepta", rc == 0, out)
+        constitucion_p.write_text(const_original, encoding="utf-8")
         rc, out = con_proyecto(autonomia={"integra": "siempre"})
         comprobar("Un valor de autonomía inválido se rechaza", rc != 0 and "autonomia.integra" in out, out)
         rc, out = con_proyecto(autonomia={"produccion": "fabrica"})
         comprobar("Lo que no se puede delegar se rechaza", rc != 0 and "no se puede delegar" in out, out)
         rc, out = con_proyecto(rutas={"historias": "../otro-cliente/docs"})
         comprobar("Una ruta que sale del proyecto se rechaza", rc != 0 and "rutas.historias" in out, out)
+        rc, out = con_proyecto(rutas={"planes": "C:/otro-cliente"})
+        comprobar("Una ruta con unidad de Windows se rechaza", rc != 0 and "rutas.planes" in out, out)
         ficha_p.write_text(original, encoding="utf-8")
+        rc_s, sucio = run(["git", "status", "--porcelain", "--ignored"], proy)
+        comprobar("estado.py y la verificación no dejan rastros en el proyecto", sucio.strip() == "", sucio)
+
+        # La constitución y la delegación solo cambian con el sí de la Dirección
+        run(["git", "checkout", "-q", "-b", "cambia-autonomia"], proy)
+        d = json.loads(original)
+        d["autonomia"]["integra"] = "fabrica"
+        ficha_p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+        constitucion_p.write_text(const_original.replace(
+            "## Autonomía en este proyecto\n", "## Autonomía en este proyecto\n\n- La fábrica integra sola\n", 1),
+            encoding="utf-8")
+        run(["git", "add", "-A"], proy)
+        run(["git", "commit", "-qm", "La fábrica se delega la integración"], proy)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
+        comprobar("Un PR que cambia la constitución o la autonomía sin constitucion-aprobada se rechaza",
+                  rc != 0 and "constitucion-aprobada" in out, out)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", "constitucion-aprobada"], proy)
+        comprobar("Con constitucion-aprobada se acepta", rc == 0, out)
+        run(["git", "checkout", "-q", "main"], proy)
+        run(["git", "branch", "-q", "-D", "cambia-autonomia"], proy)
         run(["git", "checkout", "-q", "-b", "cambio-codigo"], proy)
         (proy / "src").mkdir()
         (proy / "src" / "modulo.txt").write_text("código\n", encoding="utf-8")
@@ -208,8 +245,19 @@ def main():
         run(["git", "commit", "-qm", "Código"], proy)
         rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
         comprobar("Un cambio que no toca las pruebas de aceptación pasa sin etiqueta", rc == 0, out)
+        (proy / "pruebas" / "aceptacion" / "H-009").mkdir(parents=True)
+        (proy / "pruebas" / "aceptacion" / "H-009" / "caso.md").write_text("Dado… cuando… entonces…\n", encoding="utf-8")
+        run(["git", "add", "-A"], proy)
+        run(["git", "commit", "-qm", "Código y pruebas en el mismo PR"], proy)
+        rc, out = run(verif + ["--base", "main", "--etiquetas", "pruebas-aprobadas"], proy)
+        comprobar("Pruebas aprobadas mezcladas con código en el mismo PR se rechazan, aun con la etiqueta",
+                  rc != 0 and "PR de especificación" in out and "src/modulo.txt" in out, out)
+        run(["git", "checkout", "-q", "main"], proy)
+        run(["git", "checkout", "-q", "-b", "especificacion"], proy)
         (proy / "pruebas" / "aceptacion" / "H-001").mkdir(parents=True)
         (proy / "pruebas" / "aceptacion" / "H-001" / "caso.md").write_text("Dado… cuando… entonces…\n", encoding="utf-8")
+        run(["git", "add", "-A"], proy)
+        (proy / "docs" / "historias" / "nota-h001.md").write_text("Notas de la especificación\n", encoding="utf-8")
         run(["git", "add", "-A"], proy)
         run(["git", "commit", "-qm", "Toca pruebas de aceptación"], proy)
         rc, out = run(verif + ["--base", "main", "--etiquetas", ""], proy)
@@ -384,7 +432,9 @@ def main():
                          ".claude/skills/propia/SKILL.md": "---\nname: propia\n---\n",
                          ".github/pull_request_template.md": "plantilla propia\n",
                          ".github/workflows/ci.yml": "# CI propia\n", "docs/01-descubrimiento/venta.md": "notas\n",
-                         ".gitignore": "node_modules/\n.env\n", "src/app.txt": "código\n"}
+                         ".gitignore": "node_modules/\n.env\n", "src/app.txt": "código\n",
+                         "docs/02-requerimientos/historias/H-001-vender.md": "---\nid: H-001\nestado: hecho\n---\n# Vender\n",
+                         "docs/02-requerimientos/historias/H-002-cobrar.md": "---\nid: H-002\nestado: borrador\n---\n"}
         for rel, texto in propios_viejo.items():
             (viejo / rel).parent.mkdir(parents=True, exist_ok=True)
             (viejo / rel).write_text(texto, encoding="utf-8")
@@ -438,6 +488,10 @@ def main():
                   "| tienda | muebles | `grupo-demo-tienda` | activo |" in ficha.read_text(encoding="utf-8"))
         rc, out = run(verif, viejo)
         comprobar("El proyecto adoptado pasa su verificación", rc == 0, out)
+        rutas_v = json.loads((viejo / ".fabrica/proyecto.json").read_text(encoding="utf-8")).get("rutas", {})
+        comprobar("La adopción registra dónde guarda el proyecto sus historias",
+                  rutas_v.get("historias") == "docs/02-requerimientos/historias"
+                  and rutas_v.get("planes") == "docs/planes", json.dumps(rutas_v))
         rc, out = script(inst, *adoptar, "--aplicar")
         comprobar("No adopta dos veces el mismo proyecto", rc != 0 and "ya es un proyecto de la fábrica" in out, out)
         rc, out = script(inst, "actualizar_kit.py", str(viejo), "--aplicar")

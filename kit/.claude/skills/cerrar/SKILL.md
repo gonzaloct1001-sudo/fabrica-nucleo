@@ -1,6 +1,6 @@
 ---
 name: cerrar
-description: Cierra una historia integrada o una épica terminada. Verifica la Definition of Done, actualiza el estado del proyecto para el panel, registra la bitácora y, al cerrar una épica, hace la retrospectiva. Úsala después de que la Dirección integra un PR o marca una historia como hecha.
+description: Cierra una historia integrada o una épica terminada. Verifica la Definition of Done, actualiza el estado del proyecto para el panel, registra la bitácora y, al cerrar una épica, hace la retrospectiva. Úsala después de que se integra el PR de una historia (lo integra la Dirección, o la fábrica si el proyecto lo delegó).
 ---
 
 # Cerrar

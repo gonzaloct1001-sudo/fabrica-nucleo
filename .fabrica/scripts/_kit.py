@@ -111,8 +111,43 @@ def _crear(destino, rel, texto, creados):
         creados.append(rel)
 
 
+CABECERA_DE_HISTORIA = re.compile(r"\A---\s*\n(?:.*\n)*?id:\s*[A-Z]+-\d+", re.M)
+NO_BUSCAR = {".git", ".fabrica", ".claude", ".github", "node_modules", ".venv", "__pycache__"}
+
+
+def detectar_rutas(raiz):
+    """En un proyecto que ya existe, dónde guarda sus historias y sus planes, si no usa las carpetas de la fábrica.
+
+    Historias: la carpeta con más archivos .md cuya cabecera tiene un `id: X-NNN`. Planes: la que tiene más archivos
+    `*-plan.md`. Devuelve solo las rutas distintas de las de la fábrica.
+    """
+    raiz = Path(raiz)
+    historias, planes = {}, {}
+    for archivo in raiz.rglob("*.md"):
+        rel = archivo.relative_to(raiz)
+        if set(rel.parts) & NO_BUSCAR or len(rel.parts) < 2:
+            continue
+        carpeta = rel.parent.as_posix()
+        if archivo.name.endswith("-plan.md"):
+            planes[carpeta] = planes.get(carpeta, 0) + 1
+            continue
+        try:
+            inicio = archivo.read_text(encoding="utf-8", errors="replace")[:600]
+        except OSError:
+            continue
+        if CABECERA_DE_HISTORIA.match(inicio):
+            historias[carpeta] = historias.get(carpeta, 0) + 1
+    rutas = {}
+    for clave, cuentas, defecto in (("historias", historias, "docs/historias"), ("planes", planes, "docs/planes")):
+        if cuentas:
+            mejor = max(sorted(cuentas), key=lambda c: cuentas[c])
+            if mejor != defecto:
+                rutas[clave] = mejor
+    return rutas
+
+
 def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombre, propietario, version,
-                      fase="descubrimiento", adoptado=False):
+                      fase="descubrimiento", adoptado=False, rutas=None):
     """Crea los archivos propios iniciales que le falten al proyecto, sin pisar ninguno que ya exista.
 
     Devuelve las rutas creadas y, si se completó un .gitignore que ya existía, su texto anterior (o None).
@@ -125,7 +160,8 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
              "motor": {"pasos_por_corrida": 1},  # nucleo/motor.md
              # dónde viven las historias y los planes; un proyecto adoptado puede usar las suyas (estado.py)
              "rutas": {"historias": "docs/historias", "planes": "docs/planes",
-                       "siguiente_accion": "docs/siguiente-accion.md", "notas": "docs/notas-para-sesiones.md"},
+                       "siguiente_accion": "docs/siguiente-accion.md", "notas": "docs/notas-para-sesiones.md",
+                       **(rutas or {})},
              # decisiones de la Dirección que el proyecto delegó (nucleo/autonomia.md, "Delegación por proyecto")
              "autonomia": {"integra": "direccion", "pruebas_aprobadas": "direccion", "cierra_historias": "direccion"}}
     _crear(destino, ".fabrica/proyecto.json", json.dumps(datos, ensure_ascii=False, indent=2) + "\n", creados)

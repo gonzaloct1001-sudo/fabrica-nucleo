@@ -62,7 +62,8 @@ que no se corrige llega al PR como estacionado, con su motivo. Ningún hallazgo 
 
 ## Lo que no cambia
 
-- `pruebas/aceptacion/` no se toca sin la etiqueta `pruebas-aprobadas`.
+- `pruebas/aceptacion/` no se toca sin la etiqueta `pruebas-aprobadas`, y nunca en el PR que construye: quien
+  implementa no pone esa etiqueta, ni con delegación. Un cambio necesario va en su propio PR de especificación.
 - Una regla de negocio que falta no se inventa: se pregunta a la Dirección o, si el proyecto adoptó la opción, se
   vuelve un parámetro `propuesto` del catálogo (constitución de la fábrica, art. IV).
 - Una dependencia nueva espera el sí de la Dirección y la revisión en cuarentena.
