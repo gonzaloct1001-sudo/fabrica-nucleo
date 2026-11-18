@@ -25,11 +25,13 @@ Ejecuta, en orden:
      registro de tratamiento del proyecto. Si no, avisa antes del commit.
 5. Si estás en la rama principal, crea una rama `fabrica/sesion-<AAAA-MM-DD>-<hhmm>` antes del commit: nada se sube
    directo a la principal (`.fabrica/motor/corrida.md`, "Cómo trabajas").
-6. Junta en un solo commit lo de la rama, si la rama todavía no tiene PR: `git reset --soft <base>` (la rama
-   principal de la que salió) y `git commit` con un mensaje Conventional Commits en español (`feat:`, `fix:`, `docs:`,
+6. Junta en un solo commit lo de la rama, si la rama todavía no tiene PR: `git fetch origin` y
+   `git reset --soft "$(git merge-base origin/<principal> HEAD)"` (el punto exacto donde la rama salió de la
+   principal; nunca la punta actual, que revertiría lo integrado después) y `git commit` con un mensaje Conventional Commits en español (`feat:`, `fix:`, `docs:`,
    `chore:`) y la línea de coautoría que indique el entorno. Si la rama ya se subió sin PR, súbela con
-   `--force-with-lease`: todavía es solo tuya. Si la rama ya tiene PR, un commit nuevo encima: lo que está en un PR
-   no se reescribe. Antes de subir, `gitleaks git --log-opts="HEAD --not --remotes" .` si está instalado: un
+   `--force-with-lease`: todavía es solo tuya. Si la rama ya tiene PR, junta solo lo que todavía no subiste
+   (`git reset --soft origin/<rama>` y un commit nuevo encima): lo que ya está en el PR no se reescribe, y los commits
+   de guardado no llegan al PR uno por uno. Antes de subir, `gitleaks git --log-opts="HEAD --not --remotes" .` si está instalado: un
    secreto subido a GitHub no se puede retirar.
 7. `git push -u origin <rama>` y abre o actualiza su PR con la plantilla del proyecto. En la nube, por la API REST.
 8. Confirma en una o dos líneas qué se subió, el enlace al PR y cuál quedó como siguiente acción.

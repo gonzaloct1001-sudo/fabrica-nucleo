@@ -173,7 +173,7 @@ HOOK_GUARDIA = "python3 \"$CLAUDE_PROJECT_DIR/.fabrica/scripts/hook_guardia.py\"
 HOOK_GUARDADO = "python3 \"$CLAUDE_PROJECT_DIR/.fabrica/scripts/hook_guardado.py\""
 HOOKS_DEL_KIT = {"PreToolUse": [{"matcher": "Edit|Write|MultiEdit|NotebookEdit",
                                  "hooks": [{"type": "command", "command": HOOK_GUARDIA, "timeout": 10}]}],
-                 "Stop": [{"hooks": [{"type": "command", "command": HOOK_GUARDADO, "timeout": 60}]}]}
+                 "Stop": [{"hooks": [{"type": "command", "command": HOOK_GUARDADO, "timeout": 120}]}]}
 
 
 def _es_del_kit(grupo):
@@ -333,7 +333,8 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
     # Los hooks del kit: en un proyecto nuevo, o adoptado sin configuración de Claude propia. Si ya tiene una, no se
     # toca al adoptar (deshacer la adopción no podría restaurarla); la siguiente actualización del kit los fusiona,
     # con respaldo.
-    ignorar_wip_en_flujos(destino)
+    if not adoptado:  # al adoptar no hay cómo restaurarlos si falla: los ajusta la actualización, con respaldo
+        ignorar_wip_en_flujos(destino)
     if not (Path(destino) / ".claude" / "settings.json").exists():
         aviso = fusionar_hooks(destino)
         if aviso:

@@ -104,7 +104,23 @@ def probar_guardado(tmp):
     comprobar("deja fuera el secreto, la imagen y el archivo pesado, y lo dice; lo ignorado ni se nombra",
               all(x in sin_registrar for x in (".env", "captura.png", "grande.csv"))
               and ".env (parece un secreto)" in mensaje and "ruido.log" not in mensaje, mensaje)
-    comprobar("sin cambios nuevos no hace nada", guardado.guardar(raiz, respaldar=False) is None)
+    antes = git(raiz, "rev-parse", "HEAD")[1]
+    nada = guardado.guardar(raiz, respaldar=False)
+    comprobar("sin cambios nuevos no hace commit; solo recuerda lo que quedó fuera",
+              git(raiz, "rev-parse", "HEAD")[1] == antes and (nada is None or nada.startswith("Quedaron fuera")), nada)
+    comprobar("los secretos se reconocen por el nombre del archivo, no por la carpeta",
+              guardado.SECRETO.search(".npmrc") and guardado.SECRETO.search("service-account-prod.json")
+              and guardado.SECRETO.search("terraform.tfstate") and not guardado.SECRETO.search("acta.md")
+              and not guardado.SECRETO.search(Path("docs/secretaria/acta.md").name))
+    (raiz / "manual.pdf").write_bytes(b"%PDF-1.4")
+    (raiz / "dato.bin2").write_bytes(b"\x00\x01\x02")
+    mensaje = guardado.guardar(raiz, respaldar=False) or ""
+    comprobar("deja fuera documentos y binarios aunque su extensión no esté en la lista",
+              mensaje.startswith("Quedaron fuera")
+              and not git(raiz, "ls-files", "manual.pdf", "dato.bin2")[1].strip()
+              and "manual.pdf" in git(raiz, "status", "--porcelain")[1], mensaje)
+    (raiz / "manual.pdf").unlink()
+    (raiz / "dato.bin2").unlink()
 
     (raiz / "app.py").write_text("print(3)\n", encoding="utf-8")
     mensaje = guardado.guardar(raiz, revisar=lambda r: "gitleaks no está instalado")
@@ -119,6 +135,7 @@ def probar_guardado(tmp):
     (raiz / ".github/workflows").mkdir(parents=True)
     (raiz / ".github/workflows/ci.yml").write_text("on:\n  push:\n  pull_request:\njobs: {}\n", encoding="utf-8")
     git(raiz, "add", ".github")
+    git(raiz, "commit", "-qm", "flujo")
     (raiz / "app.py").write_text("print(4)\n", encoding="utf-8")
     mensaje = guardado.guardar(raiz, revisar=lambda r: None)
     comprobar("con un flujo que corre con push a cualquier rama no respalda y dice cuál",
@@ -141,7 +158,10 @@ def probar_guardado(tmp):
 
     for flujo, malo in (("on: [push, pull_request]\n", True), ("on: push\n", True),
                         ("on:\n  push: { branches: [main, master] }\n", False),
-                        ("on:\n  push:\n    tags: ['v*']\n", False), ("on:\n  pull_request:\n", False)):
+                        ("on:\n  push:\n    tags: ['v*']\n", False), ("on:\n  pull_request:\n", False),
+                        ("on:\n  push:\n    branches: ['**']\n", True),
+                        ("on:\n  push:\n    branches-ignore: ['borrador/**']\n", True),
+                        ("on:\n  create:\n  pull_request:\n", True)):
         (raiz / ".github/workflows/ci.yml").write_text(flujo + "jobs: {}\n", encoding="utf-8")
         if bool(guardado.flujos_sin_filtro(raiz)) != malo:
             comprobar(f"reconoce el flujo {flujo.strip()!r}", False)
@@ -177,9 +197,33 @@ def probar_copias(tmp):
               otra_vez == [] and "total = 2" in git(hermana, "show", "HEAD:cobro.py")[1], otra_vez)
     comprobar("en una sesión nueva vuelve a avisar una vez",
               any("main" in a for a in guardado.guardar_todas(raiz, sesion="s2", respaldar=False)))
+    git(raiz, "checkout", "-q", "--", "app.py")
+    (hermana / "cobro.py").write_text("total = 3\n", encoding="utf-8")
     comprobar("un guardado que sale bien no dice nada",
-              guardado.guardar_todas(hermana, sesion="s3", respaldar=False) == []
-              or all("main" in a for a in guardado.guardar_todas(hermana, sesion="s3", respaldar=False)))
+              guardado.guardar_todas(raiz, sesion="s4", respaldar=False) == []
+              and "total = 3" in git(hermana, "show", "HEAD:cobro.py")[1])
+
+    (hermana / "acción de cobro.md").write_text("nota\n", encoding="utf-8")
+    (hermana / "cobro.py").write_text("total = 4\n", encoding="utf-8")
+    guardado.guardar_todas(raiz, sesion="s5", respaldar=False)
+    _, nombres = git(hermana, "-c", "core.quotePath=false", "show", "--name-only", "--format=", "HEAD")
+    comprobar("guarda archivos con acentos y espacios en el nombre", "acción de cobro.md" in nombres, nombres)
+
+    (hermana / "cobro.py").write_text("total = 5\n", encoding="utf-8")
+    (hermana / "otro.py").write_text("y = 1\n", encoding="utf-8")
+    git(hermana, "add", "otro.py")
+    antes = git(hermana, "rev-parse", "HEAD")[1]
+    guardado.guardar_todas(raiz, sesion="s6", respaldar=False)
+    comprobar("no barre lo que otra sesión dejó preparado a mano (git add)",
+              git(hermana, "rev-parse", "HEAD")[1] == antes)
+    git(hermana, "reset", "-q")
+    _, gitdir = git(hermana, "rev-parse", "--git-dir")
+    candado = Path(gitdir.strip()) if Path(gitdir.strip()).is_absolute() else hermana / gitdir.strip()
+    (candado / "index.lock").write_text("", encoding="utf-8")
+    guardado.guardar_todas(raiz, sesion="s7", respaldar=False)
+    comprobar("no toca una copia con otra operación de git en curso (index.lock)",
+              git(hermana, "rev-parse", "HEAD")[1] == antes)
+    (candado / "index.lock").unlink()
 
 
 def probar_flujos(tmp):
@@ -231,6 +275,17 @@ def probar_limpieza():
         limpiar.main(["--aplicar"], ejecutar=falso)
     comprobar("con --aplicar los borra por la API", borrados == ["h-001-viejo"], borrados)
 
+    def caido(orden):
+        comando = " ".join(orden)
+        if "git/ref/heads/" in comando:
+            raise limpiar.SinRespuesta("HTTP 502")
+        return falso(orden)
+    borrados.clear()
+    with redirect_stdout(io.StringIO()) as salida:
+        codigo = limpiar.main(["--aplicar"], ejecutar=caido)
+    comprobar("si GitHub falla al preguntar por la rama de origen, no borra nada",
+              codigo == 0 and borrados == [] and "no se borra nada" in salida.getvalue(), salida.getvalue())
+
 
 def probar_guardia(tmp):
     raiz = Path(tmp) / "g"
@@ -248,6 +303,15 @@ def probar_guardia(tmp):
     comprobar("deja editar el código y lo de fuera del proyecto",
               guardia.decidir({"tool_input": {"file_path": str(raiz / "src/a.py")}}, raiz) is None
               and guardia.decidir({"tool_input": {"file_path": "/etc/pruebas/aceptacion/x"}}, raiz) is None)
+    proyecto_g, _ = repo(tmp, "guardia-repo")
+    hermana_g = Path(tmp) / "guardia-h001"
+    git(proyecto_g, "worktree", "add", "-q", "-b", "h-001", str(hermana_g))
+    (hermana_g / ".fabrica/trabajo").mkdir(parents=True)
+    (hermana_g / ".fabrica/trabajo/construyendo").write_text("H-001\n", encoding="utf-8")
+    entrada_h = {"tool_input": {"file_path": str(hermana_g / "pruebas/aceptacion/H-001/test_y.py")}}
+    respuesta_h = guardia.decidir(entrada_h, proyecto_g)
+    comprobar("protege las pruebas también cuando se construye en una copia hermana de la sesión",
+              respuesta_h and respuesta_h["hookSpecificOutput"]["permissionDecision"] == "deny")
     hecho = subprocess.run([sys.executable, str(SCRIPTS / "hook_guardia.py")], input="no es json", text=True,
                            capture_output=True, env=dict(ENTORNO, CLAUDE_PROJECT_DIR=str(raiz)))
     comprobar("con una entrada rota deja pasar sin fallar", hecho.returncode == 0 and hecho.stdout == "")

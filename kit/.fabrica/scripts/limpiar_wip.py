@@ -15,18 +15,28 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+from urllib.parse import quote
 
 API = "repos/{owner}/{repo}"
 DIAS = 14
 
 
+class SinRespuesta(Exception):
+    """GitHub no respondió con certeza (red, límite de uso, error del servidor): no se borra nada."""
+
+
 def correr(orden):
+    """La salida de `gh`; None si GitHub respondió 404; SinRespuesta ante cualquier otro error."""
     try:
         hecho = subprocess.run(orden, capture_output=True, encoding="utf-8", errors="replace", timeout=30, check=False)
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise SinRespuesta(str(error)) from error
+    if hecho.returncode == 0:
+        return hecho.stdout
+    if "HTTP 404" in (hecho.stderr or ""):
         return None
-    return hecho.stdout if hecho.returncode == 0 else None
+    raise SinRespuesta((hecho.stderr or "").strip()[:200])
 
 
 def api(ruta, ejecutar, metodo="GET"):
@@ -53,8 +63,8 @@ def abandonadas(ejecutar=correr, ahora=None):
             continue
         if dias <= DIAS:
             continue
-        if ejecutar(["gh", "api", f"{API}/git/ref/heads/{origen}"]) is not None:
-            continue  # la rama de origen sigue viva: su respaldo también
+        if ejecutar(["gh", "api", f"{API}/git/ref/heads/{quote(origen, safe='/')}"]) is not None:
+            continue  # la rama de origen sigue viva: su respaldo también (un error de GitHub corta antes)
         borrar.append((nombre, dias))
     return borrar
 
@@ -63,13 +73,20 @@ def main(argumentos=None, ejecutar=correr):
     analizador = argparse.ArgumentParser(description="Borra las ramas wip/ abandonadas.")
     analizador.add_argument("--aplicar", action="store_true", help="las borra (sin esto, solo las muestra)")
     opciones = analizador.parse_args(argumentos)
-    borrar = abandonadas(ejecutar)
+    try:
+        borrar = abandonadas(ejecutar)
+    except SinRespuesta as error:
+        print(f"GitHub no respondió con certeza ({error}): no se borra nada esta vez.")
+        return 0
     if not borrar:
         print("No hay ramas wip/ abandonadas.")
         return 0
     for nombre, dias in borrar:
         if opciones.aplicar:
-            hecho = ejecutar(["gh", "api", "-X", "DELETE", f"{API}/git/refs/heads/{nombre}"])
+            try:
+                hecho = ejecutar(["gh", "api", "-X", "DELETE", f"{API}/git/refs/heads/{quote(nombre, safe='/')}"])
+            except SinRespuesta:
+                hecho = None
             print(f"{'Borrada' if hecho is not None else 'No se pudo borrar'}: {nombre} ({dias} días sin cambios)")
         else:
             print(f"Se borraría: {nombre} ({dias} días sin cambios y sin su rama de origen)")

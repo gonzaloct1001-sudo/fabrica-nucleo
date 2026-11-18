@@ -43,8 +43,26 @@ revisión del 2026-11-17, más el guardado y el estado automáticos que pidió l
 - **Una sesión por tramo (A8)**, con el coordinador en nivel medio (`construir-en-sesion`, `modelos.md`).
 - **Sin conectores (A9):** `motor.md` lo explica y la bandeja avisa si una tarea tiene conectores.
 - **A10** ya estaba desde la 0.12: la corrida parte de `estado.py`.
-- **Un PR, un push:** `construir` y `/fin-sesion` juntan los commits de la rama en uno antes de abrir el PR.
-- **Pruebas:** `probar_herramientas.py`, 43 casos nuevos, en la CI del núcleo. `probar_kit.py`: 107 casos, 2 nuevos.
+- **Un PR, un push:** `construir` y `/fin-sesion` juntan los commits de la rama en uno antes de abrir el PR, contra
+  el punto donde la rama salió de la principal (`git merge-base`), nunca contra su punta actual. En una rama que ya
+  tiene PR se junta solo lo que no se ha subido.
+- **Issue de estado por etiqueta:** `estado.py --publicar` lo marca y lo busca con `fabrica:estado`; el flujo
+  `fabrica-estado.yml` corre solo con las etiquetas del ciclo (`estado:`, `espera:`, `motor:`).
+- **Lo que corrigió la revisión independiente:**
+  - nombres con acentos o espacios ya no apagan el guardado (`core.quotePath=false` y listas con `-z`);
+  - un juntar commits contra la punta de la principal podía revertir lo integrado (ahora `merge-base`);
+  - la limpieza de `wip/` no borra nada si GitHub responde con un error distinto de 404, y codifica los nombres;
+  - la guardia busca la marca en la copia de trabajo del archivo, también en copias hermanas;
+  - el guardado no toca una copia con otra operación de git en curso (`index.lock`) ni con cambios preparados a mano;
+  - los secretos se reconocen por el nombre del archivo, con una lista más amplia, y los binarios por su contenido;
+  - si un commit falla, lo dice y deja la copia como estaba;
+  - el respaldo solo se intenta si queda tiempo del plazo (100 s de 120);
+  - se reconocen como peligrosos los flujos con `branches: ['**']`, con `branches-ignore` sin `wip/` y con `create`;
+  - al adoptar un proyecto no se tocan sus flujos (no hay respaldo para revertirlos); lo hace la actualización.
+- **Ensayo sobre una copia de propio-plataforma (PR #182):** la actualización 0.10.1 → 0.13.0 se aplica y verifica,
+  no toca `servidor/`, `pruebas/`, `docs/`, `scripts/` ni su `ci.yml`, conserva sus permisos de `settings.json`, y el
+  guardado hace commit en la copia hermana (con un archivo con acentos), no en master, y avisa una sola vez.
+- **Pruebas:** `probar_herramientas.py`, 50 casos nuevos, en la CI del núcleo. `probar_kit.py`: 107 casos, 2 nuevos.
 
 ## 0.12.0 · 2026-11-17
 

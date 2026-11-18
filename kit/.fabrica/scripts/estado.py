@@ -12,7 +12,8 @@ Uso, desde la raíz del proyecto:
 
 Solo lee, salvo con --publicar (escribe el issue «Estado del proyecto») y con --escribir: entonces cambia únicamente las cifras de .fabrica/estado.json (las historias por
 estado, lo que espera a la Dirección y la fecha), y conserva los campos de criterio (fase, semáforo, próxima entrega y
-riesgo principal). Nunca escribe en GitHub. Usa la biblioteca estándar, `git` y, si está, `gh`.
+riesgo principal). Solo --publicar escribe en GitHub: el cuerpo del issue «Estado del proyecto». Usa la biblioteca
+estándar, `git` y, si está, `gh`.
 
 Las rutas de las historias y de los planes salen de `rutas` en `.fabrica/proyecto.json`; sin ese campo, se usan
 `docs/historias` y `docs/planes`. Nació en un proyecto de la fábrica y pasó al kit en el núcleo 0.11.
@@ -453,6 +454,7 @@ def consumo(raiz: Path, ejecutar: Ejecutar = correr) -> List[str]:
 
 
 TITULO_ESTADO = "Estado del proyecto"
+ETIQUETA_ESTADO = "fabrica:estado"  # marca el issue de estado: se busca por ella, aunque haya cientos de issues
 
 
 def publicar(raiz: Path, ejecutar: Ejecutar = correr, ahora: Optional[str] = None) -> List[str]:
@@ -470,15 +472,15 @@ def publicar(raiz: Path, ejecutar: Ejecutar = correr, ahora: Optional[str] = Non
     ahora = ahora or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     cuerpo = (f"Calculado el {ahora} desde las historias del repositorio y desde GitHub. Este texto lo rehace GitHub "
               "Actions cada vez que algo cambia: no lo edites.\n\n```\n" + "\n".join(lineas) + "\n```\n")
-    asuntos = _api("issues?state=open&per_page=100", raiz, ejecutar)
+    asuntos = _api(f"issues?state=open&labels={ETIQUETA_ESTADO}&per_page=10", raiz, ejecutar)
     existente = next((uno for uno in asuntos or [] if isinstance(uno, dict) and "pull_request" not in uno
                       and uno.get("title") == TITULO_ESTADO), None)
     if existente:
         hecho = ejecutar(["gh", "api", "-X", "PATCH", f"{API}/issues/{existente['number']}", "-f", f"body={cuerpo}"],
                          raiz)
         return [f"Estado publicado en #{existente['number']}." if hecho is not None else "No se pudo publicar."]
-    hecho = ejecutar(["gh", "api", "-X", "POST", f"{API}/issues", "-f", f"title={TITULO_ESTADO}", "-f", f"body={cuerpo}"],
-                     raiz)
+    hecho = ejecutar(["gh", "api", "-X", "POST", f"{API}/issues", "-f", f"title={TITULO_ESTADO}", "-f", f"body={cuerpo}",
+                      "-f", f"labels[]={ETIQUETA_ESTADO}"], raiz)
     return ["Estado publicado en un issue nuevo." if hecho is not None else "No se pudo publicar."]
 
 
@@ -508,7 +510,7 @@ def peso(raiz: Path, ejecutar: Ejecutar = correr, cuantos: int = 12) -> List[str
 
 
 def main(argumentos: Optional[List[str]] = None, raiz: Path = RAIZ) -> int:
-    analizador = argparse.ArgumentParser(description="Estado del proyecto en pocas líneas. Solo lee.")
+    analizador = argparse.ArgumentParser(description="Estado del proyecto en pocas líneas.")
     analizador.add_argument("--sin-red", action="store_true", help="no consulta GitHub: solo lo que está en el disco")
     analizador.add_argument("--peso", action="store_true", help="lista los documentos que más pesan al leerlos")
     analizador.add_argument("--consumo", action="store_true",

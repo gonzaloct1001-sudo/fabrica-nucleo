@@ -91,10 +91,12 @@ ensuciaría y la corrección no tendría revisión.
    diff completo desde la rama principal y la lista de hallazgos diferidos. Si encuentra problemas, se lanza una sola tanda de
    corrección con todos juntos y una revisión acotada de esa tanda. No hay segunda tanda.
 6. **Consistencia final.** El revisor compara el código con la historia. Lo que falte se vuelve una tarea nueva.
-7. **El PR, con un push.** Junta los commits de la rama en uno (`git reset --soft <base>` y un commit que explica la
-   historia), corre gitleaks en local si está instalado, sube la rama y abre el PR con la plantilla del proyecto:
-   cada push a una rama con PR corre la CI completa. Si la rama ya se había subido sin PR (una construcción de varias
-   corridas), súbela con `--force-with-lease`: todavía es solo tuya. Una rama con PR nunca se reescribe. En la nube, ábrelo con las herramientas de
+7. **El PR, con un push.** Junta los commits de la rama en uno: `git fetch origin`,
+   `git reset --soft "$(git merge-base origin/<principal> HEAD)"` (el punto exacto donde la rama salió de la principal;
+   nunca la punta actual, que revertiría lo integrado después) y un commit que explica la historia. Corre gitleaks en
+   local si está instalado, sube la rama y abre el PR con la plantilla del proyecto: cada push a una rama con PR corre
+   la CI completa. Si la rama ya se había subido sin PR (una construcción de varias corridas), súbela con
+   `--force-with-lease`: todavía es solo tuya. Una rama con PR nunca se reescribe. En la nube, ábrelo con las herramientas de
    GitHub integradas o con `gh api -X POST repos/{dueño}/{repo}/pulls`, porque `gh pr` no funciona ahí. Debe incluir:
    - la evidencia de pruebas: comandos y salida;
    - el enlace a la vista previa, si existe;

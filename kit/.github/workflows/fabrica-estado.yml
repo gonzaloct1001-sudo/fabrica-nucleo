@@ -18,6 +18,11 @@ permissions:
 
 jobs:
   publicar:
+    # Con etiquetas, solo las del ciclo: el motor pone muchas y cada corrida del flujo gasta minutos
+    if: >-
+      github.event_name != 'issues' || (github.event.action != 'labeled' && github.event.action != 'unlabeled')
+      || startsWith(github.event.label.name, 'estado:') || startsWith(github.event.label.name, 'espera:')
+      || startsWith(github.event.label.name, 'motor:')
     runs-on: ubuntu-latest
     concurrency:
       group: fabrica-estado

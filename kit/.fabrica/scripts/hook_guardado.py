@@ -41,15 +41,19 @@ from pathlib import Path
 PRINCIPALES = ("main", "master")
 CADA = 1800  # segundos entre respaldos en GitHub
 REGISTRO = Path(".fabrica/trabajo/respaldo.json")
-NO_SUBIR = re.compile(r"\.(png|jpe?g|gif|webp|bmp|heic|mp4|mov|avi|zip|gz|tgz|7z|rar|exe|dll|so|dylib|pyc)$", re.I)
+NO_SUBIR = re.compile(r"\.(png|jpe?g|gif|webp|bmp|heic|ico|svgz|mp3|wav|mp4|mov|avi|zip|gz|tgz|bz2|xz|7z|rar|jar|"
+                      r"war|class|exe|dll|so|dylib|wasm|pyc|o|a|db|sqlite3?|pdf|docx?|xlsx?|pptx?|woff2?|ttf|otf)$", re.I)
 MAXIMO = 1_000_000  # bytes de un archivo nuevo
-SECRETO = re.compile(r"(^|/)(\.env(\..*)?|.*\.(pem|key|p12|pfx)|id_(rsa|ed25519)|credentials?\.json|.*secret.*|"
-                     r".*token.*\.(json|txt))$", re.I)
+# Se compara solo el nombre del archivo, no la carpeta: docs/secretaria/ no es un secreto
+SECRETO = re.compile(r"^(\.env(\..*)?|.*\.(pem|key|p12|pfx|keystore|jks|tfstate(\.backup)?|ppk|asc|gpg)|"
+                     r"id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|\.npmrc|\.netrc|\.pypirc|\.git-credentials|"
+                     r"credentials?(\..*)?|service[-_]?account.*\.json|.*secret.*|.*token.*\.(json|txt|env))$", re.I)
 
 
 def git(raiz, *args, tope=20):
     try:
-        hecho = subprocess.run(["git", *args], cwd=raiz, capture_output=True, text=True, timeout=tope, check=False)
+        hecho = subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=raiz, capture_output=True,
+                               encoding="utf-8", errors="replace", timeout=tope, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return 1, ""
     return hecho.returncode, (hecho.stdout or "") + (hecho.stderr or "")
@@ -74,23 +78,41 @@ def en_medio_de_algo(raiz):
                                                           "CHERRY_PICK_HEAD", "REVERT_HEAD"))
 
 
+def _lista(salida):
+    return [x for x in salida.split("\0") if x]
+
+
+def es_binario(ruta):
+    try:
+        with open(ruta, "rb") as archivo:
+            return b"\0" in archivo.read(8192)
+    except OSError:
+        return False
+
+
+def lista_fuera(fuera):
+    """Los primeros archivos que quedaron fuera, con su motivo, y cuántos más hay."""
+    texto = ", ".join(f"{rel} ({motivo})" for rel, motivo in fuera[:3])
+    return texto + (f" y {len(fuera) - 3} más" if len(fuera) > 3 else "")
+
+
 def registrados_cambiados(raiz):
-    rc, salida = git(raiz, "diff", "--name-only", "HEAD")
-    return [l.strip() for l in salida.splitlines() if l.strip()] if rc == 0 else []
+    rc, salida = git(raiz, "diff", "--name-only", "-z", "HEAD")
+    return _lista(salida) if rc == 0 else []
 
 
 def nuevos_permitidos(raiz):
     """Los archivos nuevos que .gitignore permite, y aparte los que se dejan fuera con su motivo."""
-    rc, salida = git(raiz, "ls-files", "--others", "--exclude-standard")
+    rc, salida = git(raiz, "ls-files", "--others", "--exclude-standard", "-z")
     entran, fuera = [], []
-    for rel in (l.strip() for l in salida.splitlines() if l.strip()) if rc == 0 else []:
+    for rel in _lista(salida) if rc == 0 else []:
         ruta = Path(raiz) / rel
         if rel.startswith(".fabrica/trabajo/"):
             continue
-        if SECRETO.search(rel):
+        if SECRETO.search(Path(rel).name):
             fuera.append((rel, "parece un secreto"))
-        elif NO_SUBIR.search(rel):
-            fuera.append((rel, "es una imagen, un video o un binario"))
+        elif NO_SUBIR.search(rel) or es_binario(ruta):
+            fuera.append((rel, "es una imagen, un documento o un binario"))
         elif ruta.is_file() and ruta.stat().st_size > MAXIMO:
             fuera.append((rel, "pesa más de 1 MB"))
         else:
@@ -106,7 +128,15 @@ def flujos_sin_filtro(raiz):
         bloque = re.search(r"^\s*push\s*:(.*?)(?=^\s{0,2}[a-z_]+\s*:|\Z)", texto, re.M | re.S)
         if re.search(r"^\s*on\s*:\s*\[?[^\n]*\bpush\b", texto, re.M) and not bloque:
             malos.append(flujo.name)  # on: push  /  on: [push, pull_request]
-        elif bloque and not re.search(r"\b(branches|tags)\s*:", bloque.group(1)) and "wip/" not in bloque.group(1):
+        elif bloque:
+            cuerpo = bloque.group(1)
+            if "wip/" in cuerpo:
+                continue
+            todas = re.search(r"\bbranches\s*:[^\n]*['\"]?\*\*?['\"]?", cuerpo) or re.search(
+                r"\bbranches\s*:\s*\n\s*-\s*['\"]?\*\*?['\"]?\s*$", cuerpo, re.M)
+            if todas or "branches-ignore" in cuerpo or not re.search(r"\b(branches|tags)\s*:", cuerpo):
+                malos.append(flujo.name)
+        if flujo.name not in malos and re.search(r"^\s*on\s*:.*\bcreate\b|^\s{1,4}create\s*:", texto, re.M):
             malos.append(flujo.name)
     return malos
 
@@ -150,29 +180,40 @@ def guardar(raiz, ahora=None, respaldar=True, revisar=gitleaks_limpio):
     registrados = registrados_cambiados(raiz)
     nuevos, fuera = nuevos_permitidos(raiz)
     if not registrados and not nuevos:
-        return None
+        # Nada que guardar; si hay archivos que quedan fuera, se dice (una vez por sesión, en guardar_todas)
+        return ("Quedaron fuera del guardado: " + lista_fuera(fuera)
+                if fuera else None)
     rc, rama = git(raiz, "rev-parse", "--abbrev-ref", "HEAD")
     rama = rama.strip()
     if rc != 0 or rama == "HEAD":
         return None
+    rc_d, gitdir = git(raiz, "rev-parse", "--git-dir")
+    carpeta_git = Path(gitdir.strip()) if Path(gitdir.strip()).is_absolute() else raiz / gitdir.strip()
+    if rc_d != 0 or (carpeta_git / "index.lock").exists():
+        return None  # otra operación de git está en curso en esta copia
+    if git(raiz, "diff", "--cached", "--quiet")[0] != 0:
+        return None  # alguien preparó cambios a mano (git add): no se barren en un guardado
     if rama in PRINCIPALES:
         return (f"Guardado automático en pausa: hay cambios sin commit en {rama}, y ahí nunca se hacen commits. "
                 "No los toqué: pásalos a una rama de trabajo.")
-    sospechosos = [a for a in registrados if SECRETO.search(a)]
-    if sospechosos:
-        return (f"Guardado automático detenido: {sospechosos[0]} está registrado en git y parece un secreto. "
-                "Revísalo; el próximo guardado sigue solo.")
+    sospechosos = [a for a in registrados if SECRETO.search(Path(a).name)]
+    registrados = [a for a in registrados if a not in sospechosos]
+    fuera += [(a, "está registrado y parece un secreto") for a in sospechosos]
+    if not registrados and not nuevos:
+        return "Quedaron fuera del guardado: " + lista_fuera(fuera)
     ahora = ahora or datetime.now()
     if registrados:
         git(raiz, "add", "-u", "--", *registrados)
     if nuevos:
         git(raiz, "add", "--", *nuevos)
-    rc, _ = git(raiz, "commit", "-q", "-m", f"wip: guardado automático {ahora:%Y-%m-%d %H:%M}")
+    rc, salida = git(raiz, "commit", "-q", "-m", f"wip: guardado automático {ahora:%Y-%m-%d %H:%M}")
     if rc != 0:
-        return None
+        git(raiz, "reset", "-q")  # deja todo como estaba: nada preparado a medias
+        primera = next((l for l in salida.splitlines() if l.strip()), "sin detalle")
+        return f"Guardado automático detenido: el commit falló en {rama} ({primera[:160]})."
     mensaje = f"Guardado en local, en {rama}"
     if fuera:
-        mensaje += ". Quedaron fuera: " + ", ".join(f"{rel} ({motivo})" for rel, motivo in fuera[:3])
+        mensaje += ". Quedaron fuera: " + lista_fuera(fuera)
     if not respaldar:
         return mensaje
     try:
@@ -206,13 +247,19 @@ def copias_de_trabajo(raiz):
 
 
 ES_AVISO = ("Guardado automático en pausa", "Guardado automático detenido", "SIN RESPALDO", "Quedaron fuera")
+PLAZO = 100  # segundos para todas las copias; el hook tiene 120 en settings.json
 
 
 def guardar_todas(raiz, sesion="", respaldar=True, revisar=gitleaks_limpio):
-    """Guarda cada copia de trabajo con cambios y devuelve solo los avisos nuevos de esta sesión (uno por motivo)."""
-    avisos = []
+    """Guarda cada copia de trabajo con cambios y devuelve solo los avisos nuevos de esta sesión (uno por motivo).
+
+    Los commits en local son rápidos y van siempre; el respaldo (gitleaks y push) solo si queda tiempo del plazo, para
+    que el hook nunca se corte a mitad de una operación de git.
+    """
+    avisos, inicio = [], time.monotonic()
     for copia in copias_de_trabajo(raiz):
-        mensaje = guardar(copia, respaldar=respaldar, revisar=revisar)
+        queda = PLAZO - (time.monotonic() - inicio)
+        mensaje = guardar(copia, respaldar=respaldar and queda > 90, revisar=revisar)
         if mensaje and any(clave in mensaje for clave in ES_AVISO):
             avisos.append(f"{copia.name}: {mensaje}")
     if not avisos:
