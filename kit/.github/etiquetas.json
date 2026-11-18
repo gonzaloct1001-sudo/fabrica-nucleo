@@ -20,5 +20,6 @@
   {"nombre": "pruebas-aprobadas", "color": "0e8a16", "descripcion": "Aprueba cambios en pruebas/aceptacion/: la Dirección, salvo delegación"},
   {"nombre": "revision:externa", "color": "c5def5", "descripcion": "Toca lo sensible: pide la revisión de una segunda IA"},
   {"nombre": "constitucion-aprobada", "color": "0e8a16", "descripcion": "La Dirección aprueba un cambio en la constitución o en la autonomía del proyecto"},
-  {"nombre": "motor:pausa", "color": "000000", "descripcion": "En la bitácora de corridas: detiene el motor hasta que se quite"}
+  {"nombre": "motor:pausa", "color": "000000", "descripcion": "En la bitácora de corridas: detiene el motor hasta que se quite"},
+  {"nombre": "fabrica:estado", "color": "0b5d1e", "descripcion": "El issue con el estado del proyecto, que rehace GitHub Actions"}
 ]

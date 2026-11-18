@@ -17,7 +17,9 @@ producen los demás roles vive en archivos, y a ti solo te llegan resúmenes.
 - **Pasa la historia a `estado:en-curso`** y corre `python .fabrica/scripts/estado.py --escribir`: cada cambio de
   estado de una historia lleva su `.fabrica/estado.json` al día en el mismo commit.
 - **Lee el plan una vez** y crea una tarea pendiente por cada tarea del plan.
-- **Lee también el registro** al final del plan. Si ya tiene tareas completas, continúa desde la primera que no lo
+- **Marca la construcción:** crea `.fabrica/trabajo/construyendo` (una línea con la historia). Mientras exista, el
+  hook del kit impide editar `pruebas/aceptacion/`. Bórrala al terminar, también si te detienes.
+- **Lee también el registro** (`registro.md` del plan partido, o la sección final de un plan de un solo archivo). Si ya tiene tareas completas, continúa desde la primera que no lo
   está: el registro y `git log` mandan sobre tu memoria.
 
 Los archivos de trabajo van en `.fabrica/trabajo/H-NNN/`, una carpeta que Git ignora.
@@ -25,7 +27,9 @@ Los archivos de trabajo van en `.fabrica/trabajo/H-NNN/`, una carpeta que Git ig
 ## Por cada tarea
 
 1. **Anota la BASE:** `git rev-parse HEAD`.
-2. **Ficha.** Escribe `.fabrica/trabajo/H-NNN/tarea-N-ficha.md` con:
+2. **Ficha.** Con un plan partido, la ficha es el archivo de la tarea (`docs/planes/H-NNN/tarea-NN.md`): no la
+   copies. Si una tarea anterior entregó una interfaz distinta de la prevista, agrégala al final de ese archivo. Con un
+   plan de un solo archivo, escribe `.fabrica/trabajo/H-NNN/tarea-N-ficha.md` con:
    - el texto completo de la tarea;
    - las restricciones globales del plan;
    - las interfaces que entregaron las tareas anteriores.
@@ -64,8 +68,13 @@ Los archivos de trabajo van en `.fabrica/trabajo/H-NNN/`, una carpeta que Git ig
 
    Cada ronda termina con una revisión acotada a la corrección. Al llegar al tope, decides tú y lo registras.
    Los hallazgos menores van al registro como diferidos y no abren el ciclo.
-8. **Registro.** Agrega al final del plan:
+8. **Registro.** Agrega a `registro.md` (o al final de un plan de un solo archivo):
    `Tarea N: completa (commits <base7>..<head7>, revisión limpia)`, o `… <K> estacionados`.
+
+**Pruebas selectivas (núcleo 0.13).** Por tarea, el desarrollador corre solo las pruebas del módulo que tocó; la
+batería completa y los controles de la CI van al cerrar cada tramo y antes del PR. Para leer menos, corre las pruebas
+con `python .fabrica/scripts/filtrar_salida.py -- <comando>`: muestra las fallas y el resumen, y conserva el código de
+salida.
 
 Nunca despaches dos desarrolladores a la vez en la misma rama. Nunca corrijas código tú mismo: tu contexto se
 ensuciaría y la corrección no tendría revisión.
@@ -82,7 +91,13 @@ ensuciaría y la corrección no tendría revisión.
    diff completo desde la rama principal y la lista de hallazgos diferidos. Si encuentra problemas, se lanza una sola tanda de
    corrección con todos juntos y una revisión acotada de esa tanda. No hay segunda tanda.
 6. **Consistencia final.** El revisor compara el código con la historia. Lo que falte se vuelve una tarea nueva.
-7. **El PR.** Sube la rama y abre el PR con la plantilla del proyecto. En la nube, ábrelo con las herramientas de
+7. **El PR, con un push.** Junta los commits de la rama en uno: `git fetch origin`,
+   `git reset --soft "$(git merge-base origin/<principal> HEAD)"` (el punto exacto donde la rama salió de la principal;
+   nunca la punta actual, que revertiría lo integrado después) y un commit que explica la historia. Corre gitleaks en
+   local si está instalado, sube la rama y abre el PR con la plantilla del proyecto: cada push a una rama con PR corre
+   la CI completa. Si la rama ya se había subido sin PR (una construcción de varias corridas), súbela con
+   `--force-with-lease`: todavía es solo tuya. Una rama con PR nunca se reescribe: lo nuevo va en un commit encima,
+   como dice el paso 6 de `/fin-sesion`. En la nube, ábrelo con las herramientas de
    GitHub integradas o con `gh api -X POST repos/{dueño}/{repo}/pulls`, porque `gh pr` no funciona ahí. Debe incluir:
    - la evidencia de pruebas: comandos y salida;
    - el enlace a la vista previa, si existe;

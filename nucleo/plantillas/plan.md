@@ -1,5 +1,8 @@
 # Plan: <título de la historia>
 
+> Va en `docs/planes/H-NNN/plan.md`: es el índice. Cada tarea va en `tarea-NN.md` y el registro en `registro.md`,
+> en la misma carpeta (núcleo 0.13). Así cada lectura trae solo lo que necesita.
+
 **Historia:** `<ruta a la historia>` — el plan argumenta desde ella; si se contradicen, manda la historia.
 **Objetivo:** <una oración con lo que construye>.
 **Enfoque:** <dos o tres oraciones sobre cómo>.
@@ -39,34 +42,13 @@ cada una con la prueba que la cubre en su tarea.
 
 ---
 
-### Tarea 1: <componente>
+## Tareas
 
-**Archivos:** crear `ruta/exacta`, modificar `ruta/exacta:líneas`, prueba en `pruebas/ruta/exacta`.
+Una tarea por archivo, `tarea-NN.md` en esta misma carpeta, desde `.fabrica/nucleo/plantillas/tarea.md`. Cada archivo
+es la ficha que recibe el `desarrollador`: completo por sí solo, sin copiar nada más del plan.
 
-**Interfaces:**
-- **Usa:** <lo que necesita de tareas anteriores, con firma exacta>
-- **Entrega:** <lo que tareas siguientes usarán: nombres, parámetros y tipos>
+| N | Tarea | Archivo | Depende de |
+|---|---|---|---|
+| 1 | <componente> | `tarea-01.md` | — |
 
-- [ ] **Paso 1. Escribir la prueba que falla.** <nombre de la prueba y sus aserciones, con los valores exactos de la
-  historia>
-- [ ] **Paso 2. Comprobar que falla.** Comando: `<comando>`. Resultado esperado: FALLA con "<mensaje>".
-- [ ] **Paso 3. Implementar.** `<firma exacta>` en `<archivo>`. <Una línea sobre el enfoque, solo si la firma y la
-  prueba dejan una elección abierta.>
-- [ ] **Paso 4. Comprobar que pasa.** Comando: `<comando>`. Resultado esperado: PASA.
-- [ ] **Paso 5. Commit.** `<tipo>: <descripción>`
-
-### Tarea 2: …
-
----
-
-## Registro
-
-La fábrica completa esta sección mientras trabaja. Sobrevive a la compactación del contexto: ante una duda sobre
-dónde quedó la corrida, manda este registro junto con el historial de git, no la memoria del agente.
-
-```
-Tarea 1: completa (commits a1b2c3d..e4f5a6b, revisión limpia)
-Tarea 2: ronda de corrección 1/5 (1 resuelto, 0 abiertos)
-Tarea 2: menor diferido: <descripción breve>
-Decisión: <qué se decidió> — <por qué> — <qué cuesta si es errada>
-```
+El registro va aparte, en `registro.md` (`.fabrica/nucleo/plantillas/registro-plan.md`).

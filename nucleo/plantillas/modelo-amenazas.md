@@ -6,6 +6,11 @@ revisado-por: seguridad
 
 # Modelo de amenazas de <proyecto>
 
+> Este archivo es el núcleo estable del proyecto: qué se protege, de quién, las puertas y la lista de verificación.
+> Lo propio de cada historia (sus casos de abuso, su verificación y sus riesgos residuales) va en
+> `docs/seguridad/historias/H-NNN.md`, desde `.fabrica/nucleo/plantillas/amenazas-historia.md` (núcleo 0.13). Así
+> este archivo no crece con cada historia.
+
 Qué se protege, de quién, por dónde podría entrar y qué lo cierra. Se escribe antes de la primera historia de riesgo
 alto, y se actualiza cuando una historia abre una puerta nueva (`seguridad.md` del método). Lo escribe el
 `arquitecto` y lo revisa `seguridad`.

@@ -23,6 +23,12 @@ Antes de declarar cualquier estado:
 
 Las palabras "debería", "probablemente" y "parece" en un informe de estado son una señal de alerta.
 
+## Pruebas selectivas
+
+Por tarea se corren las pruebas del módulo que la tarea toca. La batería completa, con los mismos controles de la CI,
+se corre al cerrar cada tramo del plan y antes del PR, y la CI la corre en cada PR. Así una tarea de dos minutos no
+paga diez de pruebas, y nada llega a la rama principal sin la batería completa en verde.
+
 ## Pruebas protegidas
 
 Las pruebas de aceptación de una historia se escriben y se aprueban antes de construir, en una carpeta propia

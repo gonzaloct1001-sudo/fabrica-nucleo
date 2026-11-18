@@ -5,12 +5,15 @@ Uso, desde la raíz del proyecto:
     python .fabrica/scripts/estado.py            estado completo; consulta GitHub con `gh api` (solo REST)
     python .fabrica/scripts/estado.py --sin-red  solo lo que está en el disco
     python .fabrica/scripts/estado.py --peso     los documentos que más pesan cuando un agente los lee
+    python .fabrica/scripts/estado.py --consumo  minutos, agentes y documentos por historia, desde la bitácora
+    python .fabrica/scripts/estado.py --publicar  publica el estado en el issue «Estado del proyecto» (lo usa la CI)
     python .fabrica/scripts/estado.py --escribir [--sin-red]
                                                  rehace las cifras de .fabrica/estado.json (núcleo 0.12)
 
-Solo lee, salvo con --escribir: entonces cambia únicamente las cifras de .fabrica/estado.json (las historias por
+Solo lee, salvo con --publicar (escribe el issue «Estado del proyecto») y con --escribir: entonces cambia únicamente las cifras de .fabrica/estado.json (las historias por
 estado, lo que espera a la Dirección y la fecha), y conserva los campos de criterio (fase, semáforo, próxima entrega y
-riesgo principal). Nunca escribe en GitHub. Usa la biblioteca estándar, `git` y, si está, `gh`.
+riesgo principal). Solo --publicar escribe en GitHub: el cuerpo del issue «Estado del proyecto». Usa la biblioteca
+estándar, `git` y, si está, `gh`.
 
 Las rutas de las historias y de los planes salen de `rutas` en `.fabrica/proyecto.json`; sin ese campo, se usan
 `docs/historias` y `docs/planes`. Nació en un proyecto de la fábrica y pasó al kit en el núcleo 0.11.
@@ -28,7 +31,9 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Callable, Dict, List, Optional, Tuple
 
 RAIZ = Path(__file__).resolve().parents[2]
-RUTAS_POR_DEFECTO = {"historias": "docs/historias", "planes": "docs/planes"}
+RUTAS_POR_DEFECTO = {"historias": "docs/historias", "planes": "docs/planes",
+                     "siguiente_accion": "docs/siguiente-accion.md"}
+PRINCIPALES = ("origin/main", "origin/master", "main", "master")
 # `en-construccion` no está en el ciclo: lo usaban proyectos anteriores al kit y se acepta como `en-curso`.
 EN_CURSO = ("listo", "en-curso", "en-construccion", "en-revision")
 CONTEXTO_FIJO = ("AGENTS.md", "CLAUDE.md")
@@ -126,6 +131,21 @@ def avance_del_plan(texto: str) -> Tuple[int, int, Optional[str]]:
     return len(set(titulos) & completas), len(titulos), siguiente
 
 
+def leer_plan(raiz: Path, rutas: Dict[str, str], identificador: str) -> str:
+    """El texto del plan de una historia, en cualquiera de sus dos formatos.
+
+    Formato partido (núcleo 0.13): `<planes>/<id>/plan.md`, un `tarea-NN.md` por tarea y `registro.md`. Formato de un
+    solo archivo: `<planes>/<id>-plan.md`. Devuelve "" si no hay plan.
+    """
+    carpeta = raiz / rutas["planes"] / identificador
+    if (carpeta / "plan.md").is_file():
+        partes = [leer(carpeta / "plan.md")]
+        partes += [leer(tarea) for tarea in sorted(carpeta.glob("tarea-*.md"))]
+        partes.append(leer(carpeta / "registro.md"))
+        return "\n\n".join(partes)
+    return leer(raiz / rutas["planes"] / f"{identificador}-plan.md")
+
+
 def en_sesion_en_vivo(texto_del_plan: str) -> bool:
     """Si el Registro del plan tiene la marca de una sesión en vivo, que la corrida programada respeta."""
     return "En construcción en una sesión en vivo" in texto_del_plan
@@ -179,7 +199,7 @@ def _historias(raiz: Path, rutas: Dict[str, str]) -> List[str]:
             demas[estado] += 1
             continue
         linea = f"  {identificador}  {estado}  {cabecera.get('titulo', '')}"
-        plan = leer(raiz / rutas["planes"] / f"{identificador}-plan.md")
+        plan = leer_plan(raiz, rutas, identificador)
         if plan:
             hechas, total, siguiente = avance_del_plan(plan)
             linea += f" | plan: {hechas} de {total} tareas" + (f"; sigue la {siguiente}" if siguiente else "; completo")
@@ -216,6 +236,44 @@ def _autonomia(proyecto: dict) -> str:
     return "autonomía delegada: " + ", ".join(delegado) + tope
 
 
+def _fecha(segundos: int) -> str:
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(segundos, timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def siguiente_accion_vieja(raiz: Path, rutas: Dict[str, str], ejecutar: Ejecutar) -> List[str]:
+    """Un aviso si la siguiente acción es anterior a lo último integrado en la rama principal (núcleo 0.13).
+
+    La siguiente acción se escribe a mano: es lo que queda viejo cuando una sesión se corta. Compara la fecha del último
+    commit que la tocó con la del último commit de la rama principal.
+    """
+    rel = rutas["siguiente_accion"]
+    if not (raiz / rel).is_file():
+        return []
+    principal = next((r for r in PRINCIPALES if ejecutar(["git", "rev-parse", "--verify", "-q", r], raiz)), None)
+    if not principal:
+        return []
+    del_archivo = (ejecutar(["git", "log", "-1", "--format=%ct", "--", rel], raiz) or "").strip()
+    integrado = (ejecutar(["git", "log", "-1", "--format=%ct", principal], raiz) or "").strip()
+    if not (del_archivo.isdigit() and integrado.isdigit()) or int(del_archivo) >= int(integrado) - 60:
+        return []
+    return [f"AVISO: {rel} es del {_fecha(int(del_archivo))} y lo último integrado en {principal} es del "
+            f"{_fecha(int(integrado))}. Revísalo: puede no decir lo que toca ahora."]
+
+
+def respaldo(raiz: Path) -> List[str]:
+    """El último respaldo del guardado automático en GitHub (hook_guardado.py), o que no lo hay (núcleo 0.13)."""
+    registro = leer_json(raiz / ".fabrica/trabajo/respaldo.json")
+    if not registro:
+        return []
+    ultimo = registro.get("ultimo_respaldo")
+    cuando = _fecha(int(ultimo)) if isinstance(ultimo, (int, float)) else "nunca"
+    resultado = str(registro.get("resultado", ""))
+    if resultado.startswith("sin subir"):
+        return [f"AVISO: respaldo en GitHub ({cuando}); el último intento quedó {resultado}."]
+    return [f"Respaldo en GitHub: {cuando}."]
+
+
 def estado_local(raiz: Path, ejecutar: Ejecutar) -> List[str]:
     proyecto = leer_json(raiz / ".fabrica/proyecto.json")
     estado = leer_json(raiz / ".fabrica/estado.json")
@@ -230,6 +288,8 @@ def estado_local(raiz: Path, ejecutar: Ejecutar) -> List[str]:
         + f" | estado.json del {str(estado.get('actualizado', '?'))[:10]}",
         _rama(raiz, ejecutar),
         *_historias(raiz, rutas_del_proyecto(proyecto, raiz)),
+        *siguiente_accion_vieja(raiz, rutas_del_proyecto(proyecto, raiz), ejecutar),
+        *respaldo(raiz),
     ]
 
 
@@ -339,6 +399,98 @@ def escribir(raiz: Path, ejecutar: Ejecutar = correr, *, con_red: bool = True, a
     return cambios or ["Las cifras ya estaban al día; solo cambió la fecha."]
 
 
+CONSUMO = re.compile(r"^-?\s*Consumo:\s*(.+)$", re.M)
+HISTORIA = re.compile(r"\b([A-Z]+-\d{3,})\b")
+
+
+def leer_consumo(texto: str) -> List[Tuple[str, int, Counter, int]]:
+    """Las líneas «Consumo:» de una entrada de la bitácora: (historia, minutos, agentes por modelo, tokens leídos).
+
+    Formato (corrida.md, "La bitácora de corridas"):
+    `- Consumo: H-012 · 34 min · agentes: sonnet ×2, opus ×1 · leídos: 6 documentos, ~41.000 tokens`
+    """
+    lecturas = []
+    for linea in CONSUMO.findall(texto):
+        historia = HISTORIA.search(linea)
+        minutos = re.search(r"(\d+)\s*min", linea)
+        tokens = re.search(r"~?\s*([\d.]+)\s*tokens", linea)
+        agentes: Counter = Counter()
+        tramo = re.search(r"agentes:\s*([^·]+)", linea)
+        for modelo, cuantos in re.findall(r"([a-z]+)\s*[×x]\s*(\d+)", tramo.group(1) if tramo else ""):
+            agentes[modelo] += int(cuantos)
+        lecturas.append((historia.group(1) if historia else "sin historia", int(minutos.group(1)) if minutos else 0,
+                         agentes, int(tokens.group(1).replace(".", "")) if tokens else 0))
+    return lecturas
+
+
+def consumo(raiz: Path, ejecutar: Ejecutar = correr) -> List[str]:
+    """El consumo por historia, sumado desde las líneas «Consumo:» de la bitácora de corridas (A1)."""
+    asuntos = _api("issues?state=all&per_page=100", raiz, ejecutar)
+    if not isinstance(asuntos, list):
+        return ["GitHub: no disponible. El consumo sale de la bitácora de corridas, que vive en GitHub."]
+    bitacora = next((uno for uno in asuntos if str(uno.get("title", "")).startswith(TITULO_BITACORA)), None)
+    if not bitacora:
+        return ["No hay bitácora de corridas todavía."]
+    totales: Dict[str, list] = {}
+    for pagina in range(1, 11):
+        comentarios = _api(f"issues/{bitacora['number']}/comments?per_page=100&page={pagina}", raiz, ejecutar)
+        if not isinstance(comentarios, list) or not comentarios:
+            break
+        for comentario in comentarios:
+            for historia, minutos, agentes, tokens in leer_consumo(str(comentario.get("body", ""))):
+                fila = totales.setdefault(historia, [0, 0, Counter(), 0])
+                fila[0] += 1
+                fila[1] += minutos
+                fila[2].update(agentes)
+                fila[3] += tokens
+    if not totales:
+        return ["La bitácora no tiene líneas «Consumo:» todavía (las agrega cada corrida desde el núcleo 0.13)."]
+    lineas = ["Consumo por historia, sumado desde la bitácora de corridas:"]
+    for historia, (veces, minutos, agentes, tokens) in sorted(totales.items(), key=lambda par: -par[1][1]):
+        modelos = ", ".join(f"{modelo} ×{cuantos}" for modelo, cuantos in sorted(agentes.items())) or "sin agentes"
+        miles = f"{tokens:,}".replace(",", ".")
+        lineas.append(f"  {historia}  {veces} registro(s) · {minutos} min · agentes: {modelos} · ~{miles} tokens leídos")
+    return lineas
+
+
+TITULO_ESTADO = "Estado del proyecto"
+ETIQUETA_ESTADO = "fabrica:estado"  # marca el issue de estado: se busca por ella, aunque haya cientos de issues
+
+
+def publicar(raiz: Path, ejecutar: Ejecutar = correr, ahora: Optional[str] = None) -> List[str]:
+    """Calcula el estado y lo deja en el cuerpo del issue «Estado del proyecto», que crea si falta (núcleo 0.13).
+
+    Lo corre el flujo `.github/workflows/fabrica-estado.yml` cada vez que algo cambia en GitHub, así que el estado
+    vivo nunca depende de que una sesión se cierre bien. Lo que el issue dice es lo que hay en ese momento.
+    """
+    from datetime import datetime, timezone
+
+    # La rama y los cambios locales de la máquina que calcula no dicen nada del proyecto: fuera
+    lineas = [linea for linea in reunir(raiz, ejecutar) if not linea.startswith("Rama:")]
+    if any(linea.startswith("GitHub: no disponible") for linea in lineas):
+        return ["No se publicó: GitHub no está disponible."]
+    ahora = ahora or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    cuerpo = (f"Calculado el {ahora} desde las historias del repositorio y desde GitHub. Este texto lo rehace GitHub "
+              "Actions cada vez que algo cambia: no lo edites.\n\n```\n" + "\n".join(lineas) + "\n```\n")
+    asuntos = _api(f"issues?state=open&labels={ETIQUETA_ESTADO}&per_page=10", raiz, ejecutar)
+    existente = next((uno for uno in asuntos or [] if isinstance(uno, dict) and "pull_request" not in uno
+                      and uno.get("title") == TITULO_ESTADO), None)
+    if not existente:  # uno de antes de la etiqueta: se busca por título una vez y se le pone la etiqueta
+        asuntos = _api("issues?state=open&per_page=100", raiz, ejecutar)
+        existente = next((uno for uno in asuntos or [] if isinstance(uno, dict) and "pull_request" not in uno
+                          and uno.get("title") == TITULO_ESTADO), None)
+        if existente:
+            ejecutar(["gh", "api", "-X", "POST", f"{API}/issues/{existente['number']}/labels", "-f",
+                      f"labels[]={ETIQUETA_ESTADO}"], raiz)
+    if existente:
+        hecho = ejecutar(["gh", "api", "-X", "PATCH", f"{API}/issues/{existente['number']}", "-f", f"body={cuerpo}"],
+                         raiz)
+        return [f"Estado publicado en #{existente['number']}." if hecho is not None else "No se pudo publicar."]
+    hecho = ejecutar(["gh", "api", "-X", "POST", f"{API}/issues", "-f", f"title={TITULO_ESTADO}", "-f", f"body={cuerpo}",
+                      "-f", f"labels[]={ETIQUETA_ESTADO}"], raiz)
+    return ["Estado publicado en un issue nuevo." if hecho is not None else "No se pudo publicar."]
+
+
 def reunir(raiz: Path, ejecutar: Ejecutar = correr, *, con_red: bool = True) -> List[str]:
     """El estado del proyecto, una línea por dato y nunca más de 150 caracteres por línea."""
     lineas = estado_local(raiz, ejecutar)
@@ -365,9 +517,13 @@ def peso(raiz: Path, ejecutar: Ejecutar = correr, cuantos: int = 12) -> List[str
 
 
 def main(argumentos: Optional[List[str]] = None, raiz: Path = RAIZ) -> int:
-    analizador = argparse.ArgumentParser(description="Estado del proyecto en pocas líneas. Solo lee.")
+    analizador = argparse.ArgumentParser(description="Estado del proyecto en pocas líneas.")
     analizador.add_argument("--sin-red", action="store_true", help="no consulta GitHub: solo lo que está en el disco")
     analizador.add_argument("--peso", action="store_true", help="lista los documentos que más pesan al leerlos")
+    analizador.add_argument("--consumo", action="store_true",
+                            help="suma minutos, agentes y documentos leídos por historia, desde la bitácora")
+    analizador.add_argument("--publicar", action="store_true",
+                            help="publica el estado en el issue «Estado del proyecto» (lo usa la CI)")
     analizador.add_argument("--escribir", action="store_true",
                             help="rehace las cifras de .fabrica/estado.json desde el disco (y GitHub, si hay red)")
     opciones = analizador.parse_args(argumentos)
@@ -376,6 +532,10 @@ def main(argumentos: Optional[List[str]] = None, raiz: Path = RAIZ) -> int:
         sys.stdout.reconfigure(errors="replace", **({} if sys.stdout.isatty() else {"encoding": "utf-8"}))
     if opciones.escribir:
         lineas = escribir(raiz, con_red=not opciones.sin_red)
+    elif opciones.publicar:
+        lineas = publicar(raiz)
+    elif opciones.consumo:
+        lineas = consumo(raiz)
     elif opciones.peso:
         lineas = peso(raiz)
     else:

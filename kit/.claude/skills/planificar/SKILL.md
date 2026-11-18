@@ -12,7 +12,13 @@ description: Escribe el plan de implementación de una historia lista, con tarea
 
 ## Pasos
 
-1. **El plan.** Se escribe `docs/planes/H-NNN-plan.md` desde `.fabrica/nucleo/plantillas/plan.md`:
+1. **El plan, partido en archivos** (núcleo 0.13), en la carpeta `docs/planes/H-NNN/` (o la de `rutas.planes`):
+   - `plan.md`, el índice, desde `.fabrica/nucleo/plantillas/plan.md`;
+   - un `tarea-NN.md` por tarea, desde `.fabrica/nucleo/plantillas/tarea.md`: cada uno es la ficha completa que recibe
+     el `desarrollador`;
+   - `registro.md`, desde `.fabrica/nucleo/plantillas/registro-plan.md`.
+
+   Un plan anterior de un solo archivo (`H-NNN-plan.md`) sigue valiendo: no se convierte. El plan cubre:
    - los archivos, con la responsabilidad de cada uno;
    - las restricciones globales, copiadas tal cual de la historia y de la constitución;
    - los riesgos a vigilar, cada uno con su prueba;
@@ -24,7 +30,8 @@ description: Escribe el plan de implementación de una historia lista, con tarea
    - **Pasos:** cada paso permite hacer una sola cosa razonable. Sin líneas que no decidan nada, y sin código que la
      firma y la prueba ya determinan.
    - **Consistencia:** los nombres y los tipos coinciden entre tareas.
-   - **Proporción:** si el plan es más largo que el código que describe, sobra detalle.
+   - **Proporción:** si el plan es más largo que el código que describe, sobra detalle. Ningún archivo pasa del
+     tope de tokens del proyecto (`topes.tokens_por_documento`, por defecto 20.000): la CI lo avisa.
 3. **El análisis de consistencia.** El `revisor`, en modo consistencia, compara historia, plan y tareas sin cambiar
    nada. Lo que encuentre se corrige en el plan, y el resultado se anota en el registro del plan.
 

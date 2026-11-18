@@ -1,0 +1,86 @@
+name: Fábrica · estado
+
+# Publica el estado del proyecto en el issue «Estado del proyecto» cada vez que algo cambia, para que el estado vivo
+# nunca dependa de que una sesión se cierre bien (.fabrica/nucleo/motor.md, "Dónde ver el estado").
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    types: [opened, closed, reopened]
+  issues:
+    types: [opened, closed, reopened, labeled, unlabeled]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * 1'  # lunes: limpia los respaldos wip/ abandonados y refresca el estado
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    # Con etiquetas, solo las del ciclo: el motor pone muchas y cada corrida del flujo gasta minutos
+    if: >-
+      github.event_name != 'issues' || (github.event.action != 'labeled' && github.event.action != 'unlabeled')
+      || startsWith(github.event.label.name, 'estado:') || startsWith(github.event.label.name, 'espera:')
+      || startsWith(github.event.label.name, 'motor:')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: fabrica-estado
+      cancel-in-progress: true
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      checks: read
+    steps:
+      # Siempre la rama principal: el estado es el de lo integrado, y un PR no puede cambiar el script
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Publicar el estado
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 .fabrica/scripts/estado.py --publicar
+
+  # Al integrar un PR, borra su respaldo del guardado automático (wip/<rama>), para que no se acumulen
+  limpiar-respaldo:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    steps:
+      - name: Borrar la rama wip/ del PR integrado
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RAMA: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if gh api "repos/$REPO/git/ref/heads/wip/$RAMA" >/dev/null 2>&1; then
+            gh api -X DELETE "repos/$REPO/git/refs/heads/wip/$RAMA" && echo "Borrada wip/$RAMA"
+          else
+            echo "No hay respaldo wip/$RAMA"
+          fi
+
+  # Cada semana, las ramas wip/ con más de 14 días sin cambios y sin su rama de origen
+  limpiar-abandonadas:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Borrar respaldos wip/ abandonados
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 .fabrica/scripts/limpiar_wip.py --aplicar
