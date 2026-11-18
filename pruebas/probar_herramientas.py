@@ -161,7 +161,13 @@ def probar_guardado(tmp):
                         ("on:\n  push:\n    tags: ['v*']\n", False), ("on:\n  pull_request:\n", False),
                         ("on:\n  push:\n    branches: ['**']\n", True),
                         ("on:\n  push:\n    branches-ignore: ['borrador/**']\n", True),
-                        ("on:\n  create:\n  pull_request:\n", True)):
+                        ("on:\n  create:\n  pull_request:\n", True),
+                        ("on:\n  push:\n    branches: [main, 'release/**']\n", False),
+                        ("on:\n  push: { branches: [main, master] }\n", False),
+                        ("on:\n  push:\n    branches:\n      - main\n      - 'release/*'\n", False),
+                        ("on:\n  push:\n    branches: ['wip/**']\n", True),
+                        ("on:\n  push:\n    branches-ignore: ['wip/**']\n  create:\n", True),
+                        ("on:\n  push:\n    branches-ignore:\n      - 'wip/**'\n", False)):
         (raiz / ".github/workflows/ci.yml").write_text(flujo + "jobs: {}\n", encoding="utf-8")
         if bool(guardado.flujos_sin_filtro(raiz)) != malo:
             comprobar(f"reconoce el flujo {flujo.strip()!r}", False)
@@ -435,6 +441,28 @@ def probar_estado(tmp):
     comprobar("publica el estado en su issue, sin la rama de la máquina que calcula",
               resultado == ["Estado publicado en #9."] and "PATCH" in publicaciones[0] and "H-005" in cuerpo
               and "Rama:" not in cuerpo and "2026-11-18 08:00 UTC" in cuerpo, (resultado, cuerpo[:300]))
+
+    def gh_sin_etiqueta(orden, _raiz, hay_viejo=True):
+        comando = " ".join(orden)
+        if "-X" in orden:
+            publicaciones.append(orden)
+            return "{}"
+        if "pulls?state=open" in comando or "labels=fabrica:estado" in comando:
+            return "[]"
+        if "issues?state=open" in comando:
+            return json.dumps([{"number": 9, "title": "Estado del proyecto"}] if hay_viejo else [])
+        return estado.correr(orden, _raiz)
+    publicaciones.clear()
+    resultado = estado.publicar(raiz, gh_sin_etiqueta, ahora="2026-11-18 08:00 UTC")
+    comprobar("encuentra por título un issue de estado de antes de la etiqueta, se la pone y no crea otro",
+              resultado == ["Estado publicado en #9."] and any("issues/9/labels" in " ".join(o) for o in publicaciones)
+              and not any(o[-1] == f"{estado.API}/issues" or "title=Estado del proyecto" in o for o in publicaciones),
+              publicaciones)
+    publicaciones.clear()
+    resultado = estado.publicar(raiz, lambda o, r: gh_sin_etiqueta(o, r, hay_viejo=False), ahora="2026-11-18 08:00 UTC")
+    comprobar("sin issue de estado, crea uno con la etiqueta fabrica:estado",
+              resultado == ["Estado publicado en un issue nuevo."]
+              and any("labels[]=fabrica:estado" in o for o in publicaciones), publicaciones)
 
     (raiz / "docs/siguiente-accion.md").write_text("# Siguiente acción\n", encoding="utf-8")
     hace = int(time.time()) - 3 * 86400

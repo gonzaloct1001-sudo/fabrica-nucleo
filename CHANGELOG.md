@@ -59,10 +59,15 @@ revisión del 2026-11-17, más el guardado y el estado automáticos que pidió l
   - el respaldo solo se intenta si queda tiempo del plazo (100 s de 120);
   - se reconocen como peligrosos los flujos con `branches: ['**']`, con `branches-ignore` sin `wip/` y con `create`;
   - al adoptar un proyecto no se tocan sus flujos (no hay respaldo para revertirlos); lo hace la actualización.
+  - la re-revisión encontró que, en una rama con PR, juntar lo no subido podía revertir commits hechos en GitHub
+    («Update branch»): `/fin-sesion` exige ahora `git merge-base --is-ancestor origin/<rama> HEAD` antes;
+  - los flujos se leen elemento por elemento: `branches: [main, 'release/**']` ya no da un falso «SIN RESPALDO», y
+    `branches: ['wip/**']` o `create` junto a `branches-ignore` sí se marcan;
+  - un issue «Estado del proyecto» de antes de la etiqueta se encuentra por título y se etiqueta, sin duplicarlo.
 - **Ensayo sobre una copia de propio-plataforma (PR #182):** la actualización 0.10.1 → 0.13.0 se aplica y verifica,
   no toca `servidor/`, `pruebas/`, `docs/`, `scripts/` ni su `ci.yml`, conserva sus permisos de `settings.json`, y el
   guardado hace commit en la copia hermana (con un archivo con acentos), no en master, y avisa una sola vez.
-- **Pruebas:** `probar_herramientas.py`, 50 casos nuevos, en la CI del núcleo. `probar_kit.py`: 107 casos, 2 nuevos.
+- **Pruebas:** `probar_herramientas.py`, 52 casos nuevos, en la CI del núcleo. `probar_kit.py`: 107 casos, 2 nuevos.
 
 ## 0.12.0 · 2026-11-17
 

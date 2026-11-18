@@ -475,6 +475,13 @@ def publicar(raiz: Path, ejecutar: Ejecutar = correr, ahora: Optional[str] = Non
     asuntos = _api(f"issues?state=open&labels={ETIQUETA_ESTADO}&per_page=10", raiz, ejecutar)
     existente = next((uno for uno in asuntos or [] if isinstance(uno, dict) and "pull_request" not in uno
                       and uno.get("title") == TITULO_ESTADO), None)
+    if not existente:  # uno de antes de la etiqueta: se busca por título una vez y se le pone la etiqueta
+        asuntos = _api("issues?state=open&per_page=100", raiz, ejecutar)
+        existente = next((uno for uno in asuntos or [] if isinstance(uno, dict) and "pull_request" not in uno
+                          and uno.get("title") == TITULO_ESTADO), None)
+        if existente:
+            ejecutar(["gh", "api", "-X", "POST", f"{API}/issues/{existente['number']}/labels", "-f",
+                      f"labels[]={ETIQUETA_ESTADO}"], raiz)
     if existente:
         hecho = ejecutar(["gh", "api", "-X", "PATCH", f"{API}/issues/{existente['number']}", "-f", f"body={cuerpo}"],
                          raiz)

@@ -27,7 +27,7 @@ def copia_de(ruta, raiz):
         carpeta = carpeta.parent
     try:
         hecho = subprocess.run(["git", "-C", str(carpeta), "rev-parse", "--show-toplevel"], capture_output=True,
-                               encoding="utf-8", errors="replace", timeout=10, check=False)
+                               encoding="utf-8", errors="replace", timeout=5, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return raiz
     return Path(hecho.stdout.strip()) if hecho.returncode == 0 and hecho.stdout.strip() else raiz

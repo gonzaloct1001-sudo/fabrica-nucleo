@@ -96,7 +96,8 @@ ensuciaría y la corrección no tendría revisión.
    nunca la punta actual, que revertiría lo integrado después) y un commit que explica la historia. Corre gitleaks en
    local si está instalado, sube la rama y abre el PR con la plantilla del proyecto: cada push a una rama con PR corre
    la CI completa. Si la rama ya se había subido sin PR (una construcción de varias corridas), súbela con
-   `--force-with-lease`: todavía es solo tuya. Una rama con PR nunca se reescribe. En la nube, ábrelo con las herramientas de
+   `--force-with-lease`: todavía es solo tuya. Una rama con PR nunca se reescribe: lo nuevo va en un commit encima,
+   como dice el paso 6 de `/fin-sesion`. En la nube, ábrelo con las herramientas de
    GitHub integradas o con `gh api -X POST repos/{dueño}/{repo}/pulls`, porque `gh pr` no funciona ahí. Debe incluir:
    - la evidencia de pruebas: comandos y salida;
    - el enlace a la vista previa, si existe;

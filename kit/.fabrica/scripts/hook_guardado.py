@@ -120,8 +120,24 @@ def nuevos_permitidos(raiz):
     return entran, fuera
 
 
+def _elementos(cuerpo, clave):
+    """Los valores de `clave` (branches, branches-ignore) en un bloque push, en lista corta, larga o escalar."""
+    hallado = re.search(rf"(?<![\w-]){re.escape(clave)}[ \t]*:[ \t]*(\[[^\]]*\]|[^\n{{}},#]*)", cuerpo)
+    if not hallado:
+        return None
+    valor = hallado.group(1).strip()
+    if valor.startswith("["):
+        crudos = valor[1:-1].split(",")
+    elif valor:
+        crudos = [valor]
+    else:  # lista larga: las líneas «- x» que siguen
+        resto = cuerpo[hallado.end():]
+        crudos = re.findall(r"^\s*-\s*(.+?)\s*$", re.split(r"^\s*[\w-]+\s*:", resto, maxsplit=1, flags=re.M)[0], re.M)
+    return [c.strip().strip("'\"") for c in crudos if c.strip()]
+
+
 def flujos_sin_filtro(raiz):
-    """Flujos de GitHub Actions que se activan con push a cualquier rama, incluida wip/."""
+    """Flujos de GitHub Actions que se activarían con un push a una rama wip/ (o al crearla)."""
     malos = []
     for flujo in sorted((Path(raiz) / ".github" / "workflows").glob("*.y*ml")):
         texto = flujo.read_text(encoding="utf-8", errors="replace")
@@ -130,11 +146,14 @@ def flujos_sin_filtro(raiz):
             malos.append(flujo.name)  # on: push  /  on: [push, pull_request]
         elif bloque:
             cuerpo = bloque.group(1)
-            if "wip/" in cuerpo:
-                continue
-            todas = re.search(r"\bbranches\s*:[^\n]*['\"]?\*\*?['\"]?", cuerpo) or re.search(
-                r"\bbranches\s*:\s*\n\s*-\s*['\"]?\*\*?['\"]?\s*$", cuerpo, re.M)
-            if todas or "branches-ignore" in cuerpo or not re.search(r"\b(branches|tags)\s*:", cuerpo):
+            ignoradas, ramas = _elementos(cuerpo, "branches-ignore"), _elementos(cuerpo, "branches")
+            if ignoradas is not None:
+                peligroso = not any(r.startswith("wip/") or r in ("wip/*", "wip/**") for r in ignoradas)
+            elif ramas is not None:
+                peligroso = any(r in ("*", "**") or r.startswith("wip") for r in ramas)
+            else:
+                peligroso = not re.search(r"(?<![\w-])tags\s*:", cuerpo)
+            if peligroso:
                 malos.append(flujo.name)
         if flujo.name not in malos and re.search(r"^\s*on\s*:.*\bcreate\b|^\s{1,4}create\s*:", texto, re.M):
             malos.append(flujo.name)
