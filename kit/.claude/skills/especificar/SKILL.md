@@ -38,7 +38,9 @@ La Dirección confirma la iniciativa antes de especificar las historias.
 
    Las escribe `qa` en `pruebas/aceptacion/H-NNN/`.
 6. **El modelo de amenazas,** si la historia toca acceso, permisos, datos personales, pagos o exposición a internet.
-   El `arquitecto` crea o actualiza el modelo del proyecto (`docs/modelo-amenazas.md`, salvo que la constitución del
+   Lo propio de la historia va en `docs/seguridad/historias/H-NNN.md`, desde
+   `.fabrica/nucleo/plantillas/amenazas-historia.md`: el modelo del proyecto no crece con cada historia. El
+   `arquitecto` crea o actualiza el modelo del proyecto (`docs/modelo-amenazas.md`, salvo que la constitución del
    proyecto diga otra ruta) desde `.fabrica/nucleo/plantillas/modelo-amenazas.md`, y `seguridad` lo revisa.
 7. **El PR de especificación.** La historia, el diseño, las pruebas y el modelo de amenazas, si cambió, van en un PR
    "Especificación H-NNN". Si incluye

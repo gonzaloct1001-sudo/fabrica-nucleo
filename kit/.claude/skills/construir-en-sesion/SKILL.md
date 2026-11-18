@@ -14,6 +14,8 @@ corrida. Cambia **quién programa** y **cuándo se revisa**; no cambia ninguna c
   `docs/notas-para-sesiones.md`).
 - **La historia tiene plan analizado** y, si su riesgo lo exige, pruebas de aceptación aprobadas.
 - **Ninguna corrida programada está trabajando:** su última entrada en la bitácora de corridas está cerrada.
+- **Marca la construcción en este repositorio:** crea `.fabrica/trabajo/construyendo`. El hook del kit impide editar
+  `pruebas/aceptacion/` mientras exista. Bórrala al terminar.
 - **Marca la historia como tuya:** agrega al Registro del plan, en un PR chico que se integra antes de empezar, la
   línea `En construcción en una sesión en vivo. Mientras esta línea exista, la corrida programada no retoma esta
   historia: elige otro paso.` La corrida la respeta (`.fabrica/motor/corrida.md`).
@@ -34,12 +36,20 @@ aceptación congeladas, la prueba primero en cada tarea y la CI.
 1. Escribe la prueba y **córrela para verla fallar**. Si pasa sin implementar, la prueba no sirve o la tarea ya estaba
    hecha: averígualo antes de seguir.
 2. Implementa lo mínimo para que pase.
-3. Corre las pruebas del módulo tocado y el linter del proyecto. Al cerrar un tramo, la batería completa y los mismos
+3. Corre las pruebas del módulo tocado y el linter del proyecto, con `python .fabrica/scripts/filtrar_salida.py --
+   <comando>` para leer solo las fallas y el resumen. Al cerrar un tramo, la batería completa y los mismos
    controles de la CI.
 4. Un commit por tarea, o por par de tareas si comparten el archivo de pruebas.
 5. Cada tres o cuatro tareas, y siempre antes de terminar: el Registro del plan al día
    (`Tarea N: completa (commit …)` y las líneas `Decisión:`) y la rama subida. Si la sesión se corta, la siguiente
    retoma desde ahí.
+
+## Una sesión por tramo (núcleo 0.13)
+
+Cada tramo del plan se construye en una sesión nueva: cada pedido reenvía la conversación entera, así que una sesión
+larga cuesta cada vez más. Al cerrar un tramo, deja el registro y la rama al día, corre `/fin-sesion` y abre una
+sesión nueva para el siguiente. El coordinador de una sesión en vivo usa un modelo de nivel medio
+(`.fabrica/nucleo/modelos.md`); los revisores de nivel alto se lanzan como agentes, con su modelo declarado.
 
 ## Al cerrar cada tramo y al final
 

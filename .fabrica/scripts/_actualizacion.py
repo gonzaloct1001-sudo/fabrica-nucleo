@@ -148,8 +148,12 @@ def ejecutar(d: Destino, fuente, origen, version_nueva, novedades, aplicar, sin_
             (respaldo / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, respaldo / rel)
 
+    # Archivos propios que la actualización puede crear (por ejemplo, .claude/settings.json con los hooks del kit):
+    # si no existían, revertir los borra, para que "nada cambió" sea cierto.
+    propios_nuevos = [rel for rel in d.respaldar_tambien if not (local / rel).exists()]
+
     def revertir():
-        for rel in p["agregar"]:
+        for rel in p["agregar"] + propios_nuevos:
             (local / rel).unlink(missing_ok=True)
         for x in respaldo.rglob("*"):
             if x.is_file():

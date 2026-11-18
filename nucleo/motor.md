@@ -25,7 +25,7 @@ En claude.ai/code/routines, o con `/schedule` desde una sesión abierta en el pr
 | Repositorio | solo el del proyecto |
 | Disparador | horario: una vez al día, o más según el plan (ver abajo) |
 | Instrucción | `Ejecuta una corrida de la fábrica: lee y sigue .fabrica/motor/corrida.md.` |
-| Conectores | ninguno (quita los que se agregan por defecto) |
+| Conectores | ninguno (quita los que se agregan por defecto): cada conector suma sus herramientas al contexto de cada corrida y es superficie de riesgo |
 | Ambiente | el predeterminado; basta con su acceso de red "Trusted" |
 | Avisos | push al teléfono, encendido: así la Dirección sabe que la corrida terminó |
 
@@ -115,6 +115,42 @@ corrida siguiente parte en el momento y no a la hora fijada.
   que encuentra ese número de entradas de hoy en la bitácora anota "tope diario" y termina sin trabajar.
 - Los eventos de GitHub tienen además un tope por hora de la plataforma: lo que pasa de ese tope se pierde, y el
   horario lo recoge después.
+
+### Dónde ver el estado
+
+El estado vivo de cada proyecto está en su issue **"Estado del proyecto"**. Lo rehace el flujo
+`.github/workflows/fabrica-estado.yml` cada vez que algo cambia en GitHub (un PR integrado, una etiqueta, un issue
+cerrado), así que nunca depende de que una sesión se cierre bien. Conviene fijarlo como destacado una vez.
+`.fabrica/estado.json` es una copia de las cifras para el panel; la CI exige que coincida con las historias, y la
+rehace `estado.py --escribir`.
+
+### Guardado automático
+
+El kit registra en `.claude/settings.json` un hook (`.fabrica/scripts/hook_guardado.py`) que corre al terminar cada
+respuesta de Claude:
+- **Recorre todas las copias de trabajo del repositorio** (`git worktree list`): la sesión suele abrirse en la copia de
+  la rama principal y el trabajo vive en copias hermanas, una por historia. Guarda cada copia que tenga cambios.
+- **Commit en local, en la rama de esa copia.** Nunca en `main` ni en `master`: si hay cambios sueltos ahí, avisa y no
+  los toca. Toma lo ya registrado en git que cambió y los archivos nuevos que `.gitignore` permite; deja fuera, y lo
+  dice, los que parecen secretos, las imágenes, videos y comprimidos, y los de más de 1 MB.
+- **Respaldo en GitHub cada 30 minutos,** en la rama `wip/<rama>`, que no tiene PR: no dispara la CI. Antes de subir
+  corre gitleaks en local; no sube si gitleaks falta o encuentra algo, o si un flujo del proyecto correría con esa
+  rama.
+- **Habla poco:** un guardado que sale bien no dice nada; cada problema se avisa una vez por sesión. `estado.py`
+  muestra siempre la fecha del último respaldo, o «nunca».
+- **El PR se abre aparte, con un solo commit** (`/fin-sesion` y `construir`).
+- **Limpieza:** al integrarse un PR, el flujo `fabrica-estado.yml` borra su `wip/`; cada lunes borra las `wip/` con
+  más de 14 días sin cambios cuya rama de origen ya no existe (`.fabrica/scripts/limpiar_wip.py`).
+- Se apaga con `"guardado_automatico": false` en `.fabrica/proyecto.json`. Lo que solo se conversó no se guarda: las
+  decisiones se escriben en la historia, en el registro del plan o en un issue.
+
+**Puesta en marcha, una vez por computador y por proyecto:**
+1. **Instalar gitleaks** en el computador donde se trabaja, pasando por la revisión de piezas de terceros de la
+   fábrica (`seguridad.md`, "Las piezas de terceros"). Sin gitleaks el guardado sigue haciendo commits en local, pero
+   no respalda en GitHub, y lo avisa.
+2. **Los flujos del proyecto ya quedan listos:** al crear, adoptar o actualizar el kit, se agrega
+   `branches-ignore: ['wip/**']` a cada flujo cuyo `push:` no filtraba ramas, con respaldo. Las formas `on: push` u
+   `on: [push, …]` no se cambian solas: `verificar_proyecto.py` las avisa para corregirlas a mano.
 
 ### Tablero por estados (opcional)
 

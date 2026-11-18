@@ -5,6 +5,47 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.13.0 · 2026-11-18
+
+Leer menos, medir el consumo, y que el avance y el estado no dependan de cerrar bien una sesión (A1 a A10 de la
+revisión del 2026-11-17, más el guardado y el estado automáticos que pidió la Dirección el 2026-11-18).
+- **Guardado automático** (`hook_guardado.py`, hook `Stop` del kit). Al terminar cada respuesta de Claude:
+  - recorre las copias de trabajo del repositorio (`git worktree list`) y hace commit en local, en la rama de cada
+    una;
+  - nunca en `main` ni en `master`: ahí avisa y no toca nada;
+  - toma lo registrado y lo nuevo que `.gitignore` permite, sin secretos, imágenes, comprimidos ni archivos de más
+    de 1 MB;
+  - cada 30 minutos respalda en `wip/<rama>`, sin PR ni CI, solo con gitleaks limpio en local;
+  - un problema se avisa una vez por sesión, y `estado.py` muestra el último respaldo;
+  - al integrar un PR se borra su `wip/`, y cada lunes se borran las `wip/` abandonadas (`limpiar_wip.py`);
+  - al crear, adoptar o actualizar un proyecto, el kit agrega `branches-ignore: ['wip/**']` a los flujos que no
+    filtraban ramas, con respaldo.
+- **El estado vivo, calculado por GitHub:** el flujo `fabrica-estado.yml` publica `estado.py` en el issue «Estado del
+  proyecto» cada vez que algo cambia. `estado.json` queda como copia.
+- **Siguiente acción desactualizada:** `estado.py` avisa cuando `siguiente-accion.md` es anterior a lo último integrado.
+- **Consumo (A1):** cada corrida deja una línea «Consumo:» en la bitácora, y `estado.py --consumo` la suma por
+  historia.
+- **Tope de tamaño (A2):** `verificar_proyecto.py` avisa de los documentos que pasan de
+  `topes.tokens_por_documento` (por defecto 20.000); con `topes.modo: "bloquear"`, rechaza los que cambia un PR.
+- **Plan partido (A3):** `plan.md` índice, un `tarea-NN.md` por tarea (es la ficha: no se copia) y `registro.md`.
+  Los planes de un archivo siguen valiendo, y `estado.py` lee los dos formatos.
+- **Modelo de amenazas por historia (A4):** un núcleo estable más `docs/seguridad/historias/H-NNN.md`.
+- **Archivo (A5):** `archivar.py` mueve a `docs/archivo/` el plan y el modelo de amenazas de una historia hecha; la
+  skill `cerrar` lo usa y los agentes no leen el archivo de rutina.
+- **Pruebas selectivas (A6):** por tarea, las del módulo; la batería completa al cerrar el tramo y en la CI
+  (`calidad.md`).
+- **Hooks y filtro (A7):**
+  - `hook_guardia.py` niega editar `pruebas/aceptacion/` durante una construcción (`.fabrica/trabajo/construyendo`);
+  - `filtrar_salida.py` muestra solo las fallas y el resumen de una batería, con su código de salida;
+  - el filtro es un script y no un hook, porque un hook que reescribe un comando tiene que aprobarlo, y eso saltaría
+    los permisos;
+  - los hooks del kit se fusionan en `.claude/settings.json` sin tocar lo propio.
+- **Una sesión por tramo (A8)**, con el coordinador en nivel medio (`construir-en-sesion`, `modelos.md`).
+- **Sin conectores (A9):** `motor.md` lo explica y la bandeja avisa si una tarea tiene conectores.
+- **A10** ya estaba desde la 0.12: la corrida parte de `estado.py`.
+- **Un PR, un push:** `construir` y `/fin-sesion` juntan los commits de la rama en uno antes de abrir el PR.
+- **Pruebas:** `probar_herramientas.py`, 43 casos nuevos, en la CI del núcleo. `probar_kit.py`: 107 casos, 2 nuevos.
+
 ## 0.12.0 · 2026-11-17
 
 Un solo estado, avisos al teléfono y pausa sin computador (B1 a B5, C1 a C4 y D3 de la revisión del 2026-11-17).

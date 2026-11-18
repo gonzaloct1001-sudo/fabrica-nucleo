@@ -45,4 +45,11 @@ de la rama).
   superior con contexto limpio.
 - **El esfuerzo también cuesta.** El esfuerzo máximo se usa solo en arquitectura, seguridad o un error difícil, nunca
   como valor por defecto.
-- **El consumo se mide antes de cambiar de plan.** Primero se mide el uso real durante dos semanas.
+- **El consumo se mide antes de cambiar de plan.** Primero se mide el uso real durante dos semanas: cada corrida
+  deja su línea «Consumo:» en la bitácora y `python .fabrica/scripts/estado.py --consumo` la suma por historia.
+- **Una sesión larga cuesta cada vez más.** Cada pedido reenvía la conversación entera. Una sesión en vivo trabaja un
+  tramo y se cierra (`construir-en-sesion`); su coordinador usa el nivel medio, y lo de nivel alto va a agentes con
+  su modelo declarado.
+- **Leer menos es gastar menos.** Antes de leer, `estado.py` (el estado en 20 líneas), el plan partido (solo la tarea
+  que toca) y `filtrar_salida.py` (solo las fallas de una batería). Lo cerrado vive en `docs/archivo/` y no se lee de
+  rutina.

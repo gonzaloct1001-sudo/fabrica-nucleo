@@ -50,7 +50,7 @@ DELEGABLES = ("integra", "pruebas_aprobadas", "cierra_historias")
 RIESGOS = ("bajo", "medio", "alto")
 # Cómo se reconoce, en la constitución del proyecto, la línea que declara cada delegación
 DECLARACION = {"integra": r"integr", "pruebas_aprobadas": r"pruebas[-_ ]aprobadas", "cierra_historias": r"\bhecho\b"}
-TOPES = {"historias_en_curso": 1, "lineas_siguiente_accion": 40}  # por defecto; cada proyecto los ajusta en "topes"
+TOPES = {"historias_en_curso": 1, "lineas_siguiente_accion": 40, "tokens_por_documento": 20000}  # por defecto; cada proyecto los ajusta en "topes"
 RUTA_SIGUIENTE_ACCION = "docs/siguiente-accion.md"
 FLUJOS = ".github/workflows/"
 # Lo que una persona no puede leer ni revisar: se genera en la CI y no se guarda en el repositorio.
@@ -251,6 +251,7 @@ def revisar_coherencia(errores, avisos, cambiados=None):
     if en_disco["en_curso"] > topes["historias_en_curso"]:
         exigir.append(f"Hay {en_disco['en_curso']} historias en construcción y el tope es {topes['historias_en_curso']}"
                       " (.fabrica/nucleo/ciclo.md, «Regla del ciclo corto»).")
+    revisar_tamano(topes, bloquear, cambiados, errores, avisos)
     rel = proyecto.get("rutas", {}).get("siguiente_accion") if isinstance(proyecto.get("rutas"), dict) else None
     rel = rel.strip() if _estado.ruta_segura(RAIZ, rel) else RUTA_SIGUIENTE_ACCION
     siguiente = RAIZ / rel
@@ -270,6 +271,47 @@ def etiquetas_del_pr(explicitas):
         evento = json.loads(Path(ruta).read_text(encoding="utf-8"))
         return {e.get("name", "") for e in (evento.get("pull_request") or {}).get("labels", [])}
     return set()
+
+
+def revisar_tamano(topes, bloquear, cambiados, errores, avisos):
+    """Ningún documento de trabajo pasa del tope de tokens (A2): se divide. Archivo y núcleo no cuentan.
+
+    En un PR revisa solo los documentos que cambia; sin base, todos, y entonces solo avisa con los tres más pesados.
+    """
+    tope = topes["tokens_por_documento"]
+    if cambiados is None:
+        candidatos = [p.relative_to(RAIZ).as_posix() for p in (RAIZ / "docs").rglob("*.md")] if (RAIZ / "docs").is_dir() else []
+    else:
+        candidatos = [c for c in cambiados if c.startswith("docs/") and c.endswith(".md") and (RAIZ / c).is_file()]
+    pesados = []
+    for rel in candidatos:
+        if rel.startswith("docs/archivo/"):
+            continue
+        tokens = int(len((RAIZ / rel).read_text(encoding="utf-8", errors="replace")) / 3.5)
+        if tokens > tope:
+            pesados.append((tokens, rel))
+    if not pesados:
+        return
+    pesados.sort(reverse=True)
+    detalle = ", ".join(f"{rel} (~{tokens:,} tokens)".replace(",", ".") for tokens, rel in pesados[:3])
+    mensaje = (f"{len(pesados)} documento(s) pasan del tope de {tope:,} tokens".replace(",", ".")
+               + f": {detalle}. Divídelos (plan partido, modelo de amenazas por historia) o archiva lo cerrado con "
+               "`python .fabrica/scripts/archivar.py`.")
+    (errores if bloquear and cambiados is not None else avisos).append(mensaje)
+
+
+def revisar_flujos_wip(avisos):
+    """El guardado automático respalda en ramas wip/ sin CI: un flujo con push a cualquier rama gastaría minutos."""
+    import importlib.util
+    ruta = Path(__file__).resolve().parent / "hook_guardado.py"
+    if not ruta.exists():
+        return
+    spec = importlib.util.spec_from_file_location("hook_guardado", ruta)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    for flujo in modulo.flujos_sin_filtro(RAIZ):
+        avisos.append(f".github/workflows/{flujo} se activa con push a cualquier rama: agrégale "
+                      "branches-ignore: ['wip/**'], o el guardado automático no respaldará en GitHub.")
 
 
 def cambiados_desde(base):
@@ -425,6 +467,7 @@ def main():
     revisar_kit(errores)
     revisar_estado(errores)
     revisar_coherencia(errores, avisos, cambiados_desde(a.base) if a.base else None)
+    revisar_flujos_wip(avisos)
     revisar_seguridad(avisos)
     if a.base:
         revisar_cambios(a.base, a.etiquetas, errores, avisos)

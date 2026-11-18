@@ -33,5 +33,8 @@ jobs:
       - name: Probar los avisos a la Dirección
         run: python3 pruebas/probar_avisos.py
 
+      - name: Probar las herramientas del kit
+        run: python3 pruebas/probar_herramientas.py
+
       - name: Probar la bandeja de la Dirección
         run: python3 pruebas/probar_bandeja.py

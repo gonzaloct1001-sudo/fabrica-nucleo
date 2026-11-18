@@ -58,6 +58,13 @@ def main():
         if v:
             texto = ficha.read_text(encoding="utf-8")
             ficha.write_text(re.sub(r'("nucleo"\s*:\s*")[^"]*(")', rf"\g<1>{v}\g<2>", texto, count=1), encoding="utf-8")
+        # Desde el núcleo 0.13, los flujos propios ignoran las ramas wip/ del guardado automático (con respaldo).
+        for rel in _kit.ignorar_wip_en_flujos(proyecto):
+            print(f"Flujo ajustado para ignorar las ramas wip/: {rel}")
+        # Desde el núcleo 0.13 el kit trae hooks: se fusionan en .claude/settings.json sin tocar lo propio.
+        aviso = _kit.fusionar_hooks(proyecto)
+        if aviso:
+            print(f"Aviso: {aviso}")
         # Desde el núcleo 0.11 el kit lee dónde están las historias y los planes. Un proyecto anterior que las guarda
         # en otra carpeta las recibe detectadas, una sola vez; después son suyas y la actualización no las toca.
         datos_ahora = json.loads(ficha.read_text(encoding="utf-8"))
@@ -77,7 +84,7 @@ def main():
             verificador=[sys.executable, ".fabrica/scripts/verificar_proyecto.py"],
             mensaje_commit=lambda v: f"Actualiza el kit de la fábrica a {v or 'la versión nueva'}",
             comando_aplicar=f"python .fabrica/scripts/actualizar_kit.py {a.proyecto} --aplicar",
-            respaldar_tambien=[".fabrica/proyecto.json"],
+            respaldar_tambien=[".fabrica/proyecto.json", ".claude/settings.json", *_kit.flujos_a_filtrar(proyecto)],
             consejo_modificados="Si eran ajustes propios del proyecto, llévalos a docs/constitucion.md o a archivos local-*.")
         return _actualizacion.ejecutar(destino, fuente, f"núcleo de esta instancia ({RAIZ.name})", v_nueva,
                                        _nucleo.novedades(RAIZ, v_local), a.aplicar, a.sin_commit,

@@ -19,6 +19,7 @@ NUCLEO.txt
 .claude/commands/
 .github/workflows/fabrica.yml
 .github/workflows/fabrica-avisos.yml
+.github/workflows/fabrica-estado.yml
 .github/PULL_REQUEST_TEMPLATE.md
 .github/ISSUE_TEMPLATE/
 .github/etiquetas.json

@@ -166,6 +166,10 @@ def main():
         verif = [sys.executable, ".fabrica/scripts/verificar_proyecto.py"]
         rc, out = run(verif, proy)
         comprobar("La verificación del proyecto pasa en limpio", rc == 0, out)
+        ajustes = json.loads(leer(proy / ".claude/settings.json") or "{}")
+        comprobar("El proyecto nace con los hooks del kit y el flujo de estado",
+                  "hook_guardia" in json.dumps(ajustes) and "hook_guardado" in json.dumps(ajustes)
+                  and (proy / ".github/workflows/fabrica-estado.yml").exists(), json.dumps(ajustes)[:300])
         comprobar("proyecto.json nace con las rutas de la fábrica y sin delegar nada",
                   datos.get("rutas", {}).get("historias") == "docs/historias"
                   and set(datos.get("autonomia", {}).values()) == {"direccion"}, json.dumps(datos, ensure_ascii=False))
@@ -589,6 +593,10 @@ def main():
         rc, out = script(inst, *adoptar, "--aplicar")
         comprobar("No adopta dos veces el mismo proyecto", rc != 0 and "ya es un proyecto de la fábrica" in out, out)
         rc, out = script(inst, "actualizar_kit.py", str(viejo), "--aplicar")
+        (viejo / ".claude" / "settings.json").write_text(json.dumps({"permissions": {"deny": ["Read(./.env)"]}}),
+                                                          encoding="utf-8")
+        (viejo / ".github" / "workflows" / "ci.yml").write_text("on:\n  push:\n  pull_request:\njobs: {}\n",
+                                                                encoding="utf-8")
         ficha_v = viejo / ".fabrica" / "proyecto.json"
         datos_v = json.loads(ficha_v.read_text(encoding="utf-8"))
         datos_v.pop("rutas")
@@ -596,6 +604,10 @@ def main():
         run(["git", "commit", "-qam", "Proyecto anterior a la 0.11, sin rutas"], viejo)
         rc, out = script(inst, "actualizar_kit.py", str(viejo), "--aplicar")
         rutas_v = json.loads(ficha_v.read_text(encoding="utf-8")).get("rutas", {})
+        ajustes_v = json.loads(leer(viejo / ".claude/settings.json") or "{}")
+        comprobar("La actualización suma los hooks sin tocar los permisos propios, y su flujo propio ignora wip/",
+                  ajustes_v.get("permissions") == {"deny": ["Read(./.env)"]} and "hook_guardado" in json.dumps(ajustes_v)
+                  and "branches-ignore: ['wip/**']" in leer(viejo / ".github/workflows/ci.yml"), out[-500:])
         comprobar("La actualización registra las rutas de un proyecto anterior que guarda sus historias en otra carpeta",
                   rc == 0 and rutas_v.get("historias") == "docs/02-requerimientos/historias", out[-600:])
         comprobar("El proyecto adoptado se actualiza como cualquier otro y conserva lo propio",

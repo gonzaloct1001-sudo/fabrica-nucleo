@@ -59,7 +59,9 @@ sus respuestas (`nucleo/motor.md`, `nucleo/autonomia.md`). El script es `.fabric
    puede integrarlo en GitHub.
 6. **Relevos, si la Dirección quiere avanzar sin esperar el horario** (`nucleo/motor.md`, "El ritmo"):
    1. Anota la hora UTC y despierta la corrida del proyecto con la herramienta de tareas programadas: busca la tarea
-      `fabrica · <repositorio>`, comprueba que su última corrida terminó (tiene hora de término) y ejecútala.
+      `fabrica · <repositorio>`, comprueba que su última corrida terminó (tiene hora de término) y ejecútala. Antes, mira
+      en la tarea sus conectores: si tiene alguno, avísale a la Dirección que conviene quitarlos (`nucleo/motor.md`,
+      tabla de la tarea): cada conector suma contexto a cada corrida.
    2. Espera en segundo plano a que termine:
       `python .fabrica/scripts/bandeja.py --esperar <repositorio> --desde <hora UTC del paso anterior>`.
    3. Con su entrada en la bitácora, vuelve al paso 2 de esta skill: presenta lo nuevo y publica lo que se decida.

@@ -169,6 +169,91 @@ def detectar_rutas(raiz):
     return rutas
 
 
+HOOK_GUARDIA = "python3 \"$CLAUDE_PROJECT_DIR/.fabrica/scripts/hook_guardia.py\""
+HOOK_GUARDADO = "python3 \"$CLAUDE_PROJECT_DIR/.fabrica/scripts/hook_guardado.py\""
+HOOKS_DEL_KIT = {"PreToolUse": [{"matcher": "Edit|Write|MultiEdit|NotebookEdit",
+                                 "hooks": [{"type": "command", "command": HOOK_GUARDIA, "timeout": 10}]}],
+                 "Stop": [{"hooks": [{"type": "command", "command": HOOK_GUARDADO, "timeout": 60}]}]}
+
+
+def _es_del_kit(grupo):
+    return any(".fabrica/scripts/hook_" in str(h.get("command", "")) for h in grupo.get("hooks", []))
+
+
+def fusionar_hooks(destino):
+    """Deja en `.claude/settings.json` los hooks del kit (núcleo 0.13) y conserva todo lo demás del proyecto.
+
+    Reemplaza solo los grupos de hooks que llaman a `.fabrica/scripts/hook_*`. Si el archivo no es un JSON válido, no
+    lo toca y devuelve el aviso. Devuelve None si no hubo nada que decir.
+    """
+    ruta = Path(destino) / ".claude" / "settings.json"
+    try:
+        datos = json.loads(ruta.read_text(encoding="utf-8")) if ruta.exists() else {}
+    except ValueError:
+        return f"{ruta.relative_to(destino).as_posix()} no es un JSON válido: no se agregaron los hooks del kit."
+    if not isinstance(datos, dict):
+        return f"{ruta.relative_to(destino).as_posix()} no es un objeto JSON: no se agregaron los hooks del kit."
+    hooks = datos.get("hooks") if isinstance(datos.get("hooks"), dict) else {}
+    for evento, grupos in HOOKS_DEL_KIT.items():
+        propios = [g for g in hooks.get(evento, []) if isinstance(g, dict) and not _es_del_kit(g)]
+        hooks[evento] = propios + grupos
+    datos["hooks"] = hooks
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    nuevo = json.dumps(datos, ensure_ascii=False, indent=2) + "\n"
+    if not ruta.exists() or ruta.read_text(encoding="utf-8") != nuevo:
+        ruta.write_text(nuevo, encoding="utf-8")
+    return None
+
+
+PUSH_SIN_FILTRO = re.compile(r"^(?P<sangria>[ \t]+)push[ \t]*:[ \t]*(\{[ \t]*\})?[ \t]*(#.*)?$")
+
+
+def flujos_a_filtrar(destino):
+    """Los flujos del proyecto cuyo `push:` (en forma de bloque) no filtra ramas: correrían con cada rama wip/."""
+    malos = []
+    carpeta = Path(destino) / ".github" / "workflows"
+    for flujo in sorted(carpeta.glob("*.y*ml")) if carpeta.is_dir() else []:
+        lineas = flujo.read_text(encoding="utf-8").splitlines()
+        for i, linea in enumerate(lineas):
+            m = PUSH_SIN_FILTRO.match(linea)
+            if not m:
+                continue
+            sangria = len(m.group("sangria").expandtabs())
+            cuerpo = []
+            for siguiente in lineas[i + 1:]:
+                if siguiente.strip() and len(siguiente) - len(siguiente.lstrip()) <= sangria:
+                    break
+                cuerpo.append(siguiente)
+            if not re.search(r"\b(branches|branches-ignore|tags)\s*:", "\n".join(cuerpo)):
+                malos.append(flujo.relative_to(destino).as_posix())
+            break
+    return malos
+
+
+def ignorar_wip_en_flujos(destino):
+    """Agrega `branches-ignore: ['wip/**']` a cada flujo cuyo `push:` no filtra ramas (núcleo 0.13).
+
+    Así los respaldos del guardado automático (ramas wip/) no gastan minutos de Actions. Solo cambia la forma de
+    bloque (`push:` en su propia línea); `on: push` u `on: [push, …]` se dejan y `verificar_proyecto.py` los avisa.
+    Devuelve las rutas que cambió.
+    """
+    cambiados = []
+    for rel in flujos_a_filtrar(destino):
+        ruta = Path(destino) / rel
+        lineas = ruta.read_bytes().decode("utf-8").splitlines(keepends=True)  # sin traducir CRLF
+        for i, linea in enumerate(lineas):
+            m = PUSH_SIN_FILTRO.match(linea.rstrip("\r\n"))
+            if m:
+                sangria = m.group("sangria")
+                fin = "\r\n" if linea.endswith("\r\n") else "\n"
+                lineas[i] = f"{sangria}push:{fin}"
+                lineas.insert(i + 1, f"{sangria}  branches-ignore: ['wip/**']  # respaldos del guardado automático{fin}")
+                break
+        ruta.write_bytes("".join(lineas).encode("utf-8"))
+        cambiados.append(rel)
+    return cambiados
+
+
 def _script_de_estado(raiz_instancia):
     """El script de estado del kit de la instancia, cargado como módulo (sin dejar __pycache__ en el kit)."""
     import importlib.util
@@ -245,6 +330,16 @@ def preparar_proyecto(raiz_instancia, destino, cliente, negocio, proyecto, nombr
            creados)
     _crear(destino, "docs/notas-para-sesiones.md", (plantillas / "notas-para-sesiones.md").read_text(encoding="utf-8"),
            creados)
+    # Los hooks del kit: en un proyecto nuevo, o adoptado sin configuración de Claude propia. Si ya tiene una, no se
+    # toca al adoptar (deshacer la adopción no podría restaurarla); la siguiente actualización del kit los fusiona,
+    # con respaldo.
+    ignorar_wip_en_flujos(destino)
+    if not (Path(destino) / ".claude" / "settings.json").exists():
+        aviso = fusionar_hooks(destino)
+        if aviso:
+            print(f"Aviso: {aviso}")
+        else:
+            creados.append(".claude/settings.json")
     for carpeta in CARPETAS:
         if not (destino / carpeta).is_dir() or not any((destino / carpeta).iterdir()):
             _crear(destino, f"{carpeta}/.gitkeep", "", creados)

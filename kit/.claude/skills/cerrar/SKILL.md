@@ -18,6 +18,9 @@ description: Cierra una historia integrada o una épica terminada. Verifica la D
    (`autonomia.cierra_historias: "fabrica"` en `.fabrica/proyecto.json`): entonces la marcas tú, si la Definition of
    Done se cumple con su evidencia, y lo anotas en "Decisiones que tomé por ti". Sin delegación, si la Dirección
    integró el PR pero la etiqueta no cambió, pregúntalo en el resumen; no la cambies tú.
+4. **Archiva lo que ya no hace falta leer:** `python .fabrica/scripts/archivar.py H-NNN --aplicar` mueve a
+   `docs/archivo/` el plan y el modelo de amenazas de la historia, una vez que está en `hecho`. La historia misma
+   se queda.
 
 ## Al cerrar una épica
 

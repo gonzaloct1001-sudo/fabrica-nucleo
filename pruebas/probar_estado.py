@@ -164,8 +164,8 @@ def main():
         (Path(tmp) / ".fabrica/proyecto.json").write_text("{}", encoding="utf-8")
         texto = "\n".join(estado.reunir(Path(tmp), falso(GIT), con_red=False))
         comprobar("sin carpeta de historias lo dice y sugiere rutas.historias", "rutas.historias" in texto, texto)
-    comprobar("sin rutas, las de la fábrica", estado.rutas_del_proyecto({}) == {"historias": "docs/historias",
-                                                                                "planes": "docs/planes"})
+    comprobar("sin rutas, las de la fábrica", estado.rutas_del_proyecto({}) == {
+        "historias": "docs/historias", "planes": "docs/planes", "siguiente_accion": "docs/siguiente-accion.md"})
 
     with tempfile.TemporaryDirectory() as tmp:
         raiz = Path(tmp)

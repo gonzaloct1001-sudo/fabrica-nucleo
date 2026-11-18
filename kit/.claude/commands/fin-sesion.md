@@ -1,6 +1,10 @@
 ---
 description: Deja todo el trabajo de la sesión en GitHub, en una rama con su PR, con la siguiente acción al día.
 ---
+El guardado automático (núcleo 0.13) hace un commit en local después de cada respuesta y, cada 30 minutos, lo
+respalda en una rama `wip/<rama>` sin PR ni CI. Este comando hace lo que el guardado no hace: deja la siguiente acción
+al día y abre el PR, con un solo commit.
+
 Ejecuta, en orden:
 
 1. `git status`. Si no hay cambios y la siguiente acción (`rutas.siguiente_accion` de `.fabrica/proyecto.json`, por
@@ -21,10 +25,14 @@ Ejecuta, en orden:
      registro de tratamiento del proyecto. Si no, avisa antes del commit.
 5. Si estás en la rama principal, crea una rama `fabrica/sesion-<AAAA-MM-DD>-<hhmm>` antes del commit: nada se sube
    directo a la principal (`.fabrica/motor/corrida.md`, "Cómo trabajas").
-6. `git add -A` y `git commit` con un mensaje Conventional Commits en español (`feat:`, `fix:`, `docs:`, `chore:`),
-   con la línea de coautoría que indique el entorno.
+6. Junta en un solo commit lo de la rama, si la rama todavía no tiene PR: `git reset --soft <base>` (la rama
+   principal de la que salió) y `git commit` con un mensaje Conventional Commits en español (`feat:`, `fix:`, `docs:`,
+   `chore:`) y la línea de coautoría que indique el entorno. Si la rama ya se subió sin PR, súbela con
+   `--force-with-lease`: todavía es solo tuya. Si la rama ya tiene PR, un commit nuevo encima: lo que está en un PR
+   no se reescribe. Antes de subir, `gitleaks git --log-opts="HEAD --not --remotes" .` si está instalado: un
+   secreto subido a GitHub no se puede retirar.
 7. `git push -u origin <rama>` y abre o actualiza su PR con la plantilla del proyecto. En la nube, por la API REST.
 8. Confirma en una o dos líneas qué se subió, el enlace al PR y cuál quedó como siguiente acción.
 
-No hagas `git push --force` ni reescribas la historia. Si el push se rechaza por cambios remotos nuevos, avisa: no
+No hagas `git push --force` sobre una rama con PR ni sobre la principal, ni reescribas su historia. Si el push se rechaza por cambios remotos nuevos, avisa: no
 hagas un pull ni un rebase automático sin decirlo primero.

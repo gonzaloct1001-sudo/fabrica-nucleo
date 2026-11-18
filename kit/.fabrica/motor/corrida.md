@@ -114,7 +114,13 @@ Corrida <fecha y hora UTC> · paso: <qué hiciste>
 - Esperan tu decisión: <enlaces, o "nada">
 - Bloqueos: <motivo de la lista de ciclo.md, o "ninguno">
 - Próximo paso: <qué hará la siguiente corrida>
+- Consumo: <H-NNN> · <minutos> min · agentes: <modelo ×n, …> · leídos: <n> documentos, ~<tokens> tokens
 ```
+
+La línea «Consumo» es para medir, no para controlar: los minutos salen de la hora de inicio y de fin, los agentes de
+los que lanzaste (con el modelo que les declaraste) y los tokens de sumar el tamaño de los documentos que leíste
+enteros, a razón de un token cada 3,5 caracteres (`estado.py --peso` da el tamaño de cada uno). Sin historia, pon
+`sin historia`. `python .fabrica/scripts/estado.py --consumo` la suma por historia.
 
 ## Cuándo detenerte antes de tiempo
 
