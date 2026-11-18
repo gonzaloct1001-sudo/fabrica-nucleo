@@ -107,7 +107,7 @@ def probar_guardado(tmp):
     comprobar("sin cambios nuevos no hace nada", guardado.guardar(raiz, respaldar=False) is None)
 
     (raiz / "app.py").write_text("print(3)\n", encoding="utf-8")
-    mensaje = guardado.guardar(raiz, revisar=lambda r: False)
+    mensaje = guardado.guardar(raiz, revisar=lambda r: "gitleaks no está instalado")
     registro = json.loads((raiz / ".fabrica/trabajo/respaldo.json").read_text(encoding="utf-8"))
     _, ramas = git(raiz, "ls-remote", str(remoto))
     comprobar("sin gitleaks limpio no respalda, lo dice y lo deja anotado",
@@ -120,7 +120,7 @@ def probar_guardado(tmp):
     (raiz / ".github/workflows/ci.yml").write_text("on:\n  push:\n  pull_request:\njobs: {}\n", encoding="utf-8")
     git(raiz, "add", ".github")
     (raiz / "app.py").write_text("print(4)\n", encoding="utf-8")
-    mensaje = guardado.guardar(raiz, revisar=lambda r: True)
+    mensaje = guardado.guardar(raiz, revisar=lambda r: None)
     comprobar("con un flujo que corre con push a cualquier rama no respalda y dice cuál",
               "SIN RESPALDO" in mensaje and "ci.yml" in mensaje, mensaje)
 
@@ -128,13 +128,13 @@ def probar_guardado(tmp):
     (raiz / ".github/workflows/ci.yml").write_text(
         "on:\n  push:\n    branches-ignore: ['wip/**']\n  pull_request:\njobs: {}\n", encoding="utf-8")
     (raiz / "app.py").write_text("print(5)\n", encoding="utf-8")
-    mensaje = guardado.guardar(raiz, revisar=lambda r: True)
+    mensaje = guardado.guardar(raiz, revisar=lambda r: None)
     _, ramas = git(raiz, "ls-remote", str(remoto))
     comprobar("con gitleaks limpio y los flujos filtrados, respalda en wip/<rama>",
               "respaldado en GitHub, en wip/h-001-vender" in mensaje and "refs/heads/wip/h-001-vender" in ramas
               and "refs/heads/h-001-vender" not in ramas.replace("wip/h-001-vender", ""), mensaje + ramas)
     (raiz / "app.py").write_text("print(6)\n", encoding="utf-8")
-    mensaje = guardado.guardar(raiz, revisar=lambda r: True)
+    mensaje = guardado.guardar(raiz, revisar=lambda r: None)
     comprobar("respalda como mucho cada 30 minutos", "respaldado" not in mensaje, mensaje)
     comprobar("estado.py muestra la fecha del último respaldo",
               estado.respaldo(raiz)[0].startswith("Respaldo en GitHub: 20"), estado.respaldo(raiz))

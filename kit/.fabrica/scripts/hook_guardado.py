@@ -125,19 +125,21 @@ def anotar(raiz, resultado):
 
 
 def gitleaks_limpio(raiz):
-    """True si gitleaks revisó los commits que no están en GitHub y no encontró nada; False si falta o encontró algo."""
+    """None si gitleaks revisó los commits que no están en GitHub y no encontró nada; si no, el motivo para no subir."""
     rangos = "HEAD --not --remotes"
     for orden in (["gitleaks", "git", "--no-banner", "--redact", f"--log-opts={rangos}", "."],
                   ["gitleaks", "detect", "--no-banner", "--redact", f"--log-opts={rangos}", "--source", "."]):
         try:
             hecho = subprocess.run(orden, cwd=raiz, capture_output=True, text=True, timeout=60, check=False)
+        except FileNotFoundError:
+            return "gitleaks no está instalado (ver «Puesta en marcha» en .fabrica/nucleo/motor.md)"
         except (OSError, subprocess.TimeoutExpired):
-            return False
+            return "gitleaks no pudo correr"
         if hecho.returncode == 0:
-            return True
+            return None
         if "unknown command" not in (hecho.stderr or "") + (hecho.stdout or ""):
-            return False
-    return False
+            return "gitleaks encontró un posible secreto en los commits sin subir: revísalo antes de respaldar"
+    return "gitleaks no pudo correr"
 
 
 def guardar(raiz, ahora=None, respaldar=True, revisar=gitleaks_limpio):
@@ -184,9 +186,10 @@ def guardar(raiz, ahora=None, respaldar=True, revisar=gitleaks_limpio):
         anotar(raiz, f"sin subir: {malos[0]} corre con push a cualquier rama")
         return (mensaje + f". SIN RESPALDO en GitHub: {malos[0]} se activa con push a cualquier rama; agrégale "
                 "branches-ignore: ['wip/**'] para no gastar minutos de Actions.")
-    if not revisar(raiz):
-        anotar(raiz, "sin subir: gitleaks no está instalado o encontró algo")
-        return mensaje + ". SIN RESPALDO en GitHub: gitleaks no está instalado o encontró algo."
+    motivo = revisar(raiz)
+    if motivo:
+        anotar(raiz, f"sin subir: {motivo}")
+        return mensaje + f". SIN RESPALDO en GitHub: {motivo}."
     destino = f"wip/{rama}"
     if git(raiz, "push", "-q", "--force", "origin", f"HEAD:refs/heads/{destino}", tope=30)[0] != 0:
         anotar(raiz, "sin subir: falló el push")
