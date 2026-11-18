@@ -15,7 +15,8 @@ lo demuestras con evidencia.
 - Si el stack todavía no está decidido, las escribes como casos Dado / Cuando / Entonces en un `.md`, listos para
   convertirlos después.
 - Cubres cada criterio y los casos borde de la historia.
-- Esas pruebas entran en un PR que la Dirección aprueba con la etiqueta `pruebas-aprobadas`. Desde ese momento están
+- Esas pruebas entran en un PR de especificación, sin código de la aplicación, que la Dirección aprueba con la
+  etiqueta `pruebas-aprobadas` (o la fábrica, si el proyecto se lo delegó). Desde ese momento están
   protegidas.
 
 **2. Después de construir (en la verificación).**

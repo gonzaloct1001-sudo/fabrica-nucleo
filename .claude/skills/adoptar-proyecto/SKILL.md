@@ -22,7 +22,11 @@ propia del proyecto (`fabrica/adopcion`), y llega a su rama principal por un PR.
    - **Agentes y skills propios.** Para cada uno, propone una de tres salidas: sigue con prefijo `local-`, lo
      reemplaza el del kit, o su conocimiento pasa a la base del rubro (`rubros/<rubro>/`).
    - **Documentos.** No se mueven. Si no usan las carpetas de la fábrica, `docs/constitucion.md` dice dónde está cada
-     cosa: descubrimiento, ADR, historias y bitácora.
+     cosa: descubrimiento, ADR, historias y bitácora. La adopción detecta dónde están las historias y los planes y lo
+     registra en `rutas` de `.fabrica/proyecto.json`, que es lo que leen `estado.py` y la corrida: revisa en la vista
+     previa que la detección sea correcta y corrígela en `proyecto.json` si no lo es. El PR de la adopción no
+     necesita `constitucion-aprobada`: la constitución nace con él. Una delegación de autonomía se agrega después, en
+     su propio PR, con esa etiqueta.
    - Haz un commit con esa preparación.
 4. **Adopta:** el mismo comando con `--aplicar`. Respalda lo que reemplaza, verifica y deja un commit.
 5. **Publica y conecta,** cada paso con el sí de la Dirección:

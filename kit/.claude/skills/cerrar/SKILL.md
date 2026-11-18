@@ -1,6 +1,6 @@
 ---
 name: cerrar
-description: Cierra una historia integrada o una épica terminada. Verifica la Definition of Done, actualiza el estado del proyecto para el panel, registra la bitácora y, al cerrar una épica, hace la retrospectiva. Úsala después de que la Dirección integra un PR o marca una historia como hecha.
+description: Cierra una historia integrada o una épica terminada. Verifica la Definition of Done, actualiza el estado del proyecto para el panel, registra la bitácora y, al cerrar una épica, hace la retrospectiva. Úsala después de que se integra el PR de una historia (lo integra la Dirección, o la fábrica si el proyecto lo delegó).
 ---
 
 # Cerrar
@@ -11,8 +11,10 @@ description: Cierra una historia integrada o una épica terminada. Verifica la D
    verde, revisión limpia, seguridad (si correspondía), contratos y documentación al día, y decisiones entregadas.
    Si falta algo, no cierres: crea la tarea que falta y avísalo.
 2. **El `documentador`** (nivel bajo) actualiza `.fabrica/estado.json` y agrega la entrada en `docs/bitacora.md`.
-3. **Solo una persona marca una historia como `hecho`.** Si la Dirección integró el PR pero la etiqueta no cambió,
-   pregúntalo en el resumen; no la cambies tú.
+3. **Solo una persona marca una historia como `hecho`,** salvo que el proyecto lo haya delegado
+   (`autonomia.cierra_historias: "fabrica"` en `.fabrica/proyecto.json`): entonces la marcas tú, si la Definition of
+   Done se cumple con su evidencia, y lo anotas en "Decisiones que tomé por ti". Sin delegación, si la Dirección
+   integró el PR pero la etiqueta no cambió, pregúntalo en el resumen; no la cambies tú.
 
 ## Al cerrar una épica
 

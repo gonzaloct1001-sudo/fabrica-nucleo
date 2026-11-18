@@ -27,7 +27,8 @@ Las palabras "debería", "probablemente" y "parece" en un informe de estado son 
 
 Las pruebas de aceptación de una historia se escriben y se aprueban antes de construir, en una carpeta propia
 (`pruebas/aceptacion/`). La CI de cada proyecto rechaza cualquier PR que las modifique, salvo que lleve la etiqueta
-`pruebas-aprobadas`, que solo pone la Dirección. Para cambiarlas hay que volver a la especificación.
+`pruebas-aprobadas`, que pone la Dirección (o la fábrica, si el proyecto se lo delegó y solo en un PR de
+especificación: `autonomia.md`, "Delegación por proyecto"). Para cambiarlas hay que volver a la especificación.
 
 ## Revisión por tarea: dos veredictos
 

@@ -9,6 +9,9 @@ la Dirección, así que cada acción debe poder explicarse sola.
 1. **Lee `.fabrica/proyecto.json`.**
    - Si dice `"pausa": true`, deja un comentario en la bitácora de corridas (paso 5) que diga "En pausa" y termina.
    - Anota el campo `direccion`: la cuenta de GitHub de la Dirección.
+   - Anota `autonomia`: lo que la Dirección delegó en este proyecto (`.fabrica/nucleo/autonomia.md`, "Delegación por
+     proyecto"). Sin ese campo, o con `"direccion"`, decide la Dirección.
+   - Anota `rutas`: dónde están las historias y los planes. Sin ese campo, `docs/historias/` y `docs/planes/`.
 2. **Usa solo la API REST de GitHub.** Sirven las herramientas de GitHub integradas o `gh api repos/{dueño}/{repo}/...`.
    `gh issue` y `gh pr` no funcionan en la nube, porque usan GraphQL.
 3. **El presupuesto** es `motor.pasos_por_corrida` (por defecto, 1 paso). Un paso es una de las acciones del punto 2.
@@ -35,11 +38,18 @@ la Dirección, así que cada acción debe poder explicarse sola.
    juntas, en su rama, y actualiza su PR si ya existe. En cada pregunta, quita la etiqueta `espera:direccion` y
    ciérrala con un comentario que enlace el cambio. Todas las respuestas de un mismo documento cuentan como un solo
    paso. Si hay respuestas para varios documentos, empieza por el más antiguo.
-2. **Un "intégralo" de la Dirección** en un PR con todos los controles en verde y la rama al día con `main`: intégralo
-   (`.fabrica/nucleo/autonomia.md`, "Quién integra cada PR"). Si el sistema bloquea la integración, no insistas:
-   anótalo en la bitácora y sigue.
-3. **Una construcción interrumpida:** retómala desde el registro de su plan, con la skill `construir`.
-4. **Una historia en `estado:listo` con plan analizado:** constrúyela con la skill `construir`. En una corrida, como
+2. **Un PR listo para integrar,** con todos los controles en verde y la rama al día con la principal:
+   - con un "intégralo" de la cuenta de la Dirección, intégralo;
+   - con `autonomia.integra: "fabrica"`, intégralo si cumple las condiciones de "Delegación por proyecto", y anótalo en
+     la bitácora con su enlace;
+   - en los demás casos, no lo toques.
+
+   Las reglas están en `.fabrica/nucleo/autonomia.md` ("Quién integra cada PR" y "Delegación por proyecto"). Si el
+   sistema bloquea la integración, no insistas: anótalo en la bitácora y sigue.
+3. **Una construcción interrumpida:** retómala desde el registro de su plan, con la skill `construir`. Si el registro
+   dice "En construcción en una sesión en vivo", no es tuya: sigue con el paso siguiente.
+4. **Una historia en `estado:listo` con plan analizado** y sin la marca de sesión en vivo en su Registro:
+   constrúyela con la skill `construir`. En una corrida, como
    máximo tres tareas del plan: el registro guarda dónde quedaste.
 5. **Una historia en `estado:listo` sin plan:** la skill `planificar`.
 6. **Una decisión estructural pendiente:** la skill `decidir`.
@@ -51,11 +61,14 @@ Si no hay nada que hacer, el paso es solo la bitácora.
 
 ## 3. Cómo trabajas
 
-- **Nunca subes cambios a `main`.** Todo va en una rama propia (`h-NNN-<slug>`, o `fabrica/<tarea>` si no es una
-  historia) y llega a `main` por un PR.
+- **Nunca subes cambios a la rama principal** (`main` o `master`). Todo va en una rama propia (`h-NNN-<slug>`, o
+  `fabrica/<tarea>` si no es una historia) y llega a la principal por un PR.
 - **Abres o actualizas el PR,** con la plantilla del proyecto y sus etiquetas. Los PRs de especificación también
   pasan por revisión.
-- **No integras nada sin un "intégralo" de la cuenta de la Dirección.**
+- **No integras nada sin un "intégralo" de la cuenta de la Dirección,** salvo que el proyecto lo haya delegado
+  (`autonomia.integra: "fabrica"`) y el PR cumpla las condiciones de la delegación.
+- **No retomas una historia en sesión en vivo:** si el Registro de su plan tiene la línea "En construcción en una
+  sesión en vivo", eliges otro paso.
 - **No creas repositorios, no publicas, no despliegas, no borras ramas ni historial, y no agregas dependencias sin
   autorización.**
 - **Declaras siempre el modelo al delegar,** y usas el menor nivel que sirve (`.fabrica/nucleo/modelos.md`).

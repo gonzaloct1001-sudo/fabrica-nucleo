@@ -13,7 +13,7 @@ producen los demás roles vive en archivos, y a ti solo te llegan resúmenes.
 - **La historia** está en `estado:listo` y su plan tiene el análisis de consistencia hecho.
 - **No hay otra historia en `estado:en-curso`** en este proyecto.
 - **La pausa no está activada.**
-- **El árbol de trabajo está limpio.** Crea la rama `h-NNN-<slug>` desde `main` actualizada.
+- **El árbol de trabajo está limpio.** Crea la rama `h-NNN-<slug>` desde la rama principal actualizada.
 - **Pasa la historia a `estado:en-curso`.**
 - **Lee el plan una vez** y crea una tarea pendiente por cada tarea del plan.
 - **Lee también el registro** al final del plan. Si ya tiene tareas completas, continúa desde la primera que no lo
@@ -78,7 +78,7 @@ ensuciaría y la corrección no tendría revisión.
    que falla y todos los confirmados van juntos a una sola tanda de corrección. Lo que no se reproduce queda en el
    registro como descartado, con su motivo.
 5. **Revisión final de la rama.** El `revisor` en modo rama final, **con modelo de nivel alto declarado**. Recibe el
-   diff completo desde `main` y la lista de hallazgos diferidos. Si encuentra problemas, se lanza una sola tanda de
+   diff completo desde la rama principal y la lista de hallazgos diferidos. Si encuentra problemas, se lanza una sola tanda de
    corrección con todos juntos y una revisión acotada de esa tanda. No hay segunda tanda.
 6. **Consistencia final.** El revisor compara el código con la historia. Lo que falte se vuelve una tarea nueva.
 7. **El PR.** Sube la rama y abre el PR con la plantilla del proyecto. En la nube, ábrelo con las herramientas de
@@ -94,9 +94,10 @@ ensuciaría y la corrección no tendría revisión.
 8. **Quién integra.** Pasa la historia a `estado:construido` y pregunta quién integra, según "Quién integra cada
    PR" en `.fabrica/nucleo/autonomia.md`.
    - **Por defecto integra la Dirección.**
-   - **Tú integras solo en dos casos:** con un "intégralo" explícito para ese PR, o en el nivel 2, si el riesgo es
-     bajo y todos los controles están en verde.
-   - **Antes de integrar,** vuelve a comprobar los controles y que la rama esté al día con `main`.
+   - **Tú integras solo en tres casos:** con un "intégralo" explícito para ese PR; en el nivel 2, si el riesgo es
+     bajo y todos los controles están en verde; o si el proyecto delegó la integración (`autonomia.integra:
+     "fabrica"` en `.fabrica/proyecto.json`) y el PR cumple las condiciones de "Delegación por proyecto".
+   - **Antes de integrar,** vuelve a comprobar los controles y que la rama esté al día con la principal.
 
 ## Cuándo te detienes
 

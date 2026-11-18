@@ -14,7 +14,7 @@ persona.
 | Qué pruebas agregar más allá de las aprobadas | Uso del plan sobre lo habitual | Pasar a producción |
 | Cuándo pedir una revisión adicional | | Agregar una dependencia nueva al producto |
 | | | Tratar datos personales nuevos |
-| | | Cambiar la constitución, un ADR vigente o las pruebas de aceptación aprobadas |
+| | | Cambiar la constitución, un ADR vigente o quitar o debilitar las pruebas de aceptación aprobadas |
 | | | Darle a un agente claves de producción |
 | | | Mostrar el código o los datos de un proyecto a un proveedor nuevo, como una segunda IA |
 | | | Cualquier acción irreversible o destructiva |
@@ -75,7 +75,7 @@ Integrar un PR es un efecto fuera del espacio de la fábrica (motivo 3), así qu
   que lo escribió la cuenta de la Dirección: la dueña del repositorio, o la que indique el campo `direccion` de
   `.fabrica/proyecto.json`.
 - **Antes de integrar,** la fábrica vuelve a comprobar que todos los controles estén en verde y que la rama esté al
-  día con `main`.
+  día con la rama principal (`main` o `master`).
 - **Desde la conversación:** la skill de instancia `bandeja-direccion` trae lo que espera a la Dirección y publica
   sus respuestas, sus pedidos y las integraciones que autorice, con su cuenta y con una marca que dice de dónde
   vinieron. Integra un PR solo con un sí para ese PR, y se niega si los controles no están en verde. Antes de pedir
@@ -83,6 +83,51 @@ Integrar un PR es un efecto fuera del espacio de la fábrica (motivo 3), así qu
   aprobar algo que no puede ver.
 - **En el nivel 2,** los PRs de riesgo bajo con todos los controles en verde se integran sin preguntar. Los demás
   siguen esta regla.
+- **Con `integra: "fabrica"` en el proyecto,** rige "Delegación por proyecto", más abajo.
+
+## Delegación por proyecto
+
+La Dirección puede delegar en un proyecto tres decisiones que por defecto son suyas. Es una excepción a los niveles de
+autonomía que decide la Dirección para ese proyecto, con su porqué: la fábrica nunca la propone para sí misma ni la
+amplía. Se declara en dos lugares que deben coincidir:
+- **la constitución del proyecto,** sección "Autonomía en este proyecto", con una línea por cada decisión delegada que
+  la nombre (integrar, `pruebas-aprobadas` o `hecho`), con su fecha y las palabras de la Dirección;
+- **`autonomia` en `.fabrica/proyecto.json`,** que es lo que leen la corrida y las skills.
+
+| Campo | Por defecto | Con `"fabrica"`, la fábrica… |
+|---|---|---|
+| `integra` | `"direccion"` | integra sola los PRs de riesgo hasta `riesgo_maximo` que cumplan las condiciones de abajo, sin pedir un "intégralo" |
+| `riesgo_maximo` | `"bajo"` | (acompaña a `integra`) el riesgo más alto que integra sola: `"bajo"`, `"medio"` o `"alto"` |
+| `pruebas_aprobadas` | `"direccion"` | pone la etiqueta `pruebas-aprobadas` en un PR de especificación, cuando las pruebas solo traducen reglas que la Dirección ya decidió o agregan casos, y el `revisor` confirma en el PR que ningún criterio se quitó ni se debilitó |
+| `cierra_historias` | `"direccion"` | marca una historia como `hecho` al cerrarla, si la Definition of Done se cumple con su evidencia |
+
+**Condiciones para integrar con `integra: "fabrica"`, todas comprobadas en ese momento:**
+- el riesgo del PR no pasa de `riesgo_maximo`;
+- el PR no toca nada de "Nunca sin la Dirección" ni de las decisiones reservadas de la constitución del proyecto, o
+  lo que toca ya lo decidió la Dirección por escrito, con un enlace a la historia, al issue o al comentario donde lo
+  decidió;
+- todos los controles de la CI están en verde y la rama está al día con la principal;
+- el `revisor` aprobó; en riesgo medio o alto, además, `seguridad` no deja hallazgos altos abiertos, y en riesgo
+  alto también pasó el `equipo-rojo`.
+
+**`pruebas-aprobadas` delegada, con límites que la CI impone:** solo en un PR de especificación, que no cambia código
+de la aplicación (`verificar_proyecto.py` rechaza un PR con esa etiqueta que mezcla pruebas aprobadas y código).
+Quien implementa una historia nunca la pone, ni con delegación (constitución, art. II).
+
+**Lo que nunca se delega,** declare lo que declare el proyecto:
+- producción, datos reales, gasto y lo irreversible;
+- quitar o debilitar una prueba aprobada que fija una regla de negocio;
+- cambiar la constitución del proyecto o la propia delegación: un PR que toca `docs/constitucion.md` o `autonomia`
+  de `proyecto.json` necesita la etiqueta `constitucion-aprobada`, que pone solo la Dirección, y lo integra ella;
+- cambiar `NUCLEO.txt`.
+
+**Cada uso de la delegación queda a la vista:** la integración, la etiqueta o el cierre van a la bitácora y a
+"Decisiones que tomé por ti", con su enlace.
+
+**Riesgo aceptado.** La fábrica opera con la cuenta de la Dirección. Con la delegación, ningún control técnico
+distingue su firma de la de la Dirección, y tampoco distingue quién puso una etiqueta. Lo acotan la CI, el revisor
+independiente, el registro de cada uso, las reglas de arriba y que todo merge se puede revertir con un PR. Una
+identidad propia para la fábrica (punto N3-5 de la revisión del 2026-11-17) cerraría ese hueco.
 
 ## Topes
 
