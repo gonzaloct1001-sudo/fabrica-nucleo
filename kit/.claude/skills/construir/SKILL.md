@@ -14,7 +14,8 @@ producen los demás roles vive en archivos, y a ti solo te llegan resúmenes.
 - **No hay otra historia en `estado:en-curso`** en este proyecto.
 - **La pausa no está activada.**
 - **El árbol de trabajo está limpio.** Crea la rama `h-NNN-<slug>` desde la rama principal actualizada.
-- **Pasa la historia a `estado:en-curso`.**
+- **Pasa la historia a `estado:en-curso`** y corre `python .fabrica/scripts/estado.py --escribir`: cada cambio de
+  estado de una historia lleva su `.fabrica/estado.json` al día en el mismo commit.
 - **Lee el plan una vez** y crea una tarea pendiente por cada tarea del plan.
 - **Lee también el registro** al final del plan. Si ya tiene tareas completas, continúa desde la primera que no lo
   está: el registro y `git log` mandan sobre tu memoria.

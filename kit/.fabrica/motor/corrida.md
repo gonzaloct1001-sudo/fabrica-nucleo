@@ -6,15 +6,21 @@ la Dirección, así que cada acción debe poder explicarse sola.
 
 ## 0. Antes de nada
 
-1. **Lee `.fabrica/proyecto.json`.**
+1. **Mira si el motor está en pausa desde el teléfono** (por la API REST, como todo GitHub en la nube: punto 5): si el
+   issue "Bitácora de corridas de la fábrica" tiene la etiqueta `motor:pausa`, deja un comentario en ese issue que diga "En pausa (etiqueta motor:pausa)" y termina.
+2. **Corre `python .fabrica/scripts/estado.py`:** en unas 20 líneas te da lo que el paso 1 de abajo pide leer. Si no
+   hay nada que hacer, el paso es solo la bitácora: termina en segundos.
+3. **Si te despertó un evento de GitHub** y la bitácora ya tiene hoy `motor.corridas_por_dia` entradas (por defecto,
+   6), anota "tope diario" y termina (`.fabrica/nucleo/motor.md`, "Que una respuesta despierte la corrida").
+4. **Lee `.fabrica/proyecto.json`.**
    - Si dice `"pausa": true`, deja un comentario en la bitácora de corridas (paso 5) que diga "En pausa" y termina.
    - Anota el campo `direccion`: la cuenta de GitHub de la Dirección.
    - Anota `autonomia`: lo que la Dirección delegó en este proyecto (`.fabrica/nucleo/autonomia.md`, "Delegación por
      proyecto"). Sin ese campo, o con `"direccion"`, decide la Dirección.
    - Anota `rutas`: dónde están las historias y los planes. Sin ese campo, `docs/historias/` y `docs/planes/`.
-2. **Usa solo la API REST de GitHub.** Sirven las herramientas de GitHub integradas o `gh api repos/{dueño}/{repo}/...`.
+5. **Usa solo la API REST de GitHub.** Sirven las herramientas de GitHub integradas o `gh api repos/{dueño}/{repo}/...`.
    `gh issue` y `gh pr` no funcionan en la nube, porque usan GraphQL.
-3. **El presupuesto** es `motor.pasos_por_corrida` (por defecto, 1 paso). Un paso es una de las acciones del punto 2.
+6. **El presupuesto** es `motor.pasos_por_corrida` (por defecto, 1 paso). Un paso es una de las acciones del punto 2.
    Al cumplirlo, terminas aunque quede trabajo: mañana hay otra corrida.
 
 ## 1. Lee el estado real
@@ -61,8 +67,12 @@ Si no hay nada que hacer, el paso es solo la bitácora.
 
 ## 3. Cómo trabajas
 
+- **Cada vez que creas una historia o cambias su estado,** corres `python .fabrica/scripts/estado.py --escribir` y
+  subes `.fabrica/estado.json` en el mismo commit. La CI rechaza un estado que no coincide con las historias.
 - **Nunca subes cambios a la rama principal** (`main` o `master`). Todo va en una rama propia (`h-NNN-<slug>`, o
   `fabrica/<tarea>` si no es una historia) y llega a la principal por un PR.
+- **No cierras PRs sin integrar:** si uno quedó reemplazado, lo dejas abierto con un comentario y lo anotas en la
+  bitácora. Cerrarlo despertaría otra corrida (`.fabrica/nucleo/motor.md`, "Que una respuesta despierte la corrida").
 - **Abres o actualizas el PR,** con la plantilla del proyecto y sus etiquetas. Los PRs de especificación también
   pasan por revisión.
 - **No integras nada sin un "intégralo" de la cuenta de la Dirección,** salvo que el proyecto lo haya delegado

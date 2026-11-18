@@ -5,6 +5,40 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.12.0 · 2026-11-17
+
+Un solo estado, avisos al teléfono y pausa sin computador (B1 a B5, C1 a C4 y D3 de la revisión del 2026-11-17).
+- **El estado se genera (B1):** `estado.py --escribir` rehace las cifras de `.fabrica/estado.json` desde las
+  historias del disco y, con GitHub, lo que espera a la Dirección. Conserva los campos de criterio (fase, semáforo,
+  próxima entrega y riesgo principal). La skill `cerrar`, la corrida y `/fin-sesion` lo usan; nadie edita las cifras
+  a mano. Un proyecto nuevo o adoptado nace con sus cifras reales.
+- **La CI exige un estado coherente (B2):** `verificar_proyecto.py` rechaza cifras que no coinciden con las historias
+  (y dice cómo rehacerlas) y más historias en construcción que el tope (`topes.historias_en_curso`, por defecto 1).
+  En un proyecto anterior solo avisa, hasta que corre `estado.py --escribir` por primera vez: lo nuevo nace apagado.
+  La actualización del kit registra en `rutas` dónde guarda un proyecto anterior sus historias y planes. Lo encontró
+  el ensayo de la actualización sobre una copia de un proyecto real.
+- **Una sola acción arriba (B3):** la siguiente acción avisa sobre su tope de líneas (`topes.lineas_siguiente_accion`,
+  por defecto 40); con `topes.modo: "bloquear"`, rechaza.
+- **Una sola bitácora (B5):** el día a día va a la bitácora de corridas (issue); `docs/bitacora.md` guarda una línea
+  por historia cerrada.
+- **Avisos con otra identidad (C3):** el flujo nuevo `.github/workflows/fabrica-avisos.yml` comenta como
+  `github-actions`, mencionando a la Dirección, cuando un issue o un PR recibe `espera:direccion` o
+  `estado:construido` (este último, solo sin integración delegada). No repite el aviso, no avisa en hilos cerrados y
+  el título del hilo no puede mencionar a terceros. Permisos mínimos y acción fijada por su huella.
+- **Pausa desde el teléfono (C4):** la etiqueta `motor:pausa` en la bitácora de corridas detiene el motor; la corrida
+  la revisa primero y `estado.py` la muestra.
+- **`motor.md` (B4, C1 y C2):** avisos push en las tareas programadas; disparador opcional de GitHub (solo PR
+  cerrado) con tope `motor.corridas_por_dia`; guía del tablero por estados en GitHub Projects.
+- **La corrida** parte de `estado.py` y termina en segundos si no hay trabajo.
+- **`fabrica.yml` corre en la rama principal, sea `main` o `master` (D3).**
+- **Pruebas:** `probar_avisos.py`, 14 casos nuevos, en la CI del núcleo. `probar_estado.py`: 32 casos, 6 nuevos.
+  `probar_kit.py`: 105 casos, 14 nuevos.
+- **Revisión independiente:** encontró un hallazgo crítico (la actualización y la adopción de proyectos existentes
+  quedaban bloqueadas por la coherencia del estado), tres importantes (el PR de especificación, los PRs concurrentes
+  y que el flujo de avisos ejecutaba el código de la rama del PR) y seis menores. Todos se corrigieron en una tanda:
+  la coherencia se exige solo en proyectos que ya generan su estado y en PRs que tocan historias; el flujo de avisos
+  usa siempre el código de la rama principal, valida la cuenta y no falla con el token de un fork.
+
 ## 0.11.0 · 2026-11-17
 
 Lo que inventó el primer proyecto real y sirve a todos pasa al kit (D6 de la revisión del 2026-11-17).

@@ -10,7 +10,9 @@ Ejecuta, en orden:
 3. Antes del commit, deja la siguiente acción al día (rol `documentador`):
    - "Qué toca ahora": la ÚNICA acción concreta que sigue, dado lo que avanzó la sesión;
    - "Espera a la Dirección": cada pendiente con su enlace directo y qué botón tocar;
-   - lo hecho no se acumula ahí: va a la bitácora de corridas o al Registro del plan;
+   - lo hecho no se acumula ahí: va al Registro del plan y a un comentario en la bitácora de corridas (el issue),
+     con el mismo formato que deja una corrida;
+   - si cambió el estado de alguna historia, `python .fabrica/scripts/estado.py --escribir`;
    - las dudas de negocio que surgieron quedan escritas en su historia o como issue `Pregunta: …`, no solo en el chat.
 4. Comprueba las reglas que no se negocian (`.fabrica/nucleo/constitucion.md` y `docs/constitucion.md`):
    - ningún archivo nuevo parece un secreto (`.env`, credenciales, tokens, llaves). Si aparece uno sin estar en

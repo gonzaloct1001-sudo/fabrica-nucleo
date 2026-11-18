@@ -90,6 +90,10 @@ comandos de sesión y la construcción en sesión). La actualización que trae l
   manda. Si el PR copia la autonomía, necesita la etiqueta `constitucion-aprobada` (la crea
   `.fabrica/scripts/crear_etiquetas.py`), que pone la Dirección, y lo integra ella.
 - **Una versión a la vez,** con la tarea programada del proyecto pausada mientras se integra.
+- **Lo nuevo nace apagado.** Al actualizar un proyecto anterior a la 0.12, la comprobación de coherencia del estado
+  solo avisa. Se enciende cuando el proyecto corre `python .fabrica/scripts/estado.py --escribir` por primera vez, en
+  su propio PR. Si el proyecto guarda sus historias o sus planes en otra carpeta, la actualización los detecta y los
+  registra en `rutas` de `.fabrica/proyecto.json`, una sola vez.
 
 ## Adoptar un proyecto que ya existe
 
