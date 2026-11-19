@@ -151,7 +151,8 @@ respuesta de Claude:
 2. **En Windows, Git para Windows** (trae Git Bash): Claude Code corre los hooks con él. El hook busca Python 3 como
    `python3`, `python` o `py`, y salta el acceso directo de la Microsoft Store, que no corre nada. Si no encuentra
    Python 3, Claude Code muestra el error «no encontré Python 3» al terminar cada respuesta: no bloquea nada, pero
-   hasta instalarlo no hay guardado automático.
+   hasta instalarlo no hay guardado automático. Sin Git Bash, Claude Code usa PowerShell, que no entiende el comando:
+   aparece un error en cada respuesta, tampoco bloquea, y no hay guardado.
 3. **Los flujos del proyecto ya quedan listos:** al crear, adoptar o actualizar el kit, se agrega
    `branches-ignore: ['wip/**']` a cada flujo cuyo `push:` no filtraba ramas, con respaldo. Las formas `on: push` u
    `on: [push, …]` no se cambian solas: `verificar_proyecto.py` las avisa para corregirlas a mano.

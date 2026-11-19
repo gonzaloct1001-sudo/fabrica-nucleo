@@ -13,11 +13,13 @@ Windows, antes de instalarla.
   usa el primero que de verdad es Python 3. En Windows, `python3` suele ser el acceso directo de la Microsoft Store,
   que sale con error sin correr nada: el guardado y la guardia no habrían hecho nada, y en silencio. Sin Python 3, el
   hook lo dice y Claude Code lo muestra, sin bloquear.
+- **UTF-8 en Windows:** el comando fija `PYTHONUTF8=1`, para que una ruta con tildes (`C:\Users\José\…`) llegue
+  bien a la guardia y los avisos no salgan con caracteres rotos. Lo encontró la revisión independiente.
 - **Al actualizar,** los hooks de la 0.13.0 se reemplazan por los nuevos, sin duplicarse.
 - `motor.md`, «Puesta en marcha»: en Windows hace falta Git para Windows (Git Bash), que es con lo que Claude Code
   corre los hooks.
-- **Pruebas:** `probar_herramientas.py`, 55 casos (3 nuevos: el reemplazo del hook viejo, Python detrás del acceso
-  directo de la Store y el aviso sin Python).
+- **Pruebas:** `probar_herramientas.py`, 56 casos (4 nuevos: el reemplazo del hook viejo, Python detrás del acceso
+  directo de la Store con sh y con bash, con UTF-8 y sin ruido, y el aviso sin Python).
 
 ## 0.13.0 · 2026-11-18
 

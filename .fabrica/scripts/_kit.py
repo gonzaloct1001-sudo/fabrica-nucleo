@@ -174,13 +174,14 @@ def comando_de_hook(script):
 
     En Windows, `python3` suele ser el acceso directo de la Microsoft Store, que sale con error sin correr nada: un hook
     que lo llamara directo no haría nada, y en silencio. Claude Code corre los hooks con Git Bash en Windows (y sh en
-    Linux y macOS), así que esto es sh. Si no hay Python 3, lo dice y sale con 1: Claude Code muestra el error sin
-    bloquear nada.
+    Linux y macOS), así que esto es sh. PYTHONUTF8=1 hace que el JSON de entrada y los mensajes viajen en UTF-8 también en
+    Windows, donde por defecto Python usa la codificación local y rompería rutas y textos con tildes. Si no hay Python
+    3.8 o más nuevo, lo dice y sale con 1: Claude Code muestra el error sin bloquear nada.
     """
     ruta = f'"$CLAUDE_PROJECT_DIR/.fabrica/scripts/{script}"'
-    return ("for p in python3 python py; do "
+    return ("export PYTHONUTF8=1; for p in python3 python py; do "
             f"\"$p\" -c 'import sys; sys.exit(sys.version_info < (3, 8))' </dev/null >/dev/null 2>&1 && exec \"$p\" {ruta}; "
-            "done; echo 'Hook de la fábrica: no encontré Python 3 (python3, python o py).' >&2; exit 1")
+            "done; echo 'Hook de la fábrica: no encontré Python 3.8 o más nuevo (python3, python o py).' >&2; exit 1")
 
 
 HOOK_GUARDIA = comando_de_hook("hook_guardia.py")

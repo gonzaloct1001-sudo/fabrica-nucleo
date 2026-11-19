@@ -18,8 +18,8 @@ Uso: python pruebas/probar_herramientas.py
 import importlib.util
 import io
 import json
-import shutil
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -407,18 +407,24 @@ def probar_hooks_en_settings(tmp):
         proyecto_h = Path(tmp) / "proyecto-hook"
         (proyecto_h / ".fabrica/scripts").mkdir(parents=True)
         (proyecto_h / ".fabrica/scripts/eco.py").write_text(
-            "import sys\nprint('corrió con', sys.stdin.read().strip())\n", encoding="utf-8")
+            "import os, sys\nprint('corrió con', sys.stdin.read().strip(), os.environ.get('PYTHONUTF8'))\n",
+            encoding="utf-8")
         entorno = {"PATH": f"{falsos}:/usr/bin:/bin", "CLAUDE_PROJECT_DIR": str(proyecto_h)}
-        hecho = subprocess.run(["bash", "-c", _kit.comando_de_hook("eco.py")], input="{}", capture_output=True,
-                               text=True, env=entorno, timeout=30, check=False)
-        comprobar("el hook encuentra Python aunque python3 sea el acceso directo de la Store de Windows",
-                  hecho.returncode == 0 and "corrió con {}" in hecho.stdout, (hecho.returncode, hecho.stdout, hecho.stderr))
+        for shell in ("sh", "bash"):
+            hecho = subprocess.run([shutil.which(shell) or shell, "-c", _kit.comando_de_hook("eco.py")], input="{}",
+                                   capture_output=True, text=True, env=entorno, timeout=30, check=False)
+            comprobar(f"con {shell}, el hook encuentra Python aunque python3 sea el acceso directo de la Store, "
+                      "con UTF-8 y sin ruido en la salida",
+                      hecho.returncode == 0 and hecho.stdout == "corrió con {} 1\n", (hecho.returncode, hecho.stdout,
+                                                                                    hecho.stderr))
         (falsos / "python").write_text("#!/bin/sh\nexit 49\n", encoding="utf-8")
         entorno["PATH"] = str(falsos)
         hecho = subprocess.run([shutil.which("bash"), "-c", _kit.comando_de_hook("eco.py")], input="{}",
                                capture_output=True, text=True, env=entorno, timeout=30, check=False)
         comprobar("sin Python 3, el hook lo dice y sale con 1 (Claude Code lo muestra sin bloquear)",
-                  hecho.returncode == 1 and "no encontré Python 3" in hecho.stderr, (hecho.returncode, hecho.stderr))
+                  hecho.returncode == 1 and "no encontré Python 3.8" in hecho.stderr, (hecho.returncode, hecho.stderr))
+    else:
+        comprobar("hay bash para probar el comando de los hooks", False)
 
     (raiz / ".claude/settings.json").write_text("{roto", encoding="utf-8")
     aviso = _kit.fusionar_hooks(raiz)
