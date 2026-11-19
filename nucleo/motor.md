@@ -148,7 +148,11 @@ respuesta de Claude:
 1. **Instalar gitleaks** en el computador donde se trabaja, pasando por la revisión de piezas de terceros de la
    fábrica (`seguridad.md`, "Las piezas de terceros"). Sin gitleaks el guardado sigue haciendo commits en local, pero
    no respalda en GitHub, y lo avisa.
-2. **Los flujos del proyecto ya quedan listos:** al crear, adoptar o actualizar el kit, se agrega
+2. **En Windows, Git para Windows** (trae Git Bash): Claude Code corre los hooks con él. El hook busca Python 3 como
+   `python3`, `python` o `py`, y salta el acceso directo de la Microsoft Store, que no corre nada. Si no encuentra
+   Python 3, Claude Code muestra el error «no encontré Python 3» al terminar cada respuesta: no bloquea nada, pero
+   hasta instalarlo no hay guardado automático.
+3. **Los flujos del proyecto ya quedan listos:** al crear, adoptar o actualizar el kit, se agrega
    `branches-ignore: ['wip/**']` a cada flujo cuyo `push:` no filtraba ramas, con respaldo. Las formas `on: push` u
    `on: [push, …]` no se cambian solas: `verificar_proyecto.py` las avisa para corregirlas a mano.
 

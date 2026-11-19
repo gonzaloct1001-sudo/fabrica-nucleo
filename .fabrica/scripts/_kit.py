@@ -169,8 +169,22 @@ def detectar_rutas(raiz):
     return rutas
 
 
-HOOK_GUARDIA = "python3 \"$CLAUDE_PROJECT_DIR/.fabrica/scripts/hook_guardia.py\""
-HOOK_GUARDADO = "python3 \"$CLAUDE_PROJECT_DIR/.fabrica/scripts/hook_guardado.py\""
+def comando_de_hook(script):
+    """El comando de un hook del kit: prueba python3, python y py, y usa el primero que de verdad sea Python 3.
+
+    En Windows, `python3` suele ser el acceso directo de la Microsoft Store, que sale con error sin correr nada: un hook
+    que lo llamara directo no haría nada, y en silencio. Claude Code corre los hooks con Git Bash en Windows (y sh en
+    Linux y macOS), así que esto es sh. Si no hay Python 3, lo dice y sale con 1: Claude Code muestra el error sin
+    bloquear nada.
+    """
+    ruta = f'"$CLAUDE_PROJECT_DIR/.fabrica/scripts/{script}"'
+    return ("for p in python3 python py; do "
+            f"\"$p\" -c 'import sys; sys.exit(sys.version_info < (3, 8))' </dev/null >/dev/null 2>&1 && exec \"$p\" {ruta}; "
+            "done; echo 'Hook de la fábrica: no encontré Python 3 (python3, python o py).' >&2; exit 1")
+
+
+HOOK_GUARDIA = comando_de_hook("hook_guardia.py")
+HOOK_GUARDADO = comando_de_hook("hook_guardado.py")
 HOOKS_DEL_KIT = {"PreToolUse": [{"matcher": "Edit|Write|MultiEdit|NotebookEdit",
                                  "hooks": [{"type": "command", "command": HOOK_GUARDIA, "timeout": 10}]}],
                  "Stop": [{"hooks": [{"type": "command", "command": HOOK_GUARDADO, "timeout": 120}]}]}

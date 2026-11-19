@@ -18,6 +18,7 @@ Uso: python pruebas/probar_herramientas.py
 import importlib.util
 import io
 import json
+import shutil
 import os
 import subprocess
 import sys
@@ -387,6 +388,38 @@ def probar_hooks_en_settings(tmp):
               datos["permissions"] == propio["permissions"] and "mi-hook.sh" in comandos
               and sum("hook_guardia" in c for c in comandos) == 1
               and sum("hook_guardado" in h["command"] for g in datos["hooks"]["Stop"] for h in g["hooks"]) == 1, datos)
+    viejo = {"hooks": {"Stop": [{"hooks": [{"type": "command", "timeout": 60,
+                                            "command": "python3 \"$CLAUDE_PROJECT_DIR/.fabrica/scripts/hook_guardado.py\""}]}]}}
+    (raiz / ".claude/settings.json").write_text(json.dumps(viejo), encoding="utf-8")
+    _kit.fusionar_hooks(raiz)
+    parada = json.loads((raiz / ".claude/settings.json").read_text(encoding="utf-8"))["hooks"]["Stop"]
+    comprobar("una actualización reemplaza el hook de una versión anterior por el nuevo, sin duplicarlo",
+              len(parada) == 1 and parada[0]["hooks"][0]["command"] == _kit.HOOK_GUARDADO, parada)
+
+    # Como en Windows: python3 es el acceso directo de la Store (sale con 49 sin correr nada); python sí es Python 3
+    if shutil.which("bash"):
+        falsos = Path(tmp) / "bin-windows"
+        falsos.mkdir()
+        (falsos / "python3").write_text("#!/bin/sh\nexit 49\n", encoding="utf-8")
+        (falsos / "python").write_text(f"#!/bin/sh\nexec {sys.executable} \"$@\"\n", encoding="utf-8")
+        for archivo in falsos.iterdir():
+            archivo.chmod(0o755)
+        proyecto_h = Path(tmp) / "proyecto-hook"
+        (proyecto_h / ".fabrica/scripts").mkdir(parents=True)
+        (proyecto_h / ".fabrica/scripts/eco.py").write_text(
+            "import sys\nprint('corrió con', sys.stdin.read().strip())\n", encoding="utf-8")
+        entorno = {"PATH": f"{falsos}:/usr/bin:/bin", "CLAUDE_PROJECT_DIR": str(proyecto_h)}
+        hecho = subprocess.run(["bash", "-c", _kit.comando_de_hook("eco.py")], input="{}", capture_output=True,
+                               text=True, env=entorno, timeout=30, check=False)
+        comprobar("el hook encuentra Python aunque python3 sea el acceso directo de la Store de Windows",
+                  hecho.returncode == 0 and "corrió con {}" in hecho.stdout, (hecho.returncode, hecho.stdout, hecho.stderr))
+        (falsos / "python").write_text("#!/bin/sh\nexit 49\n", encoding="utf-8")
+        entorno["PATH"] = str(falsos)
+        hecho = subprocess.run([shutil.which("bash"), "-c", _kit.comando_de_hook("eco.py")], input="{}",
+                               capture_output=True, text=True, env=entorno, timeout=30, check=False)
+        comprobar("sin Python 3, el hook lo dice y sale con 1 (Claude Code lo muestra sin bloquear)",
+                  hecho.returncode == 1 and "no encontré Python 3" in hecho.stderr, (hecho.returncode, hecho.stderr))
+
     (raiz / ".claude/settings.json").write_text("{roto", encoding="utf-8")
     aviso = _kit.fusionar_hooks(raiz)
     comprobar("un settings.json roto no se toca y se avisa",

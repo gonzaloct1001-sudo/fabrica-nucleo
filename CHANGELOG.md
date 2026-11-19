@@ -5,6 +5,20 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.13.1 · 2026-11-19
+
+Los hooks funcionan en Windows. Lo encontró la preparación de la actualización de un proyecto que se trabaja en
+Windows, antes de instalarla.
+- **Python en Windows:** el comando de los hooks ya no llama a `python3` directo. Prueba `python3`, `python` y `py`, y
+  usa el primero que de verdad es Python 3. En Windows, `python3` suele ser el acceso directo de la Microsoft Store,
+  que sale con error sin correr nada: el guardado y la guardia no habrían hecho nada, y en silencio. Sin Python 3, el
+  hook lo dice y Claude Code lo muestra, sin bloquear.
+- **Al actualizar,** los hooks de la 0.13.0 se reemplazan por los nuevos, sin duplicarse.
+- `motor.md`, «Puesta en marcha»: en Windows hace falta Git para Windows (Git Bash), que es con lo que Claude Code
+  corre los hooks.
+- **Pruebas:** `probar_herramientas.py`, 55 casos (3 nuevos: el reemplazo del hook viejo, Python detrás del acceso
+  directo de la Store y el aviso sin Python).
+
 ## 0.13.0 · 2026-11-18
 
 Leer menos, medir el consumo, y que el avance y el estado no dependan de cerrar bien una sesión (A1 a A10 de la
