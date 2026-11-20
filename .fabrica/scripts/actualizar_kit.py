@@ -37,6 +37,9 @@ def main():
     ap.add_argument("proyecto", help="carpeta del proyecto, por ejemplo proyectos/<cliente>-<proyecto>")
     ap.add_argument("--aplicar", action="store_true", help="aplicar la actualización (sin esto, solo vista previa)")
     ap.add_argument("--sin-commit", action="store_true", help="no hacer el commit de la actualización")
+    ap.add_argument("--reemplazar-editados", action="store_true",
+                    help="reemplazar los archivos de la zona administrada editados a mano (con respaldo); sin esto, "
+                         "la actualización se detiene y dice cuáles son")
     a = ap.parse_args()
 
     if _nucleo.es_mantenedor(RAIZ):
@@ -84,6 +87,7 @@ def main():
             verificador=[sys.executable, ".fabrica/scripts/verificar_proyecto.py"],
             mensaje_commit=lambda v: f"Actualiza el kit de la fábrica a {v or 'la versión nueva'}",
             comando_aplicar=f"python .fabrica/scripts/actualizar_kit.py {a.proyecto} --aplicar",
+            reemplazar_editados=a.reemplazar_editados,
             respaldar_tambien=[".fabrica/proyecto.json", ".claude/settings.json", *_kit.flujos_a_filtrar(proyecto)],
             consejo_modificados="Si eran ajustes propios del proyecto, llévalos a docs/constitucion.md o a archivos local-*.")
         return _actualizacion.ejecutar(destino, fuente, f"núcleo de esta instancia ({RAIZ.name})", v_nueva,

@@ -6,6 +6,8 @@ Comprueba que:
   registrado y lo nuevo que .gitignore permite, y deja fuera secretos, imágenes y archivos pesados; respalda en
   wip/<rama> solo con gitleaks limpio y sin flujos que corran con push a cualquier rama; y deja el resultado a la vista;
 - el hook de guardia niega editar pruebas de aceptación durante una construcción, y deja pasar todo lo demás;
+- contra las «patas» (0.13.2): la guardia niega que un agente edite un archivo del kit o cree uno nuevo sin local- en
+  su zona, y el verificador lo avisa siempre y lo rechaza en un PR sin la etiqueta nucleo-aprobado;
 - el filtro de salida muestra las fallas y el resumen, recorta lo demás y conserva el código de salida;
 - el archivador mueve el plan (de un archivo o partido) y el modelo de amenazas de una historia hecha, y se niega con
   una historia sin terminar;
@@ -47,6 +49,8 @@ guardia = cargar("hook_guardia", SCRIPTS / "hook_guardia.py")
 filtro = cargar("filtrar_salida", SCRIPTS / "filtrar_salida.py")
 archivar = cargar("archivar", SCRIPTS / "archivar.py")
 limpiar = cargar("limpiar_wip", SCRIPTS / "limpiar_wip.py")
+verificador = cargar("verificar_proyecto", SCRIPTS / "verificar_proyecto.py")
+inventario = cargar("inventario", SCRIPTS / "inventario.py")
 sys.path.insert(0, str(RAIZ / ".fabrica" / "scripts"))
 import _kit  # noqa: E402
 
@@ -259,8 +263,12 @@ def probar_limpieza():
     ahora = datetime(2026, 12, 1, tzinfo=timezone.utc)
     refs = [{"ref": "refs/heads/wip/h-001-viejo", "object": {"sha": "a"}},
             {"ref": "refs/heads/wip/h-002-vivo", "object": {"sha": "b"}},
-            {"ref": "refs/heads/wip/h-003-reciente", "object": {"sha": "c"}}]
-    fechas = {"a": "2026-11-01T00:00:00Z", "b": "2026-11-01T00:00:00Z", "c": "2026-11-28T00:00:00Z"}
+            {"ref": "refs/heads/wip/h-003-reciente", "object": {"sha": "c"}},
+            {"ref": "refs/heads/wip/h-004-integrado", "object": {"sha": "d"}},
+            {"ref": "refs/heads/wip/h-005-sigue", "object": {"sha": "e"}}]
+    fechas = {"a": "2026-11-01T00:00:00Z", "b": "2026-11-01T00:00:00Z", "c": "2026-11-28T00:00:00Z",
+              "d": "2026-11-29T00:00:00Z", "e": "2026-11-30T12:00:00Z"}
+    integrado = json.dumps([{"number": 7, "merged_at": "2026-11-30T00:00:00Z"}, {"number": 6, "merged_at": None}])
     borrados = []
 
     def falso(orden):
@@ -272,19 +280,23 @@ def probar_limpieza():
         if "DELETE" in comando:
             borrados.append(comando.rsplit("/", 2)[-1])
             return "{}"
-        if "git/ref/heads/h-002-vivo" in comando:
+        if "git/ref/heads/h-002-vivo" in comando or "git/ref/heads/h-00" in comando and "integrado" in comando:
             return "{}"
+        if "pulls?state=closed&head={owner}:h-004-integrado" in comando or "head={owner}:h-005-sigue" in comando:
+            return integrado
         return None
     candidatas = limpiar.abandonadas(falso, ahora)
-    comprobar("borra solo los respaldos viejos cuya rama de origen ya no existe",
-              candidatas == [("wip/h-001-viejo", 30)], candidatas)
+    comprobar("borra los respaldos viejos sin rama de origen y los de un PR integrado, si son anteriores a la integración",
+              [(n, m) for n, _, m in candidatas] == [("wip/h-001-viejo", "30 días sin cambios y sin su rama de origen"),
+                                                     ("wip/h-004-integrado", "su PR se integró")], candidatas)
     with redirect_stdout(io.StringIO()):
         limpiar.main(["--aplicar"], ejecutar=falso)
-    comprobar("con --aplicar los borra por la API", borrados == ["h-001-viejo"], borrados)
+    comprobar("con --aplicar los borra por la API, y conserva el trabajo posterior a la integración",
+              borrados == ["h-001-viejo", "h-004-integrado"], borrados)
 
     def caido(orden):
         comando = " ".join(orden)
-        if "git/ref/heads/" in comando:
+        if "git/ref/heads/" in comando or "pulls?" in comando:
             raise limpiar.SinRespuesta("HTTP 502")
         return falso(orden)
     borrados.clear()
@@ -322,6 +334,124 @@ def probar_guardia(tmp):
     hecho = subprocess.run([sys.executable, str(SCRIPTS / "hook_guardia.py")], input="no es json", text=True,
                            capture_output=True, env=dict(ENTORNO, CLAUDE_PROJECT_DIR=str(raiz)))
     comprobar("con una entrada rota deja pasar sin fallar", hecho.returncode == 0 and hecho.stdout == "")
+
+
+def proyecto_con_kit(tmp, nombre):
+    """Un proyecto mínimo con zona del kit y su registro de lo instalado, en un repositorio con un commit."""
+    raiz = Path(tmp) / nombre
+    for rel, texto in {"NUCLEO.txt": "AGENTS.md\n.claude/skills/\n.claude/commands/\n",
+                       "AGENTS.md": "Reglas del kit.\n", ".claude/skills/construir/SKILL.md": "Skill del kit.\n",
+                       ".claude/commands/inicio-sesion.md": "Comando propio de antes.\n",
+                       "app.py": "print('hola')\n"}.items():
+        (raiz / rel).parent.mkdir(parents=True, exist_ok=True)
+        (raiz / rel).write_text(texto, encoding="utf-8")
+    instalados = ["AGENTS.md", ".claude/skills/construir/SKILL.md", "NUCLEO.txt"]
+    (raiz / ".fabrica").mkdir(exist_ok=True)
+    (raiz / ".fabrica/nucleo-instalado.csv").write_text(
+        "ruta,huella\n" + "".join(f"{r},{verificador.huella(raiz / r)}\n" for r in sorted(instalados)), encoding="utf-8")
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=raiz, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=raiz, check=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=raiz, env=ENTORNO, check=True)
+    return raiz
+
+
+def probar_patas(tmp):
+    raiz = proyecto_con_kit(tmp, "patas")
+
+    def editar(rel):
+        return guardia.decidir({"tool_input": {"file_path": str(raiz / rel)}}, raiz)
+
+    negada = editar("AGENTS.md")
+    comprobar("la guardia niega que un agente edite un archivo que instaló el kit, y dice adónde llevar el ajuste",
+              negada and negada["hookSpecificOutput"]["permissionDecision"] == "deny"
+              and "local-" in negada["hookSpecificOutput"]["permissionDecisionReason"])
+    comprobar("niega crear un archivo nuevo en la zona del kit sin local-", editar(".claude/skills/mia/SKILL.md"))
+    comprobar("deja crear uno con local-, editar lo propio que ya estaba y todo lo de fuera de la zona",
+              editar(".claude/skills/local-mia/SKILL.md") is None and editar(".claude/commands/inicio-sesion.md") is None
+              and editar("app.py") is None and editar("docs/nuevo.md") is None)
+    sin_registro = proyecto_con_kit(tmp, "patas-sin-registro")
+    (sin_registro / ".fabrica/nucleo-instalado.csv").unlink()
+    comprobar("sin registro de lo instalado (el núcleo mismo), la guardia no niega nada",
+              guardia.decidir({"tool_input": {"file_path": str(sin_registro / "AGENTS.md")}}, sin_registro) is None)
+
+    verificador.RAIZ = raiz
+
+    def revisar(base=None, etiquetas=frozenset()):
+        errores, avisos = [], []
+        verificador.revisar_integridad(errores, avisos, base, etiquetas)
+        return errores, avisos
+
+    errores, avisos = revisar()
+    comprobar("con el kit intacto solo avisa de lo propio sin local- dentro de la zona",
+              errores == [] and len(avisos) == 1 and "inicio-sesion.md" in avisos[0], avisos)
+
+    def commit(mensaje):
+        subprocess.run(["git", "add", "-A"], cwd=raiz, check=True)
+        subprocess.run(["git", "commit", "-qm", mensaje], cwd=raiz, env=ENTORNO, check=True)
+
+    (raiz / "AGENTS.md").write_text("Reglas del kit.\nPata.\n", encoding="utf-8")
+    commit("pata")
+    errores, avisos = revisar()
+    comprobar("un archivo del kit editado a mano se avisa siempre", any("editado" in a for a in avisos), avisos)
+    errores, _ = revisar("HEAD~1")
+    comprobar("en un PR, editar un archivo del kit sin la etiqueta se rechaza",
+              errores and "AGENTS.md" in errores[0] and "nucleo-aprobado" in errores[0], errores)
+    errores, _ = revisar("HEAD~1", frozenset({"nucleo-aprobado"}))
+    comprobar("con la etiqueta nucleo-aprobado, la Dirección lo acepta", errores == [], errores)
+
+    subprocess.run(["git", "reset", "-q", "--hard", "HEAD~1"], cwd=raiz, check=True)
+    (raiz / ".claude/skills/mia").mkdir(parents=True)
+    (raiz / ".claude/skills/mia/SKILL.md").write_text("Pata nueva.\n", encoding="utf-8")
+    (raiz / ".claude/commands/inicio-sesion.md").write_text("Comando propio, mejorado.\n", encoding="utf-8")
+    commit("pata nueva y ajuste a lo propio")
+    errores, _ = revisar("HEAD~1")
+    comprobar("en un PR, un archivo nuevo sin local- en la zona se rechaza; editar lo propio que ya estaba, no",
+              len(errores) == 1 and ".claude/skills/mia/SKILL.md" in errores[0]
+              and "inicio-sesion" not in errores[0], errores)
+
+    subprocess.run(["git", "reset", "-q", "--hard", "HEAD~1"], cwd=raiz, check=True)
+    (raiz / ".claude/skills/local-mia").mkdir(parents=True)
+    (raiz / ".claude/skills/local-mia/SKILL.md").write_text("Skill propia.\n", encoding="utf-8")
+    commit("skill propia")
+    errores, _ = revisar("HEAD~1")
+    comprobar("en un PR, una skill nueva con local- pasa", errores == [], errores)
+
+    registro = raiz / ".fabrica/nucleo-instalado.csv"
+    registro.write_text(registro.read_text(encoding="utf-8").replace("AGENTS.md,", "AGENTS.md,0"), encoding="utf-8")
+    commit("registro tocado")
+    errores, _ = revisar("HEAD~1")
+    comprobar("un PR que cambia el registro de lo instalado (una actualización del kit) pide la etiqueta",
+              errores and "nucleo-aprobado" in errores[0], errores)
+    verificador.RAIZ = SCRIPTS.parents[1]
+
+
+def probar_inventario(tmp):
+    raiz = proyecto_con_kit(tmp, "inventario")
+    for rel, texto in {".claude/skills/local-construir/SKILL.md": "Mi forma de construir.\n",
+                       ".claude/agents/local-dev-movil.md": "Agente propio.\n", "scripts/estado.py": "print(1)\n",
+                       ".fabrica/scripts/estado.py": "print(2)\n"}.items():
+        (raiz / rel).parent.mkdir(parents=True, exist_ok=True)
+        (raiz / rel).write_text(texto, encoding="utf-8")
+    registro = raiz / ".fabrica/nucleo-instalado.csv"
+    (raiz / "NUCLEO.txt").write_text("AGENTS.md\n.claude/skills/\n.claude/commands/\n.claude/agents/\n.fabrica/scripts/\n",
+                                     encoding="utf-8")
+    registro.write_text(registro.read_text(encoding="utf-8").replace(
+        "NUCLEO.txt,", "NUCLEO.txt-viejo,") + f".fabrica/scripts/estado.py,{verificador.huella(raiz / '.fabrica/scripts/estado.py')}\n",
+        encoding="utf-8")
+    (raiz / "AGENTS.md").write_text("Reglas del kit.\nPata.\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=raiz, check=True)
+    subprocess.run(["git", "commit", "-qm", "piezas propias"], cwd=raiz, env=ENTORNO, check=True)
+    datos = inventario.inventario(raiz)
+    duplicados = {(d["propio"], d["kit"]) for d in datos["posibles_duplicados"]}
+    comprobar("el inventario encuentra las patas, lo propio sin local- y lo que falta del kit",
+              datos["kit"]["editados"] == ["AGENTS.md"] and datos["kit"]["faltan"] == ["NUCLEO.txt-viejo"]
+              and datos["propio_en_la_zona"]["sin_prefijo"] == [".claude/commands/inicio-sesion.md"], datos)
+    comprobar("y los posibles duplicados: una skill local- con el nombre de una del kit, y un script con el mismo nombre",
+              duplicados == {(".claude/skills/local-construir/SKILL.md", ".claude/skills/construir/SKILL.md"),
+                             ("scripts/estado.py", ".fabrica/scripts/estado.py")}, duplicados)
+    comprobar("lista lo creado por el proyecto, y el informe en Markdown lo muestra",
+              {c["nombre"] for c in datos["creado_por_el_proyecto"]} >= {"local-construir", "local-dev-movil"}
+              and "«patas»" in inventario.markdown(datos), datos["creado_por_el_proyecto"])
 
 
 def probar_filtro():
@@ -526,6 +656,8 @@ def main():
         probar_flujos(tmp)
         probar_limpieza()
         probar_guardia(tmp)
+        probar_patas(tmp)
+        probar_inventario(tmp)
         probar_filtro()
         probar_archivo(tmp)
         probar_hooks_en_settings(tmp)

@@ -5,6 +5,13 @@ Una actualización compara archivo por archivo, usando la huella de cada uno:
 - qué es nuevo, qué cambió y qué ya no viene;
 - qué se modificó a mano y qué es propio.
 
+El contrato de instalación (núcleo 0.13.2):
+- Lo propio nunca se pisa. Un archivo que la zona administrada no instaló, aunque tenga el mismo nombre que uno de la
+  versión nueva, se conserva: el de la versión nueva no se instala y se avisa.
+- Lo editado a mano dentro de la zona administrada detiene la actualización, sin cambiar nada, hasta que alguien
+  decida: llevarlo a un archivo propio (local-*), proponerlo al núcleo o descartarlo. Con `reemplazar_editados` se
+  reemplaza, con respaldo.
+
 Antes de reemplazar o eliminar algo, lo respalda. Después corre el verificador y, si falla, revierte todo. Si
 termina bien, deja un solo commit.
 """
@@ -30,6 +37,7 @@ class Destino:
     comando_aplicar: str             # cómo se aplica, para la vista previa
     respaldar_tambien: List[str] = field(default_factory=list)  # archivos propios que cambian al registrar la versión
     consejo_modificados: str = "Si eran ajustes propios, llévalos fuera de la zona administrada."
+    reemplazar_editados: bool = False  # sin esto, lo editado a mano en la zona administrada detiene la actualización
 
 
 def git(raiz, *args):
@@ -60,16 +68,23 @@ def plan(raiz, fuente, nunca):
     locales = _nucleo.archivos(raiz, union)
     manifiesto = _nucleo.leer_manifiesto(raiz)
     p = {"agregar": [], "reemplazar": [], "iguales": 0, "eliminar": [], "modificados": [], "propios": [], "revisar": [],
-         "nuevos": nuevos, "union": union}
+         "chocan": [], "editados": [], "nuevos": nuevos, "union": union}
     for rel, h in nuevos.items():
         if rel not in locales:
             p["agregar"].append(rel)
         elif locales[rel] != h:
+            if manifiesto is not None and rel not in manifiesto:
+                p["chocan"].append(rel)  # propio con el mismo nombre que uno nuevo: se conserva
+                continue
             p["reemplazar"].append(rel)
             if manifiesto and rel in manifiesto and manifiesto[rel] != locales[rel]:
                 p["modificados"].append(rel)
+                p["editados"].append(rel)
         else:
             p["iguales"] += 1
+    # El registro guarda solo lo que la zona administrada instaló: lo propio que choca queda fuera, o la próxima
+    # actualización lo tomaría por un archivo del kit editado a mano
+    p["instalados"] = {rel: h for rel, h in nuevos.items() if rel not in p["chocan"]}
     for rel, h in locales.items():
         if rel in nuevos:
             continue
@@ -105,7 +120,10 @@ def ejecutar(d: Destino, fuente, origen, version_nueva, novedades, aplicar, sin_
            f"{len(p['eliminar'])} eliminados · {p['iguales']} iguales"]
     out += lista("Nuevos", p["agregar"]) + lista("Cambiados", p["reemplazar"])
     out += lista("Eliminados (la versión nueva ya no los trae)", p["eliminar"])
-    out += lista("Modificados a mano (se respaldan antes de reemplazarlos)", p["modificados"])
+    out += lista("Editados a mano dentro de la zona administrada (detienen la actualización)", p["editados"])
+    out += lista("Modificados a mano que la versión nueva ya no trae (se conservan)",
+                 [m for m in p["modificados"] if m not in p["editados"]])
+    out += lista("Propios con el mismo nombre que uno de la versión nueva (se conservan; ese no se instala)", p["chocan"])
     out += lista("Propios dentro de carpetas administradas (se conservan)", p["propios"])
     out += lista("Sin registro de lo instalado: no se borran, revísalos", p["revisar"])
     out += [f"- No se tocan: {', '.join(d.nunca)}"]
@@ -116,16 +134,29 @@ def ejecutar(d: Destino, fuente, origen, version_nueva, novedades, aplicar, sin_
             out += ["", f"(… {len(lineas) - 60} líneas más en CHANGELOG.md)"]
     cambios = p["agregar"] or p["reemplazar"] or p["eliminar"]
 
+    detener = p["editados"] and not d.reemplazar_editados
+    aviso_editados = [
+        "", "Hay archivos de la zona administrada editados a mano: una actualización los pisaría. Para cada uno, decide:",
+        "- si es un ajuste propio, cópialo a un archivo propio (local-*) o a la constitución del proyecto;",
+        "- si es una mejora para todos, propónla al núcleo (nucleo/aprendizaje.md);",
+        "- si no sirve, descártalo.",
+        "Después actualiza con --reemplazar-editados: se reemplazan, y su versión anterior queda en el respaldo."]
+
     if not aplicar:
         out += ["", "Vista previa: nada cambió." + (f" Para aplicar: {d.comando_aplicar}" if cambios
                                                     else " Ya está al día.")]
+        if detener:
+            out += aviso_editados
         print("\n".join(out))
         return 0
     print("\n".join(out))
+    if detener:
+        print("\n".join(["", "La actualización se detuvo: nada cambió."] + aviso_editados[1:]))
+        return 1
 
     if not cambios:
         print("\nYa está al día.")
-        _nucleo.escribir_manifiesto(raiz, p["nuevos"])
+        _nucleo.escribir_manifiesto(raiz, p["instalados"])
         d.registrar_version(version_nueva)
         if repo and not sin_commit:
             git(raiz, "add", "--", _nucleo.MANIFIESTO.as_posix(), *[r for r in d.respaldar_tambien if (raiz / r).exists()])
@@ -171,7 +202,7 @@ def ejecutar(d: Destino, fuente, origen, version_nueva, novedades, aplicar, sin_
             carpeta.rmdir()
             carpeta = carpeta.parent
     # El registro guarda solo lo que vino de la fuente; lo propio nunca entra, o se borraría en la próxima
-    _nucleo.escribir_manifiesto(raiz, p["nuevos"])
+    _nucleo.escribir_manifiesto(raiz, p["instalados"])
     d.registrar_version(version_nueva)
     print(f"\nAplicado. Respaldo de lo reemplazado: {respaldo.relative_to(local).as_posix()}/")
 
@@ -195,6 +226,9 @@ def ejecutar(d: Destino, fuente, origen, version_nueva, novedades, aplicar, sin_
         print(f"Commit: «{mensaje}»." if rc_c == 0 else f"No se hizo el commit: {salida_c[:400]}")
         if rc_c == 0:
             print("Para deshacer la actualización completa: git revert HEAD")
-    if p["modificados"]:
-        print(f"Revisa los archivos modificados a mano: su versión anterior quedó en el respaldo. {d.consejo_modificados}")
+    if p["editados"]:
+        print(f"Se reemplazaron archivos editados a mano: su versión anterior quedó en el respaldo. {d.consejo_modificados}")
+    if p["chocan"]:
+        print("Se conservaron archivos propios con el mismo nombre que uno del kit: " + ", ".join(p["chocan"][:5])
+              + ". Si quieres la versión del kit, renombra el tuyo a local-* y actualiza de nuevo.")
     return 0

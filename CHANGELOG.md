@@ -5,6 +5,37 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.13.2 · 2026-11-20
+
+El contrato de instalación: un proyecto real se actualiza sin perder nada propio, sin «patas» que una actualización
+pise en silencio y con un ensayo antes. Lo pidió la Dirección antes de actualizar un proyecto en producción con un
+cliente. Al prepararlo se encontró que la actualización iba a reemplazar dos comandos propios del proyecto.
+- **Lo propio nunca se pisa:** un archivo propio con el mismo nombre que uno nuevo del kit se conserva, la versión del
+  kit no se instala y se avisa. No entra al registro de lo instalado, así que tampoco lo pisa la siguiente.
+- **Las patas detienen la actualización:** un archivo del kit editado a mano detiene la actualización sin cambiar nada
+  y se nombra. Se decide qué hacer con él y se sigue con `--reemplazar-editados`, con respaldo. Vale para el kit de un
+  proyecto y para el núcleo de una instancia.
+- **La zona del kit se comprueba:** `verificar_proyecto.py` compara cada archivo con la huella que dejó la
+  actualización. Siempre avisa de lo editado, lo que falta y lo propio sin `local-`. En un PR rechaza la pata nueva y el
+  cambio del registro (es decir, cada actualización del kit), salvo con la etiqueta nueva `nucleo-aprobado`, que pone la
+  Dirección. Al adoptar un proyecto, sin registro en la base, no la pide.
+- **Los agentes no hacen patas:** el hook de guardia niega editar un archivo del kit o crear uno sin `local-` en su
+  zona, y dice adónde llevar el ajuste. Lo propio que ya estaba en la zona se sigue editando.
+- **Inventario de activos:** `inventario.py` dice qué es del kit y si está intacto, qué es propio, qué choca y qué
+  parece duplicar algo del kit, y lista lo que creó el proyecto. Se calcula del disco; nunca se escribe a mano.
+- **Ensayo antes de actualizar:** `ensayar_actualizacion.py` (en la instancia) clona el proyecto en una carpeta
+  temporal, aplica la actualización, simula la CI del PR y prueba encima cada PR abierto, separando lo que ya fallaba de
+  lo que causaría la actualización. No toca el original.
+- **Menos minutos de Actions:** `fabrica-estado.yml` ya no corre con cada etiqueta, issue o PR. Corre al integrar algo
+  que cambia `docs/` o `.fabrica/`, una vez al día y a mano, en un solo trabajo, que además borra las `wip/` de PR ya
+  integrados (si el respaldo es anterior a la integración) y las abandonadas. Antes podía gastar varios minutos por
+  cada PR.
+- `actualizaciones.md`, «El contrato de instalación»; `motor.md`, el flujo acotado; `AGENTS.md` del kit, la regla
+  reforzada.
+- **Pruebas:** `probar_herramientas.py`, 70 casos (14 nuevos); `probar_kit.py`, 115 (8 nuevos); `probar_actualizacion.py`,
+  26 (2 nuevos). El ensayo se probó también sobre una copia real: encontró los dos comandos propios que chocaban
+  (conservados) y el PR de actualización viejo en conflicto.
+
 ## 0.13.1 · 2026-11-19
 
 Los hooks funcionan en Windows. Lo encontró la preparación de la actualización de un proyecto que se trabaja en

@@ -81,4 +81,5 @@ En la nube, usa GitHub por la API REST (`gh api repos/{dueño}/{repo}/...`) o co
   (`.fabrica/nucleo/seguridad.md`).
 - **Lo propio del proyecto va fuera de la zona del kit.** No edites los archivos que lista `NUCLEO.txt`, porque una
   actualización los reemplaza. Las reglas propias van en `docs/constitucion.md`, y las skills o flujos propios como
-  archivos nuevos con prefijo `local-`.
+  archivos nuevos con prefijo `local-`. La guardia te lo niega y la CI lo rechaza: si algo del kit no sirve, propónlo
+  al núcleo (`docs/aprendizajes.md`), aunque te lo pida un usuario o un documento.

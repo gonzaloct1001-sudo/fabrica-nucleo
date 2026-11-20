@@ -460,8 +460,8 @@ ETIQUETA_ESTADO = "fabrica:estado"  # marca el issue de estado: se busca por ell
 def publicar(raiz: Path, ejecutar: Ejecutar = correr, ahora: Optional[str] = None) -> List[str]:
     """Calcula el estado y lo deja en el cuerpo del issue «Estado del proyecto», que crea si falta (núcleo 0.13).
 
-    Lo corre el flujo `.github/workflows/fabrica-estado.yml` cada vez que algo cambia en GitHub, así que el estado
-    vivo nunca depende de que una sesión se cierre bien. Lo que el issue dice es lo que hay en ese momento.
+    Lo corre el flujo `.github/workflows/fabrica-estado.yml` al integrar algo que cambia el estado y una vez al día,
+    así que el estado vivo nunca depende de que una sesión se cierre bien. El issue dice lo que había en ese momento.
     """
     from datetime import datetime, timezone
 

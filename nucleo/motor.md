@@ -119,8 +119,11 @@ corrida siguiente parte en el momento y no a la hora fijada.
 ### Dónde ver el estado
 
 El estado vivo de cada proyecto está en su issue **"Estado del proyecto"**. Lo rehace el flujo
-`.github/workflows/fabrica-estado.yml` cada vez que algo cambia en GitHub (un PR integrado, una etiqueta, un issue
-cerrado), así que nunca depende de que una sesión se cierre bien. Conviene fijarlo como destacado una vez.
+`.github/workflows/fabrica-estado.yml` cuando se integra algo que cambia el estado (`docs/` o `.fabrica/`), una vez
+al día y a mano (**Actions** → **Fábrica · estado** → **Run workflow**), así que nunca depende de que una sesión se
+cierre bien. Corre poco a propósito: cada corrida cuesta al menos un minuto de Actions, y el motor cambia etiquetas
+muchas veces al día. El estado al minuto lo da `estado.py` al iniciar una sesión. Conviene fijar el issue como
+destacado una vez.
 `.fabrica/estado.json` es una copia de las cifras para el panel; la CI exige que coincida con las historias, y la
 rehace `estado.py --escribir`.
 
@@ -139,8 +142,9 @@ respuesta de Claude:
 - **Habla poco:** un guardado que sale bien no dice nada; cada problema se avisa una vez por sesión. `estado.py`
   muestra siempre la fecha del último respaldo, o «nunca».
 - **El PR se abre aparte, con un solo commit** (`/fin-sesion` y `construir`).
-- **Limpieza:** al integrarse un PR, el flujo `fabrica-estado.yml` borra su `wip/`; cada lunes borra las `wip/` con
-  más de 14 días sin cambios cuya rama de origen ya no existe (`.fabrica/scripts/limpiar_wip.py`).
+- **Limpieza:** cada día, el flujo `fabrica-estado.yml` borra las `wip/` de PR ya integrados (solo si el respaldo es
+  anterior a la integración) y las que llevan más de 14 días sin cambios sin su rama de origen
+  (`.fabrica/scripts/limpiar_wip.py`). Ante una respuesta dudosa de GitHub, no borra nada.
 - Se apaga con `"guardado_automatico": false` en `.fabrica/proyecto.json`. Lo que solo se conversó no se guarda: las
   decisiones se escriben en la historia, en el registro del plan o en un issue.
 

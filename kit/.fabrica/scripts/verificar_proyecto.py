@@ -24,7 +24,9 @@ Comprueba que:
    revisor de seguridad.
 """
 import argparse
+import csv
 import fnmatch
+import hashlib
 import json
 import os
 import re
@@ -38,6 +40,8 @@ sys.dont_write_bytecode = True  # sin __pycache__: la verificación no deja rast
 import estado as _estado  # noqa: E402  (el script de estado del kit: mismas rutas y mismas cuentas)
 ETIQUETA_PRUEBAS = "pruebas-aprobadas"
 ETIQUETA_CONSTITUCION = "constitucion-aprobada"
+ETIQUETA_NUCLEO = "nucleo-aprobado"
+MANIFIESTO = ".fabrica/nucleo-instalado.csv"  # lo que instaló el kit, con su huella (lo escribe la actualización)
 # Lo que puede acompañar a un cambio de pruebas de aceptación en un PR de especificación (constitución, art. II)
 SOLO_ESPECIFICACION = ("pruebas/aceptacion/", "docs/", ".fabrica/estado.json")
 PRUEBAS_ACEPTACION = "pruebas/aceptacion/"
@@ -314,6 +318,83 @@ def revisar_flujos_wip(avisos):
                       "branches-ignore: ['wip/**'], o el guardado automático no respaldará en GitHub.")
 
 
+def huella(ruta):
+    """La misma huella que usa la actualización: sha256 del contenido, sin la diferencia CRLF/LF en los de texto."""
+    datos = Path(ruta).read_bytes()
+    if b"\0" not in datos[:8192]:
+        datos = datos.replace(b"\r\n", b"\n")
+    return hashlib.sha256(datos).hexdigest()[:20]
+
+
+def leer_manifiesto():
+    ruta = RAIZ / MANIFIESTO
+    if not ruta.is_file():
+        return None
+    with open(ruta, encoding="utf-8", newline="") as f:
+        return {fila["ruta"]: fila["huella"] for fila in csv.DictReader(f) if fila.get("ruta")}
+
+
+def archivos_de_la_zona(kit):
+    """Los archivos registrados en git dentro de la zona del kit (o, sin git, los del disco)."""
+    rc, salida = git("ls-files", "-z", "--", *[e.rstrip("/") for e in kit])
+    if rc == 0:
+        return [x for x in salida.split("\0") if x and not NO_SE_LEEN.search(x)]
+    vistos = []
+    for e in kit:
+        p = RAIZ / e
+        candidatos = sorted(p.rglob("*")) if e.endswith("/") and p.is_dir() else ([p] if p.is_file() else [])
+        vistos += [x.relative_to(RAIZ).as_posix() for x in candidatos if x.is_file()]
+    return [x for x in vistos if not NO_SE_LEEN.search(x)]
+
+
+def revisar_integridad(errores, avisos, base=None, etiquetas=frozenset()):
+    """Que la zona del kit sea la que se instaló: sin «patas» hechas a mano (núcleo 0.13.2).
+
+    Siempre avisa de lo editado, lo que falta y lo propio sin prefijo local- dentro de la zona. En un PR, rechaza
+    editar un archivo del kit, crear uno nuevo sin local- dentro de la zona o cambiar el registro de lo instalado, salvo
+    con la etiqueta nucleo-aprobado, que pone la Dirección (es la de cada PR de actualización del kit).
+    """
+    instalado = leer_manifiesto()
+    if instalado is None:
+        avisos.append(f"No hay registro de lo instalado ({MANIFIESTO}): no se puede comprobar que el kit esté intacto. "
+                      "Lo crea la próxima actualización del kit.")
+        return
+    kit = rutas_del_kit()
+    editados = sorted(r for r, h in instalado.items() if (RAIZ / r).is_file() and huella(RAIZ / r) != h)
+    faltan = sorted(r for r in instalado if not (RAIZ / r).exists())
+    propios = sorted(r for r in archivos_de_la_zona(kit) if r not in instalado and r != MANIFIESTO
+                     and not any(parte.startswith("local-") for parte in r.split("/")))
+    if editados or faltan:
+        ejemplo = (editados or faltan)[0]
+        avisos.append(f"La zona del kit no coincide con lo instalado: {len(editados)} archivo(s) editado(s) a mano y "
+                      f"{len(faltan)} faltante(s), por ejemplo {ejemplo}. La próxima actualización se detendrá ahí: lleva "
+                      "los ajustes propios a archivos local-* o propónlos al núcleo.")
+    if propios:
+        avisos.append(f"Hay {len(propios)} archivo(s) propio(s) dentro de la zona del kit sin el prefijo local-, por "
+                      f"ejemplo {propios[0]}. La actualización los conserva, pero conviene renombrarlos a local-*.")
+    if not base:
+        return
+    rc, salida = git("diff", "--name-only", f"{base}...HEAD")
+    rc_a, agregados = git("diff", "--name-only", "--diff-filter=A", f"{base}...HEAD")
+    if rc != 0 or rc_a != 0:
+        return  # revisar_cambios ya informa que no se pudo comparar
+    cambiados = {l.strip() for l in salida.splitlines() if l.strip()}
+    nuevos = {l.strip() for l in agregados.splitlines() if l.strip()}
+    if ETIQUETA_NUCLEO in etiquetas:
+        return
+    if MANIFIESTO in cambiados and git("cat-file", "-e", f"{base}:{MANIFIESTO}")[0] == 0:
+        # Sin registro en la base es la adopción o el primer kit del proyecto: lo decide la Dirección al adoptarlo
+        errores.append(f"Este PR actualiza el kit de la fábrica (cambia {MANIFIESTO}). Necesita la etiqueta "
+                       f"'{ETIQUETA_NUCLEO}', que pone la Dirección después de revisar el ensayo de la actualización.")
+        return
+    patas = sorted((cambiados & set(editados + faltan)) | (nuevos & set(propios)))
+    if patas:
+        errores.append(f"Este cambio edita a mano la zona del kit ({len(patas)} archivo(s), por ejemplo {patas[0]}): "
+                       "una actualización lo pisaría. Lleva el ajuste a un archivo local-*, a docs/constitucion.md o a "
+                       "las rutas de .fabrica/proyecto.json, o propónlo al núcleo. Si la Dirección lo acepta igual, "
+                       f"pone la etiqueta '{ETIQUETA_NUCLEO}'.")
+
+
 def cambiados_desde(base):
     rc, salida = git("diff", "--name-only", f"{base}...HEAD")
     return [l.strip() for l in salida.splitlines() if l.strip()] if rc == 0 else []
@@ -469,6 +550,7 @@ def main():
     revisar_coherencia(errores, avisos, cambiados_desde(a.base) if a.base else None)
     revisar_flujos_wip(avisos)
     revisar_seguridad(avisos)
+    revisar_integridad(errores, avisos, a.base, etiquetas_del_pr(a.etiquetas) if a.base else frozenset())
     if a.base:
         revisar_cambios(a.base, a.etiquetas, errores, avisos)
     for aviso in avisos:
