@@ -131,8 +131,17 @@ def main():
         comprobar("Se niega a actualizar con cambios sin commit", rc != 0 and "sin commit" in out, out)
         (inst / "clientes" / "demo" / "borrador.md").unlink()
 
-        # Actualización real a v2
+        # Lo editado a mano en la zona administrada detiene la actualización, sin cambiar nada (núcleo 0.13.2)
+        cabeza = git(inst, "rev-parse", "HEAD")[1].strip()
         rc, out = actualizar(inst, v2, "--aplicar")
+        comprobar("Un archivo del núcleo editado a mano detiene la actualización y lo nombra",
+                  rc != 0 and "se detuvo" in out and "nucleo/modelos.md" in out and "--reemplazar-editados" in out, out)
+        comprobar("Al detenerse no cambia nada: ni archivos, ni commit, ni pendientes",
+                  "Ajuste local hecho a mano." in leer(modelos) and "Regla nueva de v2." not in leer(inst / "nucleo" / "calidad.md")
+                  and git(inst, "rev-parse", "HEAD")[1].strip() == cabeza and git(inst, "status", "--porcelain")[1].strip() == "")
+
+        # Actualización real a v2, decidido reemplazar lo editado (queda en el respaldo)
+        rc, out = actualizar(inst, v2, "--aplicar", "--reemplazar-editados")
         comprobar("La actualización a v2 termina bien", rc == 0, out)
         comprobar("Reemplaza el archivo cambiado del núcleo", "Regla nueva de v2." in leer(inst / "nucleo" / "calidad.md"))
         comprobar("Agrega el archivo nuevo del núcleo", (inst / "nucleo" / "nuevo-en-v2.md").exists())
@@ -155,7 +164,7 @@ def main():
 
         # Actualización a v3, que no pasa la verificación: debe revertir todo
         cabeza = git(inst, "rev-parse", "HEAD")[1].strip()
-        rc, out = actualizar(inst, v3, "--aplicar")
+        rc, out = actualizar(inst, v3, "--aplicar", "--reemplazar-editados")
         comprobar("Una versión que no pasa la verificación se rechaza", rc != 0 and "se revirtió" in out, out)
         comprobar("Tras revertir, los archivos siguen en v2", '"nucleo_version": "9.9.9"' in leer(inst / ".fabrica" / "config.json")
                   and "nucleo/no-existe.md" not in leer(inst / "NUCLEO.txt"))

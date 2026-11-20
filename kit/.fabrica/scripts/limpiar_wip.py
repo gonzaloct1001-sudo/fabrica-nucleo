@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Borra las ramas de respaldo wip/ abandonadas (núcleo 0.13).
 
-Uso (lo corre cada semana el flujo `.github/workflows/fabrica-estado.yml`; también a mano, desde la raíz):
+Uso (lo corre cada día el flujo `.github/workflows/fabrica-estado.yml`; también a mano, desde la raíz):
     python .fabrica/scripts/limpiar_wip.py              muestra qué borraría
     python .fabrica/scripts/limpiar_wip.py --aplicar    las borra
 
-Una rama `wip/<rama>` se borra solo si cumple las dos condiciones:
-- lleva más de 14 días sin cambios;
-- su rama de origen, `<rama>`, ya no existe en GitHub (se integró y se borró, o se abandonó).
+Una rama `wip/<rama>` se borra en dos casos:
+- su PR se integró y el respaldo tiene exactamente lo que se integró (el mismo árbol que la cabeza del PR): si tiene
+  algo más, es trabajo que no se integró y se conserva;
+- lleva más de 14 días sin cambios y su rama de origen, `<rama>`, ya no existe en GitHub (se abandonó).
 
-Las de un PR integrado las borra el mismo flujo al integrarse. Usa `gh api` (solo REST).
+Usa `gh api` (solo REST). Ante cualquier respuesta dudosa de GitHub, no borra nada.
 """
 import argparse
 import json
@@ -48,7 +49,7 @@ def api(ruta, ejecutar, metodo="GET"):
 
 
 def abandonadas(ejecutar=correr, ahora=None):
-    """[(rama wip, días sin cambios)] de las que se pueden borrar."""
+    """[(rama wip, días sin cambios, motivo)] de las que se pueden borrar."""
     ahora = ahora or datetime.now(timezone.utc)
     refs = api("git/matching-refs/heads/wip/", ejecutar) or []
     borrar = []
@@ -56,16 +57,30 @@ def abandonadas(ejecutar=correr, ahora=None):
         nombre = str(ref.get("ref", ""))[len("refs/heads/"):]
         origen = nombre[len("wip/"):]
         commit = api(f"git/commits/{(ref.get('object') or {}).get('sha', '')}", ejecutar) or {}
+        arbol = (commit.get("tree") or {}).get("sha")
         fecha = ((commit.get("committer") or {}).get("date") or "").replace("Z", "+00:00")
         try:
             dias = (ahora - datetime.fromisoformat(fecha)).days
         except ValueError:
             continue
+        prs = api(f"pulls?state=closed&head={{owner}}:{quote(origen, safe='')}&per_page=10", ejecutar) or []
+        integrado = False
+        for pr in prs if isinstance(prs, list) else []:
+            cabeza = (pr.get("head") or {}).get("sha")
+            if not pr.get("merged_at") or not cabeza or not arbol:
+                continue
+            arbol_pr = ((api(f"git/commits/{cabeza}", ejecutar) or {}).get("tree") or {}).get("sha")
+            if arbol_pr == arbol:
+                integrado = True
+                break
+        if integrado:
+            borrar.append((nombre, dias, "su PR se integró con todo lo que tenía"))
+            continue
         if dias <= DIAS:
             continue
         if ejecutar(["gh", "api", f"{API}/git/ref/heads/{quote(origen, safe='/')}"]) is not None:
             continue  # la rama de origen sigue viva: su respaldo también (un error de GitHub corta antes)
-        borrar.append((nombre, dias))
+        borrar.append((nombre, dias, f"{dias} días sin cambios y sin su rama de origen"))
     return borrar
 
 
@@ -79,17 +94,17 @@ def main(argumentos=None, ejecutar=correr):
         print(f"GitHub no respondió con certeza ({error}): no se borra nada esta vez.")
         return 0
     if not borrar:
-        print("No hay ramas wip/ abandonadas.")
+        print("No hay ramas wip/ para borrar.")
         return 0
-    for nombre, dias in borrar:
+    for nombre, _, motivo in borrar:
         if opciones.aplicar:
             try:
                 hecho = ejecutar(["gh", "api", "-X", "DELETE", f"{API}/git/refs/heads/{quote(nombre, safe='/')}"])
             except SinRespuesta:
                 hecho = None
-            print(f"{'Borrada' if hecho is not None else 'No se pudo borrar'}: {nombre} ({dias} días sin cambios)")
+            print(f"{'Borrada' if hecho is not None else 'No se pudo borrar'}: {nombre} ({motivo})")
         else:
-            print(f"Se borraría: {nombre} ({dias} días sin cambios y sin su rama de origen)")
+            print(f"Se borraría: {nombre} ({motivo})")
     return 0
 
 

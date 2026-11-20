@@ -355,6 +355,13 @@ def main():
         comprobar("Un cambio en pruebas de aceptación sin etiqueta se rechaza", rc != 0 and "pruebas-aprobadas" in out, out)
         rc, out = run(verif + ["--base", "main", "--etiquetas", "riesgo:alto,pruebas-aprobadas"], proy)
         comprobar("Con la etiqueta pruebas-aprobadas se acepta", rc == 0, out)
+        run(["git", "checkout", "-q", "-b", "mover-prueba"], proy)
+        run(["git", "mv", "pruebas/aceptacion/H-001/caso.md", "docs/historias/caso-movido.md"], proy)
+        run(["git", "commit", "-qm", "Mueve una prueba aprobada fuera de su carpeta"], proy)
+        rc, out = run(verif + ["--base", "especificacion", "--etiquetas", ""], proy)
+        comprobar("Mover una prueba aprobada a otra carpeta también pide pruebas-aprobadas (sin detectar renombres)",
+                  rc != 0 and "pruebas-aprobadas" in out, out)
+        run(["git", "checkout", "-q", "especificacion"], proy)
         evento = Path(tmp) / "evento.json"
         evento.write_text(json.dumps({"pull_request": {"labels": [{"name": "riesgo:alto"}]}}), encoding="utf-8")
         ENTORNO["GITHUB_EVENT_PATH"] = str(evento)
@@ -467,6 +474,93 @@ def main():
                   "9.9.9" in ultimo and pendiente.strip() == "", f"{ultimo} | {pendiente}")
         rc, out = run(verif, proy)
         comprobar("El proyecto actualizado pasa su verificación", rc == 0, out)
+
+        # Contrato de instalación (0.13.2). Un proyecto que ya tenía su propio comando con el mismo nombre que uno del
+        # kit (lo trajo antes de que el kit lo tuviera): se conserva, aunque el kit cambie el suyo.
+        manifiesto = proy / ".fabrica/nucleo-instalado.csv"
+        propio_rel = ".claude/commands/inicio-sesion.md"
+        lineas = [l for l in manifiesto.read_text(encoding="utf-8").splitlines() if not l.startswith(propio_rel + ",")]
+        manifiesto.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+        (proy / propio_rel).write_text("Mi inicio de sesión propio, con mi aviso de entorno.\n", encoding="utf-8")
+        run(["git", "commit", "-qam", "Comando propio, de antes de que el kit lo trajera"], proy)
+        kit_inicio = inst / "kit" / propio_rel
+        kit_inicio.write_text(kit_inicio.read_text(encoding="utf-8") + "\nCambio del kit.\n", encoding="utf-8")
+        texto = log.read_text(encoding="utf-8")
+        i = texto.index("\n## ") + 1
+        log.write_text(texto[:i] + "## 9.9.10 · prueba\n\n- Otro cambio.\n\n" + texto[i:], encoding="utf-8")
+        rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar")
+        comprobar("Un archivo propio con el mismo nombre que uno del kit se conserva y se avisa",
+                  rc == 0 and leer(proy / propio_rel) == "Mi inicio de sesión propio, con mi aviso de entorno.\n"
+                  and propio_rel in out and "local-" in out, out[-800:])
+        comprobar("El propio que choca no entra al registro de lo instalado",
+                  propio_rel + "," not in manifiesto.read_text(encoding="utf-8"))
+        rc, out = run(verif, proy)
+        comprobar("El proyecto con un propio que choca pasa su verificación", rc == 0, out)
+
+        # Un archivo del kit editado a mano en el proyecto (una «pata»): la actualización se detiene sin cambiar nada
+        agentes = proy / "AGENTS.md"
+        agentes.write_text(leer(agentes) + "\nPata hecha a mano.\n", encoding="utf-8")
+        run(["git", "commit", "-qam", "Pata en el kit"], proy)
+        cabeza = run(["git", "rev-parse", "HEAD"], proy)[1].strip()
+        (inst / "kit" / "AGENTS.md").write_text(leer(inst / "kit" / "AGENTS.md") + "\nOtra regla del kit.\n", encoding="utf-8")
+        texto = log.read_text(encoding="utf-8")
+        i = texto.index("\n## ") + 1
+        log.write_text(texto[:i] + "## 9.9.11 · prueba\n\n- Otro cambio más.\n\n" + texto[i:], encoding="utf-8")
+        rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar")
+        comprobar("Un archivo del kit editado a mano detiene la actualización y no cambia nada",
+                  rc != 0 and "AGENTS.md" in out and "se detuvo" in out and "Pata hecha a mano." in leer(agentes)
+                  and run(["git", "rev-parse", "HEAD"], proy)[1].strip() == cabeza
+                  and run(["git", "status", "--porcelain"], proy)[1].strip() == "", out[-800:])
+        avisos_yml = proy / ".github/workflows/fabrica-avisos.yml"
+        avisos_yml.unlink()
+        run(["git", "commit", "-qam", "Borra un flujo del kit para ahorrar minutos"], proy)
+        cabeza = run(["git", "rev-parse", "HEAD"], proy)[1].strip()
+        rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar")
+        comprobar("Un archivo del kit borrado a mano también detiene la actualización: no vuelve en silencio",
+                  rc != 0 and "Borrados a mano" in out and "fabrica-avisos.yml" in out and not avisos_yml.exists()
+                  and run(["git", "rev-parse", "HEAD"], proy)[1].strip() == cabeza, out[-800:])
+        rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar", "--reemplazar-editados")
+        respaldos = list((proy / ".fabrica/respaldo-nucleo").rglob("AGENTS.md"))
+        comprobar("Con --reemplazar-editados el flujo borrado vuelve", avisos_yml.exists(), out[-400:])
+        comprobar("Con --reemplazar-editados se reemplaza, y la pata queda en el respaldo",
+                  rc == 0 and "Otra regla del kit." in leer(agentes) and "Pata hecha a mano." not in leer(agentes)
+                  and any("Pata hecha a mano." in leer(r) for r in respaldos), out[-600:])
+
+        # El ensayo (0.13.2): aplica en una copia temporal, informa, y nunca toca el original
+        (inst / "kit" / "AGENTS.md").write_text(leer(inst / "kit" / "AGENTS.md") + "\nRegla del ensayo.\n", encoding="utf-8")
+        texto = log.read_text(encoding="utf-8")
+        i = texto.index("\n## ") + 1
+        log.write_text(texto[:i] + "## 9.9.12 · prueba\n\n- Cambio para ensayar.\n\n" + texto[i:], encoding="utf-8")
+        cabeza = run(["git", "rev-parse", "HEAD"], proy)[1].strip()
+        # Dos PR abiertos, como los ve GitHub (refs/pull/N/head): uno de documentos y una pata sobre AGENTS.md
+        for numero, (rel, texto) in {1: ("docs/nota.md", "Nota.\n"), 2: ("AGENTS.md", None)}.items():
+            run(["git", "checkout", "-q", "-b", f"pr-{numero}"], proy)
+            destino_pr = proy / rel
+            destino_pr.parent.mkdir(parents=True, exist_ok=True)
+            destino_pr.write_text(texto or leer(destino_pr) + "\nPata en un PR.\n", encoding="utf-8")
+            run(["git", "add", "-A"], proy)
+            run(["git", "commit", "-qm", f"PR {numero}"], proy)
+            run(["git", "update-ref", f"refs/pull/{numero}/head", "HEAD"], proy)
+            run(["git", "checkout", "-q", "-"], proy)
+            run(["git", "branch", "-q", "-D", f"pr-{numero}"], proy)
+        rc, out = script(inst, "ensayar_actualizacion.py", str(proy), "--pr", "1", "--pr", "2")
+        comprobar("El ensayo prueba los PR encima de la actualización: el de documentos queda bien",
+                  rc == 0 and "- #1: bien" in out, out[-900:])
+        comprobar("y la pata en el PR choca con la actualización: lo dice como un efecto de la actualización",
+                  "- #2: **la actualización lo afecta:** conflicto en AGENTS.md" in out, out[-900:])
+        rc, out = script(inst, "ensayar_actualizacion.py", str(proy), "--sin-prs")
+        comprobar("El ensayo aplica la actualización en una copia y lo informa",
+                  rc == 0 and "→ 9.9.12" in out and "Aplicada en la copia" in out and "todo en orden" in out
+                  and "nucleo-aprobado" in out and "Fuera de la zona del kit" in out, out[-1200:])
+        comprobar("El ensayo no toca el original",
+                  run(["git", "rev-parse", "HEAD"], proy)[1].strip() == cabeza and "Regla del ensayo." not in leer(agentes)
+                  and run(["git", "status", "--porcelain"], proy)[1].strip() == "")
+        agentes.write_text(leer(agentes) + "\nOtra pata.\n", encoding="utf-8")
+        run(["git", "commit", "-qam", "Otra pata"], proy)
+        rc, out = script(inst, "ensayar_actualizacion.py", str(proy), "--sin-prs")
+        comprobar("Si el proyecto tiene una pata, el ensayo lo dice y se detiene",
+                  rc != 0 and "se detuvo" in out and "AGENTS.md" in out, out[-800:])
+        run(["git", "reset", "-q", "--hard", "HEAD~1"], proy)
 
         # Recoger aprendizajes: solo docs/aprendizajes.md de cada proyecto, con avisos de limpieza
         plantilla = (inst / "nucleo" / "plantillas" / "aprendizajes.md").read_text(encoding="utf-8")

@@ -17,8 +17,41 @@ Cada archivo pertenece a una de dos zonas. Esa separación es la que permite act
   conserva.
 - **Nombres, niveles y topes:** en `.fabrica/config.json`.
 
-Si de todos modos se editó un archivo del núcleo, la actualización lo respalda antes de reemplazarlo y avisa, para
-llevar ese ajuste a la zona de la instancia.
+Si de todos modos se editó un archivo del núcleo, la actualización se detiene sin cambiar nada (ver «El contrato de
+instalación»).
+
+## El contrato de instalación
+
+Desde la 0.13.2, toda actualización (del núcleo en una instancia, o del kit en un proyecto) cumple esto:
+
+1. **Nunca cambia lo propio.** Solo toca la zona de `NUCLEO.txt`. Un archivo propio que tiene el mismo nombre que uno
+   de la versión nueva (por ejemplo, un comando que el proyecto tenía antes de que el kit lo trajera) se conserva, la
+   versión del kit no se instala, y se avisa. Para pasar a la del kit, se renombra el propio a `local-*` y se actualiza
+   de nuevo.
+2. **Nunca pisa una «pata» en silencio.** Una pata es un archivo de la zona editado o borrado a mano. Si la hay, la
+   actualización se detiene sin cambiar nada y la nombra. Alguien decide: llevar el ajuste a un archivo `local-*` o a la
+   constitución, proponerlo al núcleo (`aprendizaje.md`) o descartarlo. Después se actualiza con
+   `--reemplazar-editados`, y lo anterior queda en el respaldo. Un flujo del kit que se quiera apagado no se borra:
+   se desactiva en GitHub (**Actions** → el flujo → **Disable workflow**), y así ninguna actualización lo reactiva.
+3. **La zona se puede comprobar.** `.fabrica/nucleo-instalado.csv` guarda la huella de cada archivo instalado. En un
+   proyecto, `verificar_proyecto.py` avisa siempre de lo editado, lo que falta y lo propio sin `local-` dentro de la
+   zona, y en un PR rechaza la pata nueva salvo con la etiqueta `nucleo-aprobado`. El PR que actualiza el kit cambia
+   ese registro, así que también la pide: la pone la Dirección después de ver el ensayo. Vale también la forma
+   `nucleo-aprobado:<huella>` que algunos proyectos ya exigen en su propia CI, para poner una sola etiqueta.
+4. **Los agentes no hacen patas.** El hook de guardia niega que un agente edite un archivo del kit o cree uno nuevo sin
+   `local-` en su zona, y dice adónde llevar el ajuste. Una persona puede hacerlo a mano; la CI lo ve igual.
+5. **Se ensaya antes.** Antes de abrir el PR de actualización en un proyecto real, se ensaya en una copia: del master
+   del día, con los PR abiertos encima, y si se puede en una copia privada del repositorio con su CI completa
+   (`ensayar_actualizacion.py`, en «Actualizar el kit de cada proyecto»).
+6. **Se puede deshacer.** Cada actualización es un solo commit y un solo PR: **Revert** deja todo como estaba.
+
+**Lo que el contrato no cubre**, dicho para no confiar de más: la etiqueta `nucleo-aprobado` no prueba quién la puso
+(un agente con permisos puede ponerla), la guardia solo vigila las ediciones de archivos de los agentes (no un comando
+de terminal), y la CI que revisa un PR es la que trae ese mismo PR. La defensa de fondo es que la Dirección integra los
+PR que tocan la zona del kit, y que un repositorio con plan de pago puede exigir su revisión (CODEOWNERS).
+
+`inventario.py` muestra, para un proyecto, qué es del kit y si está intacto, qué es propio, qué choca y qué parece
+duplicar algo del kit: lo que el proyecto creó y podría subir al núcleo.
 
 ## Crear una instancia
 
@@ -74,6 +107,17 @@ python .fabrica/scripts/actualizar_kit.py proyectos/<cliente>-<proyecto> --aplic
 
 Funciona igual que la actualización del núcleo: respalda, verifica con `verificar_proyecto.py`, revierte si falla y
 deja un commit local. Subirlo e integrarlo sigue la regla de "Quién integra cada PR" (`autonomia.md`).
+
+**En un proyecto real, primero el ensayo** (punto 5 del contrato). Desde la instancia:
+
+```
+python .fabrica/scripts/ensayar_actualizacion.py <carpeta o URL del proyecto>
+```
+
+Clona el proyecto en una carpeta temporal (nunca toca el original), aplica la actualización, corre la verificación,
+prueba encima cada PR abierto como si se integrara después, y deja un informe: qué cambia, qué se conserva, qué choca y
+qué PR quedaría en rojo. Con una copia privada del repositorio en GitHub, el mismo PR se abre primero ahí, para ver su
+CI completa antes de tocar el original.
 
 La base del rubro viaja igual: si cambió `rubros/<rubro>/` en la instancia, la siguiente actualización del kit la lleva
 a cada proyecto de ese rubro, aunque el núcleo no haya cambiado de versión.

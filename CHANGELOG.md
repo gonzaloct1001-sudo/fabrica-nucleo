@@ -5,6 +5,67 @@ El núcleo sigue versionado semántico:
 - **menor:** se agrega un área, un rol, una skill o una regla;
 - **parche:** se corrige o se precisa algo ya existente.
 
+## 0.13.2 · 2026-11-20
+
+El contrato de instalación: un proyecto real se actualiza sin perder nada propio, sin «patas» que una actualización
+pise en silencio y con un ensayo antes. Lo pidió la Dirección antes de actualizar un proyecto en producción con un
+cliente. Al prepararlo se encontró que la actualización iba a reemplazar dos comandos propios del proyecto.
+- **Lo propio nunca se pisa:** un archivo propio con el mismo nombre que uno nuevo del kit se conserva, la versión del
+  kit no se instala y se avisa. No entra al registro de lo instalado, así que tampoco lo pisa la siguiente.
+- **Las patas detienen la actualización:** un archivo del kit editado a mano detiene la actualización sin cambiar nada
+  y se nombra. Se decide qué hacer con él y se sigue con `--reemplazar-editados`, con respaldo. Vale para el kit de un
+  proyecto y para el núcleo de una instancia.
+- **La zona del kit se comprueba:** `verificar_proyecto.py` compara cada archivo con la huella que dejó la
+  actualización. Siempre avisa de lo editado, lo que falta y lo propio sin `local-`. En un PR rechaza la pata nueva y el
+  cambio del registro (es decir, cada actualización del kit), salvo con la etiqueta nueva `nucleo-aprobado`, que pone la
+  Dirección. Al adoptar un proyecto, sin registro en la base, no la pide.
+- **Los agentes no hacen patas:** el hook de guardia niega editar un archivo del kit o crear uno sin `local-` en su
+  zona, y dice adónde llevar el ajuste. Lo propio que ya estaba en la zona se sigue editando.
+- **Inventario de activos:** `inventario.py` dice qué es del kit y si está intacto, qué es propio, qué choca y qué
+  parece duplicar algo del kit, y lista lo que creó el proyecto. Se calcula del disco; nunca se escribe a mano.
+- **Ensayo antes de actualizar:** `ensayar_actualizacion.py` (en la instancia) clona el proyecto en una carpeta
+  temporal, aplica la actualización, simula la CI del PR y prueba encima cada PR abierto, separando lo que ya fallaba de
+  lo que causaría la actualización. No toca el original.
+- **Menos minutos de Actions:** `fabrica-estado.yml` ya no corre con cada etiqueta, issue o PR. Corre al integrar algo
+  que cambia `docs/` o `.fabrica/`, una vez al día y a mano, en un solo trabajo, que además borra las `wip/` de PR ya
+  integrados (si el respaldo es anterior a la integración) y las abandonadas. Antes podía gastar varios minutos por
+  cada PR.
+- `actualizaciones.md`, «El contrato de instalación», con lo que no cubre; `motor.md`, el flujo acotado; `AGENTS.md`
+  del kit, la regla reforzada.
+- **Lo que corrigió la revisión independiente:**
+  - un archivo del kit **borrado** a mano también detiene la actualización (antes volvía en silencio: un flujo borrado
+    para ahorrar minutos se habría reactivado);
+  - la limpieza borra el respaldo de un PR integrado solo si tiene exactamente lo integrado (el mismo árbol); si guardó
+    trabajo después de abrir el PR, se conserva;
+  - el ensayo marca que la actualización afecta a un PR si con ella aparece un error que antes no estaba, aunque ya
+    fallara por otra cosa;
+  - un renombre ya no se salta el control del PR, y los nombres con tildes se leen bien;
+  - el ensayo: `--pr`, `--rama` y `--reemplazar-editados`; alarma si chocan archivos de las herramientas o del
+    método; solo da por esperados los flujos que la actualización ajustó; la guardia lee el registro con `csv`;
+  - la re-revisión encontró que mover una prueba aprobada a otra carpeta se saltaba la etiqueta `pruebas-aprobadas`
+    (el diff detectaba el renombre y solo mostraba la ruta nueva): ahora todo el verificador compara sin renombres.
+- **El ensayo general en la copia de laboratorio** mostró que el proyecto ya exige en su CI propia una etiqueta
+  `nucleo-aprobado:<huella de NUCLEO.txt>`: el control del kit acepta esa misma, para poner una sola.
+- **Pruebas:** `probar_herramientas.py`, 77 casos (21 nuevos); `probar_kit.py`, 120 (13 nuevos);
+  `probar_actualizacion.py`, 26 (2 nuevos). El ensayo se probó también sobre una copia real: encontró los dos comandos propios que chocaban
+  (conservados) y el PR de actualización viejo en conflicto.
+
+## 0.13.1 · 2026-11-19
+
+Los hooks funcionan en Windows. Lo encontró la preparación de la actualización de un proyecto que se trabaja en
+Windows, antes de instalarla.
+- **Python en Windows:** el comando de los hooks ya no llama a `python3` directo. Prueba `python3`, `python` y `py`, y
+  usa el primero que de verdad es Python 3. En Windows, `python3` suele ser el acceso directo de la Microsoft Store,
+  que sale con error sin correr nada: el guardado y la guardia no habrían hecho nada, y en silencio. Sin Python 3, el
+  hook lo dice y Claude Code lo muestra, sin bloquear.
+- **UTF-8 en Windows:** el comando fija `PYTHONUTF8=1`, para que una ruta con tildes (`C:\Users\José\…`) llegue
+  bien a la guardia y los avisos no salgan con caracteres rotos. Lo encontró la revisión independiente.
+- **Al actualizar,** los hooks de la 0.13.0 se reemplazan por los nuevos, sin duplicarse.
+- `motor.md`, «Puesta en marcha»: en Windows hace falta Git para Windows (Git Bash), que es con lo que Claude Code
+  corre los hooks.
+- **Pruebas:** `probar_herramientas.py`, 56 casos (4 nuevos: el reemplazo del hook viejo, Python detrás del acceso
+  directo de la Store con sh y con bash, con UTF-8 y sin ruido, y el aviso sin Python).
+
 ## 0.13.0 · 2026-11-18
 
 Leer menos, medir el consumo, y que el avance y el estado no dependan de cerrar bien una sesión (A1 a A10 de la

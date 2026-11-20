@@ -460,8 +460,8 @@ ETIQUETA_ESTADO = "fabrica:estado"  # marca el issue de estado: se busca por ell
 def publicar(raiz: Path, ejecutar: Ejecutar = correr, ahora: Optional[str] = None) -> List[str]:
     """Calcula el estado y lo deja en el cuerpo del issue «Estado del proyecto», que crea si falta (núcleo 0.13).
 
-    Lo corre el flujo `.github/workflows/fabrica-estado.yml` cada vez que algo cambia en GitHub, así que el estado
-    vivo nunca depende de que una sesión se cierre bien. Lo que el issue dice es lo que hay en ese momento.
+    Lo corre el flujo `.github/workflows/fabrica-estado.yml` al integrar algo que cambia el estado y una vez al día,
+    así que el estado vivo nunca depende de que una sesión se cierre bien. El issue dice lo que había en ese momento.
     """
     from datetime import datetime, timezone
 
@@ -471,7 +471,8 @@ def publicar(raiz: Path, ejecutar: Ejecutar = correr, ahora: Optional[str] = Non
         return ["No se publicó: GitHub no está disponible."]
     ahora = ahora or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     cuerpo = (f"Calculado el {ahora} desde las historias del repositorio y desde GitHub. Este texto lo rehace GitHub "
-              "Actions cada vez que algo cambia: no lo edites.\n\n```\n" + "\n".join(lineas) + "\n```\n")
+              "Actions al integrar algo que cambia el estado y una vez al día: no lo edites. Para rehacerlo ahora: "
+              "Actions → Fábrica · estado → Run workflow.\n\n```\n" + "\n".join(lineas) + "\n```\n")
     asuntos = _api(f"issues?state=open&labels={ETIQUETA_ESTADO}&per_page=10", raiz, ejecutar)
     existente = next((uno for uno in asuntos or [] if isinstance(uno, dict) and "pull_request" not in uno
                       and uno.get("title") == TITULO_ESTADO), None)

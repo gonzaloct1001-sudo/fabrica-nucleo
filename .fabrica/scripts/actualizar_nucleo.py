@@ -60,6 +60,9 @@ def main():
     ap.add_argument("--desde", help="URL del repositorio del núcleo o carpeta con la versión nueva")
     ap.add_argument("--aplicar", action="store_true", help="aplicar la actualización (sin esto, solo vista previa)")
     ap.add_argument("--sin-commit", action="store_true", help="no hacer el commit de la actualización")
+    ap.add_argument("--reemplazar-editados", action="store_true",
+                    help="reemplazar los archivos de la zona administrada editados a mano (con respaldo); sin esto, "
+                         "la actualización se detiene y dice cuáles son")
     a = ap.parse_args()
 
     if _nucleo.es_mantenedor(RAIZ):
@@ -81,6 +84,7 @@ def main():
             mensaje_commit=lambda v: f"Actualiza el núcleo a {v or 'la versión nueva'}",
             comando_aplicar="python .fabrica/scripts/actualizar_nucleo.py " + (f"--desde {origen} " if a.desde else "")
                             + "--aplicar",
+            reemplazar_editados=a.reemplazar_editados,
             respaldar_tambien=[".fabrica/config.json"],
             consejo_modificados="Si eran ajustes propios, llévalos a instancia/ (nucleo/actualizaciones.md).")
         return _actualizacion.ejecutar(destino, fuente, origen, v_nueva, _nucleo.novedades(fuente, v_local),
