@@ -407,6 +407,10 @@ def probar_patas(tmp):
               errores and "AGENTS.md" in errores[0] and "nucleo-aprobado" in errores[0], errores)
     errores, _ = revisar("HEAD~1", frozenset({"nucleo-aprobado"}))
     comprobar("con la etiqueta nucleo-aprobado, la Dirección lo acepta", errores == [], errores)
+    errores, _ = revisar("HEAD~1", frozenset({"nucleo-aprobado:c4e5ee57f3eeb5fd3b4959af6c33cdb7"}))
+    comprobar("también con la forma con huella que algunos proyectos ya exigen en su CI", errores == [], errores)
+    errores, _ = revisar("HEAD~1", frozenset({"nucleo-aprobadox"}))
+    comprobar("pero no con una etiqueta que solo se le parece", bool(errores), errores)
 
     subprocess.run(["git", "reset", "-q", "--hard", "HEAD~1"], cwd=raiz, check=True)
     (raiz / ".claude/skills/mia").mkdir(parents=True)
@@ -480,6 +484,9 @@ def probar_veredicto_del_ensayo():
               ensayo.veredicto((True, ["X"]), (True, ["X"])).startswith("ya fallaba"))
     comprobar("si ya fallaba por X y con la actualización falla por X e Y, la actualización lo afecta (por Y)",
               ensayo.veredicto((True, ["X"]), (True, ["X", "Y"])) == "**la actualización lo afecta:** Y")
+    comprobar("un mismo error con otra base no cuenta como nuevo",
+              ensayo.veredicto((True, ["No se pudo comparar con la base sin-actualizar"]),
+                               (True, ["No se pudo comparar con la base 3f9a2b1c0d"])).startswith("ya fallaba"))
 
 
 def probar_filtro():

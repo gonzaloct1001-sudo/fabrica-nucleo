@@ -40,9 +40,13 @@ cliente. Al prepararlo se encontró que la actualización iba a reemplazar dos c
   - el ensayo marca que la actualización afecta a un PR si con ella aparece un error que antes no estaba, aunque ya
     fallara por otra cosa;
   - un renombre ya no se salta el control del PR, y los nombres con tildes se leen bien;
-  - el ensayo: `--pr`, `--rama` y `--reemplazar-editados`; alarma si chocan archivos de las herramientas o del método;
-    solo da por esperados los flujos que la actualización ajustó; la guardia lee el registro con `csv`.
-- **Pruebas:** `probar_herramientas.py`, 74 casos (18 nuevos); `probar_kit.py`, 119 (12 nuevos);
+  - el ensayo: `--pr`, `--rama` y `--reemplazar-editados`; alarma si chocan archivos de las herramientas o del
+    método; solo da por esperados los flujos que la actualización ajustó; la guardia lee el registro con `csv`;
+  - la re-revisión encontró que mover una prueba aprobada a otra carpeta se saltaba la etiqueta `pruebas-aprobadas`
+    (el diff detectaba el renombre y solo mostraba la ruta nueva): ahora todo el verificador compara sin renombres.
+- **El ensayo general en la copia de laboratorio** mostró que el proyecto ya exige en su CI propia una etiqueta
+  `nucleo-aprobado:<huella de NUCLEO.txt>`: el control del kit acepta esa misma, para poner una sola.
+- **Pruebas:** `probar_herramientas.py`, 77 casos (21 nuevos); `probar_kit.py`, 120 (13 nuevos);
   `probar_actualizacion.py`, 26 (2 nuevos). El ensayo se probó también sobre una copia real: encontró los dos comandos propios que chocaban
   (conservados) y el PR de actualización viejo en conflicto.
 

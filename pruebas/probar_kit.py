@@ -355,6 +355,13 @@ def main():
         comprobar("Un cambio en pruebas de aceptación sin etiqueta se rechaza", rc != 0 and "pruebas-aprobadas" in out, out)
         rc, out = run(verif + ["--base", "main", "--etiquetas", "riesgo:alto,pruebas-aprobadas"], proy)
         comprobar("Con la etiqueta pruebas-aprobadas se acepta", rc == 0, out)
+        run(["git", "checkout", "-q", "-b", "mover-prueba"], proy)
+        run(["git", "mv", "pruebas/aceptacion/H-001/caso.md", "docs/historias/caso-movido.md"], proy)
+        run(["git", "commit", "-qm", "Mueve una prueba aprobada fuera de su carpeta"], proy)
+        rc, out = run(verif + ["--base", "especificacion", "--etiquetas", ""], proy)
+        comprobar("Mover una prueba aprobada a otra carpeta también pide pruebas-aprobadas (sin detectar renombres)",
+                  rc != 0 and "pruebas-aprobadas" in out, out)
+        run(["git", "checkout", "-q", "especificacion"], proy)
         evento = Path(tmp) / "evento.json"
         evento.write_text(json.dumps({"pull_request": {"labels": [{"name": "riesgo:alto"}]}}), encoding="utf-8")
         ENTORNO["GITHUB_EVENT_PATH"] = str(evento)

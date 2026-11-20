@@ -382,7 +382,9 @@ def revisar_integridad(errores, avisos, base=None, etiquetas=frozenset()):
         return  # revisar_cambios ya informa que no se pudo comparar
     cambiados = {l.strip() for l in salida.splitlines() if l.strip()}
     nuevos = {l.strip() for l in agregados.splitlines() if l.strip()}
-    if ETIQUETA_NUCLEO in etiquetas:
+    # También vale la forma con huella (nucleo-aprobado:<huella de NUCLEO.txt>) que algunos proyectos ya exigen en su CI:
+    # así la Dirección pone una sola etiqueta
+    if any(e == ETIQUETA_NUCLEO or e.startswith(ETIQUETA_NUCLEO + ":") for e in etiquetas):
         return
     if MANIFIESTO in cambiados and git("cat-file", "-e", f"{base}:{MANIFIESTO}")[0] == 0:
         # Sin registro en la base es la adopción o el primer kit del proyecto: lo decide la Dirección al adoptarlo
@@ -398,12 +400,13 @@ def revisar_integridad(errores, avisos, base=None, etiquetas=frozenset()):
 
 
 def cambiados_desde(base):
-    rc, salida = git("diff", "--name-only", f"{base}...HEAD")
+    rc, salida = git("-c", "core.quotepath=off", "diff", "--no-renames", "--name-only", f"{base}...HEAD")
     return [l.strip() for l in salida.splitlines() if l.strip()] if rc == 0 else []
 
 
 def revisar_cambios(base, explicitas, errores, avisos):
-    rc, salida = git("diff", "--name-only", f"{base}...HEAD")
+    # Sin detectar renombres: mover una prueba aprobada a otra carpeta también la cambia
+    rc, salida = git("-c", "core.quotepath=off", "diff", "--no-renames", "--name-only", f"{base}...HEAD")
     if rc != 0:
         errores.append(f"No se pudo comparar con la base {base}: {salida.strip()[:300]}")
         return

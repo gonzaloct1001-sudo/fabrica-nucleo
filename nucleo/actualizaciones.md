@@ -31,11 +31,13 @@ Desde la 0.13.2, toda actualización (del núcleo en una instancia, o del kit en
 2. **Nunca pisa una «pata» en silencio.** Una pata es un archivo de la zona editado o borrado a mano. Si la hay, la
    actualización se detiene sin cambiar nada y la nombra. Alguien decide: llevar el ajuste a un archivo `local-*` o a la
    constitución, proponerlo al núcleo (`aprendizaje.md`) o descartarlo. Después se actualiza con
-   `--reemplazar-editados`, y lo anterior queda en el respaldo.
+   `--reemplazar-editados`, y lo anterior queda en el respaldo. Un flujo del kit que se quiera apagado no se borra:
+   se desactiva en GitHub (**Actions** → el flujo → **Disable workflow**), y así ninguna actualización lo reactiva.
 3. **La zona se puede comprobar.** `.fabrica/nucleo-instalado.csv` guarda la huella de cada archivo instalado. En un
    proyecto, `verificar_proyecto.py` avisa siempre de lo editado, lo que falta y lo propio sin `local-` dentro de la
    zona, y en un PR rechaza la pata nueva salvo con la etiqueta `nucleo-aprobado`. El PR que actualiza el kit cambia
-   ese registro, así que también la pide: la pone la Dirección después de ver el ensayo.
+   ese registro, así que también la pide: la pone la Dirección después de ver el ensayo. Vale también la forma
+   `nucleo-aprobado:<huella>` que algunos proyectos ya exigen en su propia CI, para poner una sola etiqueta.
 4. **Los agentes no hacen patas.** El hook de guardia niega que un agente edite un archivo del kit o cree uno nuevo sin
    `local-` en su zona, y dice adónde llevar el ajuste. Una persona puede hacerlo a mano; la CI lo ve igual.
 5. **Se ensaya antes.** Antes de abrir el PR de actualización en un proyecto real, se ensaya en una copia: del master

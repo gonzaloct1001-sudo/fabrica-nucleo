@@ -101,7 +101,10 @@ def veredicto(sin, con):
     Cada uno es (se une, errores). La actualización lo afecta si con ella aparece un error que antes no estaba, aunque
     el PR ya fallara por otra cosa.
     """
-    nuevos = [e for e in con[1] if e not in sin[1]]
+    def sin_base(error):  # la base cambia entre las dos corridas: no hace distinto un mismo error
+        return re.sub(r"\b(sin-actualizar|[0-9a-f]{7,40})\b", "<base>", error)
+    previos = {sin_base(e) for e in sin[1]}
+    nuevos = [e for e in con[1] if sin_base(e) not in previos]
     if not con[1]:
         return "bien"
     if nuevos:
@@ -135,8 +138,10 @@ def main(argumentos=None):
         if opciones.rama or Path(origen).exists():
             rama = opciones.rama or principal_de(Path(origen))
             if rama and git(copia, "checkout", "-q", rama)[0] != 0:
-                print(f"No existe la rama {rama} en {origen}.")
-                return 1
+                if opciones.rama:
+                    print(f"No existe la rama {rama} en {origen}.")
+                    return 1
+                # Sin --rama, si la principal no está en la carpeta, se ensaya la rama actual (y el informe la nombra)
         git(copia, "config", "user.email", "ensayo@fabrica.local")
         git(copia, "config", "user.name", "Ensayo de la fábrica")
         _, principal = git(copia, "rev-parse", "--abbrev-ref", "HEAD")
