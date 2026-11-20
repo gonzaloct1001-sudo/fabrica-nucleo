@@ -267,8 +267,14 @@ def probar_limpieza():
             {"ref": "refs/heads/wip/h-004-integrado", "object": {"sha": "d"}},
             {"ref": "refs/heads/wip/h-005-sigue", "object": {"sha": "e"}}]
     fechas = {"a": "2026-11-01T00:00:00Z", "b": "2026-11-01T00:00:00Z", "c": "2026-11-28T00:00:00Z",
-              "d": "2026-11-29T00:00:00Z", "e": "2026-11-30T12:00:00Z"}
-    integrado = json.dumps([{"number": 7, "merged_at": "2026-11-30T00:00:00Z"}, {"number": 6, "merged_at": None}])
+              "d": "2026-11-29T00:00:00Z", "e": "2026-11-29T00:00:00Z", "pr4": "2026-11-29T00:00:00Z",
+              "pr5": "2026-11-29T00:00:00Z"}
+    # h-004: el respaldo es justo lo integrado (mismo árbol). h-005: se integró el PR a las 9:00, pero el respaldo
+    # guardó trabajo de las 9:30 que no entró: árbol distinto, aunque sea anterior a la integración
+    arboles = {"a": "ta", "b": "tb", "c": "tc", "d": "t4", "e": "t5-con-mas", "pr4": "t4", "pr5": "t5"}
+    integrados = {"h-004-integrado": [{"number": 7, "merged_at": "2026-11-30T00:00:00Z", "head": {"sha": "pr4"}}],
+                  "h-005-sigue": [{"number": 8, "merged_at": "2026-11-30T00:00:00Z", "head": {"sha": "pr5"}},
+                                  {"number": 6, "merged_at": None, "head": {"sha": "e"}}]}
     borrados = []
 
     def falso(orden):
@@ -276,22 +282,25 @@ def probar_limpieza():
         if "matching-refs" in comando:
             return json.dumps(refs)
         if "/git/commits/" in comando:
-            return json.dumps({"committer": {"date": fechas[comando.rsplit("/", 1)[1]]}})
+            sha = comando.rsplit("/", 1)[1]
+            return json.dumps({"committer": {"date": fechas[sha]}, "tree": {"sha": arboles[sha]}})
         if "DELETE" in comando:
             borrados.append(comando.rsplit("/", 2)[-1])
             return "{}"
         if "git/ref/heads/h-002-vivo" in comando or "git/ref/heads/h-00" in comando and "integrado" in comando:
             return "{}"
-        if "pulls?state=closed&head={owner}:h-004-integrado" in comando or "head={owner}:h-005-sigue" in comando:
-            return integrado
+        for origen, prs in integrados.items():
+            if f"pulls?state=closed&head={{owner}}:{origen}&" in comando:
+                return json.dumps(prs)
         return None
     candidatas = limpiar.abandonadas(falso, ahora)
     comprobar("borra los respaldos viejos sin rama de origen y los de un PR integrado, si son anteriores a la integración",
               [(n, m) for n, _, m in candidatas] == [("wip/h-001-viejo", "30 días sin cambios y sin su rama de origen"),
-                                                     ("wip/h-004-integrado", "su PR se integró")], candidatas)
+                                                     ("wip/h-004-integrado", "su PR se integró con todo lo que tenía")],
+              candidatas)
     with redirect_stdout(io.StringIO()):
         limpiar.main(["--aplicar"], ejecutar=falso)
-    comprobar("con --aplicar los borra por la API, y conserva el trabajo posterior a la integración",
+    comprobar("con --aplicar los borra por la API, y conserva un respaldo con trabajo que no entró al PR integrado",
               borrados == ["h-001-viejo", "h-004-integrado"], borrados)
 
     def caido(orden):
@@ -416,6 +425,14 @@ def probar_patas(tmp):
     errores, _ = revisar("HEAD~1")
     comprobar("en un PR, una skill nueva con local- pasa", errores == [], errores)
 
+    subprocess.run(["git", "mv", ".claude/skills/local-mia", ".claude/skills/mia-renombrada"], cwd=raiz, check=True)
+    subprocess.run(["git", "mv", ".claude/skills/construir", ".claude/skills/construir-mio"], cwd=raiz, check=True)
+    commit("renombres")
+    errores, _ = revisar("HEAD~1")
+    comprobar("un renombre no se salta el control: ni quitar local- a lo propio ni mover un archivo del kit",
+              errores and "nucleo-aprobado" in errores[0], errores)
+    subprocess.run(["git", "reset", "-q", "--hard", "HEAD~1"], cwd=raiz, check=True)
+
     registro = raiz / ".fabrica/nucleo-instalado.csv"
     registro.write_text(registro.read_text(encoding="utf-8").replace("AGENTS.md,", "AGENTS.md,0"), encoding="utf-8")
     commit("registro tocado")
@@ -452,6 +469,17 @@ def probar_inventario(tmp):
     comprobar("lista lo creado por el proyecto, y el informe en Markdown lo muestra",
               {c["nombre"] for c in datos["creado_por_el_proyecto"]} >= {"local-construir", "local-dev-movil"}
               and "«patas»" in inventario.markdown(datos), datos["creado_por_el_proyecto"])
+
+
+def probar_veredicto_del_ensayo():
+    sys.path.insert(0, str(RAIZ / ".fabrica" / "scripts"))
+    ensayo = cargar("ensayar_actualizacion", RAIZ / ".fabrica" / "scripts" / "ensayar_actualizacion.py")
+    comprobar("el ensayo: sin errores con la actualización, el PR queda bien",
+              ensayo.veredicto((True, ["X"]), (True, [])) == "bien")
+    comprobar("si ya fallaba por lo mismo, lo dice como algo previo",
+              ensayo.veredicto((True, ["X"]), (True, ["X"])).startswith("ya fallaba"))
+    comprobar("si ya fallaba por X y con la actualización falla por X e Y, la actualización lo afecta (por Y)",
+              ensayo.veredicto((True, ["X"]), (True, ["X", "Y"])) == "**la actualización lo afecta:** Y")
 
 
 def probar_filtro():
@@ -658,6 +686,7 @@ def main():
         probar_guardia(tmp)
         probar_patas(tmp)
         probar_inventario(tmp)
+        probar_veredicto_del_ensayo()
         probar_filtro()
         probar_archivo(tmp)
         probar_hooks_en_settings(tmp)

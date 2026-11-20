@@ -15,6 +15,7 @@ una actualización lo pisaría. Los archivos propios que ya estaban en la zona s
 Solo niega: nunca aprueba ni reescribe nada, así que no se salta ningún permiso. Ante cualquier error, deja pasar
 (la CI sigue protegiendo esas pruebas con la etiqueta `pruebas-aprobadas`).
 """
+import csv
 import json
 import os
 import subprocess
@@ -36,8 +37,8 @@ def instalados(copia):
     registro = copia / MANIFIESTO
     if not registro.is_file():
         return set()
-    lineas = registro.read_text(encoding="utf-8").splitlines()[1:]
-    return {l.rsplit(",", 1)[0] for l in lineas if "," in l}
+    with open(registro, encoding="utf-8", newline="") as f:
+        return {fila["ruta"] for fila in csv.DictReader(f) if fila.get("ruta")}
 
 
 def zona_del_kit(copia):

@@ -367,15 +367,17 @@ def revisar_integridad(errores, avisos, base=None, etiquetas=frozenset()):
     if editados or faltan:
         ejemplo = (editados or faltan)[0]
         avisos.append(f"La zona del kit no coincide con lo instalado: {len(editados)} archivo(s) editado(s) a mano y "
-                      f"{len(faltan)} faltante(s), por ejemplo {ejemplo}. La próxima actualización se detendrá ahí: lleva "
-                      "los ajustes propios a archivos local-* o propónlos al núcleo.")
+                      f"{len(faltan)} faltante(s), por ejemplo {ejemplo}. La próxima actualización se detendrá ahí "
+                      "hasta decidir qué hacer: lleva los ajustes propios a archivos local-* o propónlos al núcleo.")
     if propios:
         avisos.append(f"Hay {len(propios)} archivo(s) propio(s) dentro de la zona del kit sin el prefijo local-, por "
                       f"ejemplo {propios[0]}. La actualización los conserva, pero conviene renombrarlos a local-*.")
     if not base:
         return
-    rc, salida = git("diff", "--name-only", f"{base}...HEAD")
-    rc_a, agregados = git("diff", "--name-only", "--diff-filter=A", f"{base}...HEAD")
+    # Sin detectar renombres: renombrar un archivo del kit es borrarlo y crear otro, y los dos cuentan
+    rc, salida = git("-c", "core.quotepath=off", "diff", "--no-renames", "--name-only", f"{base}...HEAD")
+    rc_a, agregados = git("-c", "core.quotepath=off", "diff", "--no-renames", "--name-only", "--diff-filter=A",
+                          f"{base}...HEAD")
     if rc != 0 or rc_a != 0:
         return  # revisar_cambios ya informa que no se pudo comparar
     cambiados = {l.strip() for l in salida.splitlines() if l.strip()}

@@ -68,10 +68,13 @@ def plan(raiz, fuente, nunca):
     locales = _nucleo.archivos(raiz, union)
     manifiesto = _nucleo.leer_manifiesto(raiz)
     p = {"agregar": [], "reemplazar": [], "iguales": 0, "eliminar": [], "modificados": [], "propios": [], "revisar": [],
-         "chocan": [], "editados": [], "nuevos": nuevos, "union": union}
+         "chocan": [], "editados": [], "borrados": [], "nuevos": nuevos, "union": union}
     for rel, h in nuevos.items():
         if rel not in locales:
             p["agregar"].append(rel)
+            if manifiesto and rel in manifiesto:
+                p["editados"].append(rel)  # lo instaló el kit y alguien lo borró: volvería sin aviso
+                p["borrados"].append(rel)
         elif locales[rel] != h:
             if manifiesto is not None and rel not in manifiesto:
                 p["chocan"].append(rel)  # propio con el mismo nombre que uno nuevo: se conserva
@@ -120,7 +123,9 @@ def ejecutar(d: Destino, fuente, origen, version_nueva, novedades, aplicar, sin_
            f"{len(p['eliminar'])} eliminados · {p['iguales']} iguales"]
     out += lista("Nuevos", p["agregar"]) + lista("Cambiados", p["reemplazar"])
     out += lista("Eliminados (la versión nueva ya no los trae)", p["eliminar"])
-    out += lista("Editados a mano dentro de la zona administrada (detienen la actualización)", p["editados"])
+    out += lista("Editados a mano dentro de la zona administrada (detienen la actualización)",
+                 [e for e in p["editados"] if e not in p["borrados"]])
+    out += lista("Borrados a mano dentro de la zona administrada (detienen la actualización: volverían)", p["borrados"])
     out += lista("Modificados a mano que la versión nueva ya no trae (se conservan)",
                  [m for m in p["modificados"] if m not in p["editados"]])
     out += lista("Propios con el mismo nombre que uno de la versión nueva (se conservan; ese no se instala)", p["chocan"])
@@ -136,11 +141,12 @@ def ejecutar(d: Destino, fuente, origen, version_nueva, novedades, aplicar, sin_
 
     detener = p["editados"] and not d.reemplazar_editados
     aviso_editados = [
-        "", "Hay archivos de la zona administrada editados a mano: una actualización los pisaría. Para cada uno, decide:",
+        "", "Hay archivos de la zona administrada editados o borrados a mano: una actualización los pisaría o los "
+            "volvería a poner. Para cada uno, decide:",
         "- si es un ajuste propio, cópialo a un archivo propio (local-*) o a la constitución del proyecto;",
         "- si es una mejora para todos, propónla al núcleo (nucleo/aprendizaje.md);",
         "- si no sirve, descártalo.",
-        "Después actualiza con --reemplazar-editados: se reemplazan, y su versión anterior queda en el respaldo."]
+        "Después actualiza con --reemplazar-editados: se reemplazan (o vuelven), y lo anterior queda en el respaldo."]
 
     if not aplicar:
         out += ["", "Vista previa: nada cambió." + (f" Para aplicar: {d.comando_aplicar}" if cambios

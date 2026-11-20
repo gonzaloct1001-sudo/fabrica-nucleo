@@ -28,8 +28,8 @@ Desde la 0.13.2, toda actualización (del núcleo en una instancia, o del kit en
    de la versión nueva (por ejemplo, un comando que el proyecto tenía antes de que el kit lo trajera) se conserva, la
    versión del kit no se instala, y se avisa. Para pasar a la del kit, se renombra el propio a `local-*` y se actualiza
    de nuevo.
-2. **Nunca pisa una «pata» en silencio.** Una pata es un archivo de la zona editado a mano. Si la hay, la actualización
-   se detiene sin cambiar nada y la nombra. Alguien decide: llevar el ajuste a un archivo `local-*` o a la
+2. **Nunca pisa una «pata» en silencio.** Una pata es un archivo de la zona editado o borrado a mano. Si la hay, la
+   actualización se detiene sin cambiar nada y la nombra. Alguien decide: llevar el ajuste a un archivo `local-*` o a la
    constitución, proponerlo al núcleo (`aprendizaje.md`) o descartarlo. Después se actualiza con
    `--reemplazar-editados`, y lo anterior queda en el respaldo.
 3. **La zona se puede comprobar.** `.fabrica/nucleo-instalado.csv` guarda la huella de cada archivo instalado. En un
@@ -42,6 +42,11 @@ Desde la 0.13.2, toda actualización (del núcleo en una instancia, o del kit en
    del día, con los PR abiertos encima, y si se puede en una copia privada del repositorio con su CI completa
    (`ensayar_actualizacion.py`, en «Actualizar el kit de cada proyecto»).
 6. **Se puede deshacer.** Cada actualización es un solo commit y un solo PR: **Revert** deja todo como estaba.
+
+**Lo que el contrato no cubre**, dicho para no confiar de más: la etiqueta `nucleo-aprobado` no prueba quién la puso
+(un agente con permisos puede ponerla), la guardia solo vigila las ediciones de archivos de los agentes (no un comando
+de terminal), y la CI que revisa un PR es la que trae ese mismo PR. La defensa de fondo es que la Dirección integra los
+PR que tocan la zona del kit, y que un repositorio con plan de pago puede exigir su revisión (CODEOWNERS).
 
 `inventario.py` muestra, para un proyecto, qué es del kit y si está intacto, qué es propio, qué choca y qué parece
 duplicar algo del kit: lo que el proyecto creó y podría subir al núcleo.

@@ -30,10 +30,20 @@ cliente. Al prepararlo se encontró que la actualización iba a reemplazar dos c
   que cambia `docs/` o `.fabrica/`, una vez al día y a mano, en un solo trabajo, que además borra las `wip/` de PR ya
   integrados (si el respaldo es anterior a la integración) y las abandonadas. Antes podía gastar varios minutos por
   cada PR.
-- `actualizaciones.md`, «El contrato de instalación»; `motor.md`, el flujo acotado; `AGENTS.md` del kit, la regla
-  reforzada.
-- **Pruebas:** `probar_herramientas.py`, 70 casos (14 nuevos); `probar_kit.py`, 115 (8 nuevos); `probar_actualizacion.py`,
-  26 (2 nuevos). El ensayo se probó también sobre una copia real: encontró los dos comandos propios que chocaban
+- `actualizaciones.md`, «El contrato de instalación», con lo que no cubre; `motor.md`, el flujo acotado; `AGENTS.md`
+  del kit, la regla reforzada.
+- **Lo que corrigió la revisión independiente:**
+  - un archivo del kit **borrado** a mano también detiene la actualización (antes volvía en silencio: un flujo borrado
+    para ahorrar minutos se habría reactivado);
+  - la limpieza borra el respaldo de un PR integrado solo si tiene exactamente lo integrado (el mismo árbol); si guardó
+    trabajo después de abrir el PR, se conserva;
+  - el ensayo marca que la actualización afecta a un PR si con ella aparece un error que antes no estaba, aunque ya
+    fallara por otra cosa;
+  - un renombre ya no se salta el control del PR, y los nombres con tildes se leen bien;
+  - el ensayo: `--pr`, `--rama` y `--reemplazar-editados`; alarma si chocan archivos de las herramientas o del método;
+    solo da por esperados los flujos que la actualización ajustó; la guardia lee el registro con `csv`.
+- **Pruebas:** `probar_herramientas.py`, 74 casos (18 nuevos); `probar_kit.py`, 119 (12 nuevos);
+  `probar_actualizacion.py`, 26 (2 nuevos). El ensayo se probó también sobre una copia real: encontró los dos comandos propios que chocaban
   (conservados) y el PR de actualización viejo en conflicto.
 
 ## 0.13.1 · 2026-11-19

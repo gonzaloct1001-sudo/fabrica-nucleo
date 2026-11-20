@@ -504,8 +504,17 @@ def main():
                   rc != 0 and "AGENTS.md" in out and "se detuvo" in out and "Pata hecha a mano." in leer(agentes)
                   and run(["git", "rev-parse", "HEAD"], proy)[1].strip() == cabeza
                   and run(["git", "status", "--porcelain"], proy)[1].strip() == "", out[-800:])
+        avisos_yml = proy / ".github/workflows/fabrica-avisos.yml"
+        avisos_yml.unlink()
+        run(["git", "commit", "-qam", "Borra un flujo del kit para ahorrar minutos"], proy)
+        cabeza = run(["git", "rev-parse", "HEAD"], proy)[1].strip()
+        rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar")
+        comprobar("Un archivo del kit borrado a mano también detiene la actualización: no vuelve en silencio",
+                  rc != 0 and "Borrados a mano" in out and "fabrica-avisos.yml" in out and not avisos_yml.exists()
+                  and run(["git", "rev-parse", "HEAD"], proy)[1].strip() == cabeza, out[-800:])
         rc, out = script(inst, "actualizar_kit.py", destino, "--aplicar", "--reemplazar-editados")
         respaldos = list((proy / ".fabrica/respaldo-nucleo").rglob("AGENTS.md"))
+        comprobar("Con --reemplazar-editados el flujo borrado vuelve", avisos_yml.exists(), out[-400:])
         comprobar("Con --reemplazar-editados se reemplaza, y la pata queda en el respaldo",
                   rc == 0 and "Otra regla del kit." in leer(agentes) and "Pata hecha a mano." not in leer(agentes)
                   and any("Pata hecha a mano." in leer(r) for r in respaldos), out[-600:])
@@ -516,6 +525,22 @@ def main():
         i = texto.index("\n## ") + 1
         log.write_text(texto[:i] + "## 9.9.12 · prueba\n\n- Cambio para ensayar.\n\n" + texto[i:], encoding="utf-8")
         cabeza = run(["git", "rev-parse", "HEAD"], proy)[1].strip()
+        # Dos PR abiertos, como los ve GitHub (refs/pull/N/head): uno de documentos y una pata sobre AGENTS.md
+        for numero, (rel, texto) in {1: ("docs/nota.md", "Nota.\n"), 2: ("AGENTS.md", None)}.items():
+            run(["git", "checkout", "-q", "-b", f"pr-{numero}"], proy)
+            destino_pr = proy / rel
+            destino_pr.parent.mkdir(parents=True, exist_ok=True)
+            destino_pr.write_text(texto or leer(destino_pr) + "\nPata en un PR.\n", encoding="utf-8")
+            run(["git", "add", "-A"], proy)
+            run(["git", "commit", "-qm", f"PR {numero}"], proy)
+            run(["git", "update-ref", f"refs/pull/{numero}/head", "HEAD"], proy)
+            run(["git", "checkout", "-q", "-"], proy)
+            run(["git", "branch", "-q", "-D", f"pr-{numero}"], proy)
+        rc, out = script(inst, "ensayar_actualizacion.py", str(proy), "--pr", "1", "--pr", "2")
+        comprobar("El ensayo prueba los PR encima de la actualización: el de documentos queda bien",
+                  rc == 0 and "- #1: bien" in out, out[-900:])
+        comprobar("y la pata en el PR choca con la actualización: lo dice como un efecto de la actualización",
+                  "- #2: **la actualización lo afecta:** conflicto en AGENTS.md" in out, out[-900:])
         rc, out = script(inst, "ensayar_actualizacion.py", str(proy), "--sin-prs")
         comprobar("El ensayo aplica la actualización en una copia y lo informa",
                   rc == 0 and "→ 9.9.12" in out and "Aplicada en la copia" in out and "todo en orden" in out

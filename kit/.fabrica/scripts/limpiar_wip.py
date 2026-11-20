@@ -6,7 +6,8 @@ Uso (lo corre cada día el flujo `.github/workflows/fabrica-estado.yml`; tambié
     python .fabrica/scripts/limpiar_wip.py --aplicar    las borra
 
 Una rama `wip/<rama>` se borra en dos casos:
-- su PR se integró y el respaldo es anterior a la integración (lo de después es trabajo nuevo: se conserva);
+- su PR se integró y el respaldo tiene exactamente lo que se integró (el mismo árbol que la cabeza del PR): si tiene
+  algo más, es trabajo que no se integró y se conserva;
 - lleva más de 14 días sin cambios y su rama de origen, `<rama>`, ya no existe en GitHub (se abandonó).
 
 Usa `gh api` (solo REST). Ante cualquier respuesta dudosa de GitHub, no borra nada.
@@ -56,21 +57,24 @@ def abandonadas(ejecutar=correr, ahora=None):
         nombre = str(ref.get("ref", ""))[len("refs/heads/"):]
         origen = nombre[len("wip/"):]
         commit = api(f"git/commits/{(ref.get('object') or {}).get('sha', '')}", ejecutar) or {}
+        arbol = (commit.get("tree") or {}).get("sha")
         fecha = ((commit.get("committer") or {}).get("date") or "").replace("Z", "+00:00")
         try:
-            cuando = datetime.fromisoformat(fecha)
-            dias = (ahora - cuando).days
+            dias = (ahora - datetime.fromisoformat(fecha)).days
         except ValueError:
             continue
         prs = api(f"pulls?state=closed&head={{owner}}:{quote(origen, safe='')}&per_page=10", ejecutar) or []
-        integrados = []
+        integrado = False
         for pr in prs if isinstance(prs, list) else []:
-            try:
-                integrados.append(datetime.fromisoformat(str(pr.get("merged_at") or "").replace("Z", "+00:00")))
-            except ValueError:
+            cabeza = (pr.get("head") or {}).get("sha")
+            if not pr.get("merged_at") or not cabeza or not arbol:
                 continue
-        if integrados and cuando <= max(integrados):
-            borrar.append((nombre, dias, "su PR se integró"))
+            arbol_pr = ((api(f"git/commits/{cabeza}", ejecutar) or {}).get("tree") or {}).get("sha")
+            if arbol_pr == arbol:
+                integrado = True
+                break
+        if integrado:
+            borrar.append((nombre, dias, "su PR se integró con todo lo que tenía"))
             continue
         if dias <= DIAS:
             continue
